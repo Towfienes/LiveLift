@@ -1,8 +1,9 @@
 import type { PackSnapshot, ProductSnapshot } from "@/contracts";
 
 /**
- * Reusable product library (operator entry). This is input data, not session history:
- * sessions copy these into their own immutable-per-show snapshot.
+ * SAMPLE product library shipped with this build. These are example products — not the operator's
+ * catalog, prices or stock — and every copy is tagged `source: "sample_library"` so a REAL show can
+ * disclose it. Sessions copy these into their own per-show snapshot; history is never shared.
  * A missing price is `null` ("Not entered"), never 0.
  */
 export const PRODUCT_LIBRARY: ProductSnapshot[] = [
@@ -19,6 +20,7 @@ export const PRODUCT_LIBRARY: ProductSnapshot[] = [
     constraints: [],
     initials: "RT",
     asOf: "Oct 2, 2026",
+    source: "sample_library",
   },
   {
     id: "prod_m02",
@@ -33,6 +35,7 @@ export const PRODUCT_LIBRARY: ProductSnapshot[] = [
     constraints: ["Verify discount before claiming"],
     initials: "ZH",
     asOf: "Oct 2, 2026",
+    source: "sample_library",
   },
   {
     id: "prod_m03",
@@ -47,6 +50,7 @@ export const PRODUCT_LIBRARY: ProductSnapshot[] = [
     constraints: [],
     initials: "CP",
     asOf: "Oct 2, 2026",
+    source: "sample_library",
   },
   {
     id: "prod_m04",
@@ -61,6 +65,7 @@ export const PRODUCT_LIBRARY: ProductSnapshot[] = [
     constraints: [],
     initials: "TĐ",
     asOf: "Oct 2, 2026",
+    source: "sample_library",
   },
   {
     id: "prod_m05",
@@ -75,6 +80,7 @@ export const PRODUCT_LIBRARY: ProductSnapshot[] = [
     constraints: [],
     initials: "CT",
     asOf: "Oct 2, 2026",
+    source: "sample_library",
   },
   {
     id: "prod_m06",
@@ -89,6 +95,7 @@ export const PRODUCT_LIBRARY: ProductSnapshot[] = [
     constraints: [],
     initials: "06",
     asOf: "Oct 2, 2026",
+    source: "sample_library",
   },
   {
     id: "prod_m07",
@@ -103,6 +110,7 @@ export const PRODUCT_LIBRARY: ProductSnapshot[] = [
     constraints: [],
     initials: "07",
     asOf: "Oct 2, 2026",
+    source: "sample_library",
   },
 ];
 

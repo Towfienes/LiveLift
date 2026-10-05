@@ -25,8 +25,11 @@ export const SegmentSchema = z.object({
   productId: z.string().nullable(),
   /** Allocated (target) host time. null = not entered. */
   targetSec: z.number().int().positive().nullable(),
-  /** Declared minimum. null = no minimum declared, so the segment cannot be shortened. */
-  minSec: z.number().int().positive().nullable(),
+  /**
+   * Declared minimum. null = no minimum declared, so the segment cannot be shortened.
+   * 0 is a real declared value: the segment may be cut entirely without a minimum exception.
+   */
+  minSec: z.number().int().nonnegative().nullable(),
   /** Optional segments may be skipped without breaking required coverage. */
   optional: z.boolean(),
   /**

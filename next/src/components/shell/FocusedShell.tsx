@@ -37,7 +37,12 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
       {/* Focused header: no global navigation. Leaving the desk does not stop runtime. */}
       <header className="h-[60px] [@media(max-height:800px)]:h-[52px] bg-[#101319] px-5 flex items-center justify-between border-b border-[#1E232B] shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <Link href="/" className="text-[#DFFF00] hover:opacity-80 shrink-0" title="Leave the desk (tracking continues)">
+          <Link
+            href="/"
+            className="text-[#DFFF00] hover:opacity-80 shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] -ml-2"
+            title="Leave the desk (tracking continues)"
+            aria-label="Leave the desk (tracking continues)"
+          >
             <span className="text-[24px]">
               <i className="ri-bar-chart-grouped-line" aria-hidden="true" />
             </span>
@@ -92,7 +97,7 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
 
       {/* Operator and room context line */}
       <div
-        className={`min-h-[36px] px-5 border-b flex items-center justify-between gap-4 text-[14px] shrink-0 ${
+        className={`min-h-[36px] px-5 border-b flex items-center justify-between gap-4 text-[15px] shrink-0 ${
           simulated
             ? "bg-[#1A1726] border-[#2E2745] text-[#C8B2FF]"
             : "bg-[#0C0E14] border-[#1A1F27] text-[#B7C1CE]"

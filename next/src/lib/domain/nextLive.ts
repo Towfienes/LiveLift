@@ -111,21 +111,24 @@ export function proposeChanges(session: Session): ProposedChange[] {
     const baseMargin = baseRows[k].waitBeforeSec - baseRows[k].deficitSec;
     const obsMargin = obsRows[k].waitBeforeSec - obsRows[k].deficitSec;
     if (obsMargin < baseMargin && obsMargin < MINUTE) {
+      // A next plan never schedules a zero-length host segment: a declared minimum of 0 trades down to one minute.
+      const floorOf = (s: Segment): number => Math.max(s.minSec ?? 0, MINUTE);
       const block = base.segments
         .slice(blockStart, k)
-        .filter((s) => s.anchorOffsetSec === null && isCompressible(s) && !hasProposal.has(s.id))
-        .sort((a, b) => b.targetSec! - b.minSec! - (a.targetSec! - a.minSec!));
+        .filter((s) => s.anchorOffsetSec === null && isCompressible(s) && floorOf(s) < s.targetSec! && !hasProposal.has(s.id))
+        .sort((a, b) => b.targetSec! - floorOf(b) - (a.targetSec! - floorOf(a)));
       for (const s of block) {
+        const to = floorOf(s);
         hasProposal.add(s.id);
         proposals.push({
           id: `tradeoff:${s.id}`,
           basis: "tradeoff",
           segmentId: s.id,
-          title: `${s.title}: ${formatDuration(s.targetSec!)} → ${formatDuration(s.minSec!)}`,
+          title: `${s.title}: ${formatDuration(s.targetSec!)} → ${formatDuration(to)}`,
           detail: `Trade-off, not an observation: uses the declared minimum to return ${formatDuration(
-            s.targetSec! - s.minSec!
+            s.targetSec! - to
           )} of buffer before ${seg.title} (${formatClock(base.plannedStartMs + seg.anchorOffsetSec * 1000, tz)}).`,
-          op: { op: "set_target", segmentId: s.id, targetSec: s.minSec! },
+          op: { op: "set_target", segmentId: s.id, targetSec: to },
         });
       }
     }

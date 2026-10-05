@@ -25,12 +25,22 @@ export const SegmentRunSchema = z.object({
   startedAtMs: z.number().int().nullable(),
   endedAtMs: z.number().int().nullable(),
   endedBy: z.enum(["advance", "close", "session_end"]).nullable(),
-  /** Operator-declared coverage when a segment ends. null = not run / not declared. */
+  /**
+   * Operator-declared coverage when a segment ends. null = not declared.
+   * Duration never implies coverage: reaching a minimum is not proof that every point was covered.
+   */
   coverage: z.enum(["complete", "partial"]).nullable(),
-  /** Explicit host estimate for the active segment: it is expected to end at endsAtMs. */
+  /** Unfinished work the operator declared at the end of the segment. A manual note, never an automatic transfer. */
+  followUp: z.string().nullable().default(null),
+  /** Explicit host estimate for the active segment: it is expected to end at endsAtMs. 0 remaining is a valid estimate. */
   remainingEstimate: z
     .object({ endsAtMs: z.number().int(), reportedAtMs: z.number().int() })
     .nullable(),
+  /**
+   * The host explicitly said the remaining time is unknown (recorded at this instant).
+   * Distinct from "no estimate entered": it suppresses the target-derived end and propagates possible risk.
+   */
+  remainingUnknownAtMs: z.number().int().nullable().default(null),
   belowMinimum: z.boolean(),
   skipAcknowledged: z.boolean(),
   /** Set when an operator moved this pending segment later in the order. */
@@ -49,12 +59,34 @@ export const CueRunSchema = z.object({
 });
 export type CueRun = z.infer<typeof CueRunSchema>;
 
+/**
+ * A native action the operator reports that was NOT planned as a cue (e.g. an unexpected pin).
+ * Same semantics as a cue report: attempted stays unresolved, a report is never platform confirmation.
+ */
+export const ManualActionRunSchema = z.object({
+  id: z.string(),
+  action: z.enum(["pin_product", "unpin_product", "start_promotion", "other"]),
+  /** Product in this show's pack, when the action targets one. */
+  productId: z.string().nullable(),
+  /** Exact target as the operator named it (product code + name, promotion name, ...). */
+  targetLabel: z.string(),
+  state: z.enum(["attempted", "performed", "cancelled"]),
+  /** When the operator says it happened. null when cancelled. */
+  occurredAtMs: z.number().int().nullable(),
+  /** When LiveLift recorded the latest report. */
+  reportedAtMs: z.number().int(),
+  reason: z.string().nullable(),
+});
+export type ManualActionRun = z.infer<typeof ManualActionRunSchema>;
+
 export const RuntimeSchema = z.object({
   startedAtMs: z.number().int().nullable(),
   endedAtMs: z.number().int().nullable(),
   currentSegmentId: z.string().nullable(),
   segments: z.record(z.string(), SegmentRunSchema),
   cues: z.record(z.string(), CueRunSchema),
+  /** Unplanned native actions reported by the operator. */
+  actions: z.record(z.string(), ManualActionRunSchema).default({}),
 });
 export type Runtime = z.infer<typeof RuntimeSchema>;
 
@@ -69,8 +101,10 @@ export const EventTypeSchema = z.enum([
   "remaining_estimated",
   "recovery_selected",
   "cue_reported",
+  "action_reported",
   "note_added",
   "clock_advanced",
+  "clock_discontinuity",
   "session_ended",
   "correction_added",
 ]);
@@ -141,6 +175,7 @@ export const SessionSchema = z.object({
     command: z.number().int(),
     segment: z.number().int(),
     cue: z.number().int(),
+    action: z.number().int().default(0),
   }),
   /** Simulated sessions run on an explicit virtual clock. REAL sessions use the device clock. */
   virtualNowMs: z.number().int().nullable(),

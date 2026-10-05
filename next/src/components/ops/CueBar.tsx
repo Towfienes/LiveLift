@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { Cue, CueRun } from "@/contracts";
+import type { Cue, CueRun, ManualActionRun } from "@/contracts";
 import type { CueForecast } from "@/lib/domain";
 import { formatClock, formatDuration } from "@/lib/domain";
 import { Button } from "@/components/ui";
@@ -14,63 +14,94 @@ export const CUE_ACTION_LABEL: Record<Cue["action"], string> = {
   start_promotion: "Start promotion",
 };
 
+export type ReportTarget = { kind: "cue"; id: string } | { kind: "action"; id: string } | { kind: "new" };
+
 /**
  * The next operator cue. A cue is a zero-duration marker performed in TikTok by a human.
  * LiveLift records what the operator reports; it never executes or confirms the action.
+ * An earlier attempt whose outcome is unknown stays unresolved but never blocks reporting the next cue:
+ * the bar moves on to the next unreported cue, and unresolved attempts stay one click away.
  */
 export function CueBar({
   cues,
   forecasts,
   runs,
+  actions,
   tz,
   onPerformed,
   onAttempted,
-  onMore,
+  onReport,
 }: {
   cues: Cue[];
   forecasts: CueForecast[];
   runs: Record<string, CueRun>;
+  actions: Record<string, ManualActionRun>;
   tz: string;
   onPerformed: (cueId: string) => void;
   onAttempted: (cueId: string) => void;
-  onMore: (cueId: string) => void;
+  onReport: (target: ReportTarget) => void;
 }): React.ReactElement {
-  const open = cues
+  const operator = cues
     .filter((c) => c.audience === "operator")
-    .map((cue) => ({
-      cue,
-      fc: forecasts.find((f) => f.cueId === cue.id),
-      run: runs[cue.id],
-    }))
-    .filter((x) => x.fc && !x.fc.orphaned && (x.run?.state ?? "pending") !== "performed" && (x.run?.state ?? "pending") !== "cancelled")
-    .sort((a, b) => (a.fc!.timeMs ?? Infinity) - (b.fc!.timeMs ?? Infinity));
+    .map((cue) => ({ cue, fc: forecasts.find((f) => f.cueId === cue.id), state: runs[cue.id]?.state ?? "pending", run: runs[cue.id] }))
+    .filter((x) => x.fc);
+  const byDue = (a: { fc?: CueForecast }, b: { fc?: CueForecast }): number => (a.fc!.timeMs ?? Infinity) - (b.fc!.timeMs ?? Infinity);
+  const pending = operator.filter((x) => x.state === "pending" && !x.fc!.orphaned).sort(byDue);
+  const attemptedCues = operator.filter((x) => x.state === "attempted").sort(byDue);
+  const attemptedActions = Object.values(actions).filter((a) => a.state === "attempted");
+  const unresolved = attemptedCues.length + attemptedActions.length;
+  const first = pending[0] ?? null;
+  const firstUnresolved: ReportTarget | null = attemptedCues[0]
+    ? { kind: "cue", id: attemptedCues[0].cue.id }
+    : attemptedActions[0]
+      ? { kind: "action", id: attemptedActions[0].id }
+      : null;
 
-  const first = open[0];
+  const unresolvedButton =
+    unresolved > 0 && firstUnresolved ? (
+      <button
+        type="button"
+        onClick={() => onReport(firstUnresolved)}
+        data-testid="cue-unresolved-btn"
+        className="min-h-[44px] px-2 rounded-[8px] text-[15px] font-medium text-[#F6C875] hover:bg-[#1F1B12] cursor-pointer whitespace-nowrap"
+      >
+        <i className="ri-question-line mr-1" aria-hidden="true" />
+        {unresolved} attempt{unresolved === 1 ? "" : "s"} unresolved
+      </button>
+    ) : null;
+
+  const reportButton = (
+    <Button size="sm" variant="ghost" onClick={() => onReport(first ? { kind: "cue", id: first.cue.id } : { kind: "new" })} data-testid="cue-report-btn">
+      Report…
+    </Button>
+  );
+
   if (!first) {
     return (
-      <div data-testid="cue-bar" className="flex items-center gap-2 min-h-[44px]">
-        <Signal tone="muted" icon="ri-checkbox-multiple-line">
+      <div data-testid="cue-bar" className="flex items-center gap-2 min-h-[44px] min-w-0">
+        <Signal tone="muted" icon="ri-checkbox-multiple-line" className="text-[15px]">
           No operator cues waiting
         </Signal>
+        {unresolvedButton}
+        {reportButton}
       </div>
     );
   }
 
-  const { cue, fc, run } = first;
+  const { cue, fc } = first;
   const due = fc!.dueInSec;
-  const attempted = run?.state === "attempted";
   const urgent = due !== null && due <= 60;
   const overdue = due !== null && due < 0;
 
   return (
     <div data-testid="cue-bar" className="flex items-center gap-3 min-w-0 flex-wrap">
-      <div className="min-w-0">
-        <p className="text-[15px] font-medium text-[#F5F7FC] truncate">
+      <div className="min-w-0 max-w-[460px]">
+        <p className="text-[16px] font-medium text-[#F5F7FC] truncate" title={cue.title}>
           <i className="ri-focus-3-line mr-1.5 text-[#AEB7C5]" aria-hidden="true" />
           <span data-testid="cue-title">{cue.title}</span>
-          <span className="ml-2 text-[13px] font-normal text-[#9AA5B5]">operator cue · 0:00 host time</span>
+          <span className="ml-2 text-[14px] font-normal text-[#9AA5B5]">cue · no host time</span>
         </p>
-        <p className="text-[13px] tabular-nums text-[#B7C1CE]">
+        <p className="text-[15px] tabular-nums text-[#B7C1CE] truncate">
           {fc!.timeMs !== null ? (
             <>
               {fc!.lowerBound ? "Due ≥ " : "Due "}
@@ -83,30 +114,26 @@ export function CueBar({
               )}
             </>
           ) : (
-            "Due time depends on a segment that has not started"
+            "Due when its segment starts"
           )}
-          {attempted && run?.occurredAtMs != null && ` · attempted ${formatClock(run.occurredAtMs, tz, true)}, outcome unknown`}
-          {open.length > 1 && ` · +${open.length - 1} more`}
+          {pending.length > 1 && ` · +${pending.length - 1} more`}
         </p>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         <Button
           size="sm"
-          variant={urgent || attempted ? "primary" : "secondary"}
+          variant={urgent ? "primary" : "secondary"}
           onClick={() => onPerformed(cue.id)}
           data-testid="cue-performed-btn"
           aria-label={`I performed this: ${cue.title}`}
         >
           I performed this
         </Button>
-        {!attempted && (
-          <Button size="sm" variant="secondary" onClick={() => onAttempted(cue.id)} data-testid="cue-attempted-btn" aria-label={`Attempted: ${cue.title}`}>
-            Attempted
-          </Button>
-        )}
-        <Button size="sm" variant="ghost" onClick={() => onMore(cue.id)} data-testid="cue-more-btn" aria-label={`More for ${cue.title}`}>
-          <i className="ri-more-line" aria-hidden="true" />
+        <Button size="sm" variant="secondary" onClick={() => onAttempted(cue.id)} data-testid="cue-attempted-btn" aria-label={`Attempted: ${cue.title}`}>
+          Attempted
         </Button>
+        {reportButton}
+        {unresolvedButton}
       </div>
     </div>
   );

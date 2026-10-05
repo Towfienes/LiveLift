@@ -66,11 +66,14 @@ export function RunOfShowLive({
   forecast,
   products,
   tz,
+  onReportCue,
 }: {
   session: Session;
   forecast: Forecast;
   products: ProductSnapshot[];
   tz: string;
+  /** Any unresolved operator cue can be reported from its row — an earlier attempt never blocks a later cue. */
+  onReportCue?: (cueId: string) => void;
 }): React.ReactElement {
   const items = useMemo(() => buildItems(session, forecast), [session, forecast]);
   const productById = new Map(products.map((p) => [p.id, p]));
@@ -99,7 +102,18 @@ export function RunOfShowLive({
               <span className="tabular-nums text-[#9AA5B5] whitespace-nowrap">
                 {fc?.orphaned ? "segment skipped" : fc?.timeMs != null ? `${fc.lowerBound ? "≥ " : ""}${formatClock(fc.timeMs, tz, true)}` : "—"}
               </span>
-              <span className="w-[210px] text-right">
+              <span className="w-[210px] text-right flex items-center justify-end gap-2">
+                {cue.audience === "operator" && (run.state === "pending" || run.state === "attempted") && onReportCue && (
+                  <button
+                    type="button"
+                    onClick={() => onReportCue(cue.id)}
+                    data-testid={`ros-cue-report-${cue.id}`}
+                    aria-label={`Report ${cue.title}`}
+                    className="min-h-[36px] px-2 rounded-[6px] text-[14px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
+                  >
+                    Report
+                  </button>
+                )}
                 {cue.audience !== "operator" ? (
                   <Signal tone="muted">informational</Signal>
                 ) : run.state === "performed" ? (

@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import type { ProductSnapshot } from "@/contracts";
-import type { HistoryItem, Review, ReviewCue, ReviewRow } from "@/lib/domain";
-import { formatClock, formatDuration, formatSigned } from "@/lib/domain";
+import type { HistoryItem, Review, ReviewAction, ReviewCue, ReviewRow } from "@/lib/domain";
+import { MANUAL_ACTION_LABEL, formatClock, formatDuration, formatSigned } from "@/lib/domain";
 import { Button, Dialog } from "@/components/ui";
 import { SegmentTile } from "./SegmentTile";
 import { Signal, type Tone } from "./StatusChips";
@@ -49,6 +49,8 @@ export function ReviewSummary({ review, tz }: { review: Review; tz: string }): R
           s.counts.closedEarly > 0 ? `${s.counts.closedEarly} closed early` : "",
           s.counts.skipped > 0 ? `${s.counts.skipped} skipped` : "",
           s.counts.notReached > 0 ? `${s.counts.notReached} not reached` : "",
+          s.counts.incomplete > 0 ? `${s.counts.incomplete} incomplete record${s.counts.incomplete === 1 ? "" : "s"}` : "",
+          s.counts.coveragePartial > 0 ? `${s.counts.coveragePartial} unfinished` : "",
           s.counts.deferred > 0 ? `${s.counts.deferred} deferred` : "",
         ]
           .filter(Boolean)
@@ -61,7 +63,13 @@ export function ReviewSummary({ review, tz }: { review: Review; tz: string }): R
       sub:
         c.operatorTotal === 0
           ? "no operator cues planned"
-          : [c.late > 0 ? `${c.late} late` : "", c.noReport > 0 ? `${c.noReport} no report` : "", c.cancelled > 0 ? `${c.cancelled} cancelled` : "", "unverified"]
+          : [
+              c.late > 0 ? `${c.late} late` : "",
+              c.noReport > 0 ? `${c.noReport} no report` : "",
+              c.cancelled > 0 ? `${c.cancelled} cancelled` : "",
+              s.actions.total > 0 ? `${s.actions.total} unplanned` : "",
+              "unverified",
+            ]
               .filter(Boolean)
               .join(" · "),
     },
@@ -95,6 +103,7 @@ const OUTCOME: Record<ReviewRow["outcome"], { text: string; tone: Tone; icon: st
   ended_with_show: { text: "Ended with show", tone: "muted", icon: "ri-stop-circle-line" },
   skipped: { text: "Skipped", tone: "warn", icon: "ri-skip-forward-line" },
   not_reached: { text: "Not reached", tone: "muted", icon: "ri-subtract-line" },
+  incomplete: { text: "Incomplete record", tone: "warn", icon: "ri-question-line" },
 };
 
 export function PlanActualRows({
@@ -170,6 +179,10 @@ export function PlanActualRows({
                     </p>
                     <p className="text-[#9AA5B5]">{formatDuration(r.actual.durSec)} actual</p>
                   </>
+                ) : r.outcome === "incomplete" ? (
+                  <p className="text-[#F6C875]" data-testid="incomplete-actual">
+                    {r.recordedStartMs !== null ? `Started ${clock(r.recordedStartMs)} · end not recorded` : "Start not recorded"}
+                  </p>
                 ) : (
                   <p className="text-[#9AA5B5]" data-testid="no-actual">
                     {r.outcome === "skipped" ? "Skipped — nothing performed" : "Did not run"}
@@ -183,7 +196,7 @@ export function PlanActualRows({
                     {r.durationVarianceSec === 0 ? "on plan" : `${formatSigned(r.durationVarianceSec)} duration`}
                   </Signal>
                 ) : (
-                  <Signal tone="muted">no actual to compare</Signal>
+                  <Signal tone="muted">{r.outcome === "incomplete" ? "duration unavailable" : "no actual to compare"}</Signal>
                 )}
                 {r.anchor && (
                   <div>
@@ -202,7 +215,16 @@ export function PlanActualRows({
                 )}
                 <div className="flex gap-2 flex-wrap">
                   {r.belowMinimum && <Signal tone="warn" className="text-[13px]">below minimum</Signal>}
-                  {r.coverage === "partial" && <Signal tone="warn" className="text-[13px]">coverage partial</Signal>}
+                  {r.coverage === "partial" && <Signal tone="warn" className="text-[14px]">coverage partial (declared)</Signal>}
+                  {r.coverage === "complete" && <Signal tone="neutral" className="text-[14px]">coverage complete (declared)</Signal>}
+                  {r.coverage === null && r.actual !== null && r.outcome !== "ended_with_show" && (
+                    <Signal tone="muted" className="text-[14px]">coverage not declared</Signal>
+                  )}
+                  {r.followUp && (
+                    <Signal tone="warn" icon="ri-arrow-go-forward-line" className="text-[14px]" title="A manual follow-up the operator declared. Not moved anywhere automatically.">
+                      follow-up: {r.followUp}
+                    </Signal>
+                  )}
                   {r.deferred && <Signal tone="muted" className="text-[13px]">deferred</Signal>}
                   {r.planChanges.length > 0 && (
                     <Signal tone="violet" icon="ri-file-edit-line" className="text-[13px]" title={r.planChanges.join("\n")}>
@@ -283,6 +305,34 @@ export function CueResults({ cues, tz }: { cues: ReviewCue[]; tz: string }): Rea
           </li>
         );
       })}
+    </ul>
+  );
+}
+
+export function ActionResults({ actions, tz }: { actions: ReviewAction[]; tz: string }): React.ReactElement {
+  const clock = (ms: number): string => formatClock(ms, tz, true);
+  return (
+    <ul className="divide-y divide-[#1F2530]" data-testid="action-results">
+      {actions.map((a) => (
+        <li key={a.actionId} className="py-2 px-2 grid grid-cols-1 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.4fr)] gap-x-3 gap-y-0.5 items-start" data-testid={`action-result-${a.state}`}>
+          <p className="text-[15px] text-[#F5F7FC] truncate">
+            {MANUAL_ACTION_LABEL[a.action]} {a.targetLabel}
+          </p>
+          <p className="text-[14px] tabular-nums text-[#CAD0DA]">
+            {a.occurredAtMs !== null ? `happened ${clock(a.occurredAtMs)}` : "did not happen"} · reported {clock(a.reportedAtMs)}
+          </p>
+          <div>
+            <Signal tone={a.state === "attempted" ? "warn" : a.state === "cancelled" ? "muted" : "neutral"} icon={a.state === "attempted" ? "ri-cursor-line" : "ri-hand-heart-line"}>
+              {a.state === "performed"
+                ? "Operator reported performed"
+                : a.state === "attempted"
+                  ? "Attempted — outcome unknown (unresolved)"
+                  : `Attempt withdrawn${a.reason ? `: ${a.reason}` : ""}`}
+            </Signal>
+            <p className="text-[13px] text-[#9AA5B5]">Platform verification: Unknown — a report is not confirmation.</p>
+          </div>
+        </li>
+      ))}
     </ul>
   );
 }

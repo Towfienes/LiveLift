@@ -63,7 +63,7 @@ export function SupportTabs({
             aria-controls={`panel-${t.id}`}
             onClick={() => setTab(t.id)}
             data-testid={`support-tab-${t.id}`}
-            className={`min-h-[40px] px-3 rounded-[6px] text-[15px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`min-h-[44px] px-3 rounded-[8px] text-[15px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
               tab === t.id ? "bg-[#252A34] text-[#DFFF00]" : "text-[#AFB8C7] hover:text-white"
             }`}
           >
@@ -107,11 +107,16 @@ export function SupportTabs({
               .map((s) => {
                 const run = session.runtime.segments[s.id] ?? emptySegmentRun();
                 const product = s.productId ? productById.get(s.productId) : null;
+                // Coverage is what the operator declared. Running for the planned time is not proof of coverage.
                 const status =
                   run.state === "active"
                     ? { tone: "lime" as Tone, text: "Presenting now" }
                     : run.state === "completed"
-                      ? { tone: "neutral" as Tone, text: run.coverage === "partial" ? "Covered partially" : "Covered" }
+                      ? run.coverage === "complete"
+                        ? { tone: "neutral" as Tone, text: "Covered (declared)" }
+                        : run.coverage === "partial"
+                          ? { tone: "warn" as Tone, text: "Unfinished (declared)" }
+                          : { tone: "muted" as Tone, text: "Ran · coverage not declared" }
                       : run.state === "skipped"
                         ? { tone: "warn" as Tone, text: "Skipped — not covered" }
                         : { tone: "muted" as Tone, text: "Not started" };

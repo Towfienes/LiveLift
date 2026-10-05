@@ -117,9 +117,12 @@ export const StandardShell: React.FC<StandardShellProps> = ({
 
             <span className="text-[#39414D]">|</span>
 
-            <span className="inline-flex items-center gap-1.5 text-[15px] text-[#CAD0DA] px-2 py-1">
-              <i className="ri-user-3-line" aria-hidden="true" />
-              <span>Linh</span>
+            <span
+              className="inline-flex items-center gap-1.5 text-[15px] text-[#CAD0DA] px-2 py-1"
+              title="LiveLift has no accounts. Shows are stored in this browser only."
+            >
+              <i className="ri-computer-line" aria-hidden="true" />
+              <span>This device</span>
             </span>
           </div>
         </div>

@@ -85,33 +85,32 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
   // "Planned" is the span from start to finish. Idle buffers before anchors are part of it.
   const spanSec = assessment.finishMs !== null ? Math.round((assessment.finishMs - plan.plannedStartMs) / 1000) : null;
 
-  const edit = (fn: (draft: Session, alloc: { segmentId: () => string; cueId: () => string }) => void): void => {
+  /** Returns false when the change was not saved; the caller keeps the operator's input open for a retry. */
+  const edit = (fn: (draft: Session, alloc: { segmentId: () => string; cueId: () => string }) => void): boolean => {
     const r = sessionStore.editDraft(session.id, fn);
     setMessage(r.ok ? null : r.reason);
+    return r.ok;
   };
-  const editPlan = (fn: (p: PlanVersion, alloc: { segmentId: () => string; cueId: () => string }) => PlanVersion): void =>
+  const editPlan = (fn: (p: PlanVersion, alloc: { segmentId: () => string; cueId: () => string }) => PlanVersion): boolean =>
     edit((d, alloc) => {
       d.plans[0] = fn(d.plans[0], alloc);
     });
 
+  // A dialog closes only when its change was actually saved; otherwise the operator's input stays for a retry.
   const saveSegment = (draft: SegmentDraft): void => {
-    if (segmentEditing?.mode === "edit") {
-      const id = segmentEditing.id;
-      editPlan((p) => updateSegment(p, id, draft));
-    } else {
-      editPlan((p, alloc) => addSegment(p, newSegment(alloc.segmentId(), draft)));
-    }
-    setSegmentEditing(null);
+    const ok =
+      segmentEditing?.mode === "edit"
+        ? editPlan((p) => updateSegment(p, segmentEditing.id, draft))
+        : editPlan((p, alloc) => addSegment(p, newSegment(alloc.segmentId(), draft)));
+    if (ok) setSegmentEditing(null);
   };
 
   const saveCue = (draft: CueDraft): void => {
-    if (cueEditing?.mode === "edit") {
-      const id = cueEditing.id;
-      editPlan((p) => updateCue(p, id, draft));
-    } else {
-      editPlan((p, alloc) => addCue(p, { id: alloc.cueId(), ...draft }));
-    }
-    setCueEditing(null);
+    const ok =
+      cueEditing?.mode === "edit"
+        ? editPlan((p) => updateCue(p, cueEditing.id, draft))
+        : editPlan((p, alloc) => addCue(p, { id: alloc.cueId(), ...draft }));
+    if (ok) setCueEditing(null);
   };
 
   const startLive = (rebaseToNow: boolean): void => {
@@ -119,6 +118,13 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
     if (res?.receipt.outcome === "committed") router.push(`/live/${session.id}/operate`);
     else setMessage(res?.receipt.message ?? "Could not start.");
   };
+
+  // One active REAL show per device: another running REAL show blocks Start and links back to it.
+  const otherActiveReal =
+    session.environment === "REAL"
+      ? (storeState.sessions.find((s) => s.environment === "REAL" && s.lifecycle === "active" && s.id !== session.id) ?? null)
+      : null;
+  const sampleProducts = session.environment === "REAL" ? session.products.filter((p) => p.source === "sample_library").length : 0;
 
   const onStartClick = (): void => {
     const far = session.environment === "REAL" && nowMs !== null && Math.abs(nowMs - plan.plannedStartMs) > 5 * 60_000;
@@ -172,11 +178,17 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
               <ProductPack
                 products={session.products}
                 plan={plan}
-                onAdd={(items) =>
-                  edit((d) => {
-                    for (const item of items) if (!d.products.some((p) => p.id === item.id || p.code === item.code)) d.products.push(item);
-                  })
-                }
+                onAdd={(items) => {
+                  // Every requested product is added or the whole change is refused with a reason — never silently fewer.
+                  const clash = items.filter((item) => session.products.some((p) => p.id === item.id || p.code.toLowerCase() === item.code.toLowerCase()));
+                  if (clash.length > 0) {
+                    setMessage(`Not added: ${clash.map((c) => c.code).join(", ")} already ${clash.length === 1 ? "exists" : "exist"} in this pack. Nothing was changed.`);
+                    return false;
+                  }
+                  return edit((d) => {
+                    d.products.push(...items);
+                  });
+                }}
                 onPatch={(id, patch) =>
                   edit((d) => {
                     d.products = d.products.map((p) => (p.id === id ? { ...p, ...patch } : p));
@@ -236,6 +248,15 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
             <aside className="rounded-[12px] bg-[#1B1F27] p-5 flex flex-col min-h-0 md:col-span-2 xl:col-span-1" aria-label="Readiness">
               <div className="flex-1 min-h-0 overflow-y-auto pr-1">
               <p className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#AEB7C5] mb-2">Readiness</p>
+              {otherActiveReal && (
+                <p className="mb-2 text-[15px] text-[#F6C875]" data-testid="other-show-active">
+                  <i className="ri-error-warning-line mr-1" aria-hidden="true" />
+                  {otherActiveReal.title} is running on this device. End it before starting another REAL show.{" "}
+                  <Link href={`/live/${otherActiveReal.id}/operate`} className="underline hover:text-[#DFFF00]">
+                    Open the running show
+                  </Link>
+                </p>
+              )}
               {blockers.length === 0 ? (
                 <p className="inline-flex items-center gap-2 text-[17px] font-medium text-[#DFFF00]" data-testid="plan-ready">
                   <i className="ri-checkbox-circle-line text-[20px]" aria-hidden="true" />
@@ -257,7 +278,13 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
                     {i.message}
                   </li>
                 ))}
-                {blockers.length === 0 && warnings.length === 0 && (
+                {sampleProducts > 0 && (
+                  <li className="text-[#CAD0DA]" data-testid="sample-products-note">
+                    <i className="ri-information-line mr-1 text-[#F6C875]" aria-hidden="true" />
+                    {sampleProducts} product{sampleProducts === 1 ? "" : "s"} came from the sample library. Check names and prices before going live.
+                  </li>
+                )}
+                {blockers.length === 0 && warnings.length === 0 && sampleProducts === 0 && (
                   <li className="text-[#B7C1CE]">Manual operation is available.</li>
                 )}
               </ul>
@@ -316,7 +343,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
                   size="lg"
                   icon="ri-play-line"
                   onClick={onStartClick}
-                  disabled={blockers.length > 0}
+                  disabled={blockers.length > 0 || otherActiveReal !== null}
                   className="w-full min-h-[52px] text-[19px]"
                   data-testid="start-live-cta-btn"
                 >
@@ -345,8 +372,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
           onDelete={
             editingSegment
               ? () => {
-                  editPlan((p) => removeSegment(p, editingSegment.id));
-                  setSegmentEditing(null);
+                  if (editPlan((p) => removeSegment(p, editingSegment.id))) setSegmentEditing(null);
                 }
               : undefined
           }
@@ -363,8 +389,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
           onDelete={
             editingCue
               ? () => {
-                  editPlan((p) => removeCue(p, editingCue.id));
-                  setCueEditing(null);
+                  if (editPlan((p) => removeCue(p, editingCue.id))) setCueEditing(null);
                 }
               : undefined
           }
@@ -382,13 +407,13 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
           plannedStartMs={plan.plannedStartMs}
           tz={tz}
           onSave={(input) => {
-            edit((d) => {
+            const ok = edit((d) => {
               d.title = input.title;
               d.objective = input.objective;
               d.plans[0] = setPlannedStart(d.plans[0], input.plannedStartMs);
               if (d.environment === "SIMULATED") d.virtualNowMs = input.plannedStartMs;
             });
-            setDetailsOpen(false);
+            if (ok) setDetailsOpen(false);
           }}
         />
 

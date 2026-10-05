@@ -8,13 +8,19 @@ import { anchorMs, plannedTotalSec, schedulePlan } from "./plan";
  * - Planned != actual. The baseline commitment is never rewritten; re-anchors appear beside it.
  * - Missing != zero. A segment that never ran has no actual interval (null), not 0:00.
  * - Unknown != failed. An operator cue with no report is "no report", not "missed".
+ * - A censored interval (start without end) is "incomplete", never "did not run" and never given an end.
+ * - Coverage is what the operator declared; "not declared" is shown as such.
  * - A report is never platform confirmation: verification is always "unknown" here.
  */
 
 /** Variance below this many seconds is not flagged as an overrun or underrun. */
 export const VARIANCE_TOLERANCE_SEC = 15;
 
-export type SegmentOutcome = "completed" | "closed_early" | "ended_with_show" | "skipped" | "not_reached";
+/**
+ * incomplete — a start was recorded but its end was not (or the reverse): the interval is censored.
+ * It is shown as such, never as "did not run" and never with an invented end.
+ */
+export type SegmentOutcome = "completed" | "closed_early" | "ended_with_show" | "skipped" | "not_reached" | "incomplete";
 
 export interface Interval {
   startMs: number;
@@ -55,13 +61,18 @@ export interface ReviewRow {
   baselineTargetSec: number | null;
   currentTargetSec: number | null;
   actual: Interval | null;
+  /** Recorded start even when the interval is incomplete (end missing). */
+  recordedStartMs: number | null;
   outcome: SegmentOutcome;
   startVarianceSec: number | null;
   durationVarianceSec: number | null;
   overran: boolean;
   underran: boolean;
   belowMinimum: boolean;
+  /** Operator-declared coverage. null = not declared (never inferred from duration). */
   coverage: "complete" | "partial" | null;
+  /** Unfinished work the operator declared; kept as a manual follow-up, not transferred automatically. */
+  followUp: string | null;
   deferred: boolean;
   anchor: ReviewAnchor | null;
   /** Plan revisions during the show that touched this segment. */
@@ -85,6 +96,18 @@ export interface ReviewCue {
   /** There is no platform integration, so verification is always unknown. */
   verification: "unknown";
   corrections: ReviewCorrection[];
+}
+
+/** A native action the operator reported that was not planned as a cue. */
+export interface ReviewAction {
+  actionId: string;
+  action: "pin_product" | "unpin_product" | "start_promotion" | "other";
+  targetLabel: string;
+  state: "performed" | "attempted" | "cancelled";
+  occurredAtMs: number | null;
+  reportedAtMs: number;
+  reason: string | null;
+  verification: "unknown";
 }
 
 export interface HistoryItem {
@@ -117,11 +140,16 @@ export interface ReviewSummary {
     endedWithShow: number;
     skipped: number;
     notReached: number;
+    incomplete: number;
     overran: number;
     deferred: number;
+    coveragePartial: number;
+    coverageNotDeclared: number;
   };
   anchors: { total: number; onTime: number; late: number; cancelled: number; notReached: number; reAnchored: number };
   cues: { operatorTotal: number; performed: number; attempted: number; cancelled: number; noReport: number; late: number };
+  /** Unplanned actions reported during the show. Attempts stay unresolved unless the operator resolved them. */
+  actions: { total: number; performed: number; attempted: number; cancelled: number };
   planRevisions: number;
 }
 
@@ -136,6 +164,7 @@ export interface Review {
   sessionId: string;
   rows: ReviewRow[];
   cues: ReviewCue[];
+  actions: ReviewAction[];
   history: HistoryItem[];
   revisions: PlanRevisionItem[];
   summary: ReviewSummary;
@@ -193,11 +222,17 @@ export function buildReview(session: Session): Review | null {
         ? { startMs: run.startedAtMs, endMs: run.endedAtMs, durSec: toSec(run.endedAtMs - run.startedAtMs) }
         : null;
 
+    const startRecorded = run.startedAtMs !== null;
+    const endRecorded = run.endedAtMs !== null;
     let outcome: SegmentOutcome;
     if (run.state === "skipped") outcome = "skipped";
-    else if (run.state === "completed") {
+    else if ((run.state === "completed" || run.state === "active") && (!startRecorded || !endRecorded)) {
+      // Evidence of execution with a missing boundary: censored, not "did not run".
+      outcome = "incomplete";
+    } else if (run.state === "completed") {
+      const ranShortOfPlan = actual !== null && curSeg.targetSec !== null && actual.durSec < curSeg.targetSec - VARIANCE_TOLERANCE_SEC;
       if (run.endedBy === "session_end") outcome = "ended_with_show";
-      else if (run.coverage === "partial" || run.belowMinimum) outcome = "closed_early";
+      else if (run.belowMinimum || (run.coverage === "partial" && ranShortOfPlan)) outcome = "closed_early";
       else outcome = "completed";
     } else outcome = "not_reached";
 
@@ -242,6 +277,7 @@ export function buildReview(session: Session): Review | null {
       baselineTargetSec: baseSeg.targetSec,
       currentTargetSec: curSeg.targetSec,
       actual,
+      recordedStartMs: run.startedAtMs,
       outcome,
       startVarianceSec,
       durationVarianceSec,
@@ -249,6 +285,7 @@ export function buildReview(session: Session): Review | null {
       underran: durationVarianceSec !== null && durationVarianceSec <= -VARIANCE_TOLERANCE_SEC,
       belowMinimum: run.belowMinimum,
       coverage: run.coverage,
+      followUp: run.followUp ?? null,
       deferred: run.deferred,
       anchor,
       planChanges: changeEvents.map((e) => e.summary),
@@ -283,6 +320,20 @@ export function buildReview(session: Session): Review | null {
       corrections: correctionsFor((e) => String(e.data.cueId) === cue.id && e.type !== "correction_added"),
     };
   });
+
+  const actions: ReviewAction[] = Object.values(rt.actions ?? {})
+    .slice()
+    .sort((a, b) => (a.occurredAtMs ?? a.reportedAtMs) - (b.occurredAtMs ?? b.reportedAtMs))
+    .map((a) => ({
+      actionId: a.id,
+      action: a.action,
+      targetLabel: a.targetLabel,
+      state: a.state,
+      occurredAtMs: a.occurredAtMs,
+      reportedAtMs: a.reportedAtMs,
+      reason: a.reason,
+      verification: "unknown" as const,
+    }));
 
   const history: HistoryItem[] = session.events
     .filter((e) => e.type !== "clock_advanced")
@@ -329,8 +380,11 @@ export function buildReview(session: Session): Review | null {
       endedWithShow: rows.filter((r) => r.outcome === "ended_with_show").length,
       skipped: rows.filter((r) => r.outcome === "skipped").length,
       notReached: rows.filter((r) => r.outcome === "not_reached").length,
+      incomplete: rows.filter((r) => r.outcome === "incomplete").length,
       overran: rows.filter((r) => r.overran).length,
       deferred: rows.filter((r) => r.deferred).length,
+      coveragePartial: rows.filter((r) => r.coverage === "partial").length,
+      coverageNotDeclared: rows.filter((r) => r.actual !== null && r.outcome !== "ended_with_show" && r.coverage === null).length,
     },
     anchors: {
       total: anchoredRows.length,
@@ -348,8 +402,14 @@ export function buildReview(session: Session): Review | null {
       noReport: operatorCues.filter((c) => c.state === "no_report").length,
       late: operatorCues.filter((c) => c.lateBySec !== null && c.lateBySec >= VARIANCE_TOLERANCE_SEC).length,
     },
+    actions: {
+      total: actions.length,
+      performed: actions.filter((a) => a.state === "performed").length,
+      attempted: actions.filter((a) => a.state === "attempted").length,
+      cancelled: actions.filter((a) => a.state === "cancelled").length,
+    },
     planRevisions: revisions.length,
   };
 
-  return { sessionId: session.id, rows, cues: cueRows, history, revisions, summary };
+  return { sessionId: session.id, rows, cues: cueRows, actions, history, revisions, summary };
 }

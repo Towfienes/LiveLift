@@ -56,7 +56,6 @@ export function NextPanel({
   const tone = analysis.situation.tone;
   const showRecovery = analysis.options.length > 0;
   const visible = analysis.options.slice(0, MAX_VISIBLE_OPTIONS);
-  const hidden = analysis.options.length - visible.length;
 
   if (!nextSegment) {
     return (
@@ -129,7 +128,7 @@ export function NextPanel({
         data-testid="why-box"
         role="status"
         aria-live="polite"
-        className={`mt-3 rounded-[8px] border-l-[3px] px-3 py-2 ${WHY_STYLE[tone]}`}
+        className={`mt-3 [@media(max-height:800px)]:mt-2 rounded-[8px] border-l-[3px] px-3 py-2 [@media(max-height:800px)]:py-1.5 ${WHY_STYLE[tone]}`}
       >
         <p className="text-[15px] leading-snug text-[#F5F7FC]">
           <i className={`${WHY_ICON[tone]} mr-1.5 ${tone === "missed" ? "text-[#F4A4A4]" : tone === "ok" ? "text-[#9AA5B5]" : "text-[#F6C875]"}`} aria-hidden="true" />
@@ -141,14 +140,28 @@ export function NextPanel({
         )}
       </div>
 
-      <div className="mt-3 flex-1 min-h-0">
+      <div className="mt-3 [@media(max-height:800px)]:mt-2 flex-1 min-h-0">
         {showRecovery ? (
           <div data-testid="recovery-list">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[12px] font-semibold tracking-[1.5px] text-[#AEB7C5] uppercase">Action</span>
               {analysis.status === "no_feasible_recovery" && (
-                <Signal tone="warn" icon="ri-error-warning-line" className="font-medium">
+                <Signal
+                  tone="warn"
+                  icon="ri-error-warning-line"
+                  className="font-medium"
+                  title={
+                    analysis.exceptionProtects
+                      ? "Only an exception (below a minimum or dropping required coverage) or a commitment change protects it."
+                      : "Even with exceptions it cannot be protected; only a commitment change remains."
+                  }
+                >
                   <span data-testid="no-feasible-recovery">No feasible recovery under current constraints</span>
+                </Signal>
+              )}
+              {analysis.status === "recoverable" && analysis.cleanPlan.length > 1 && (
+                <Signal tone="neutral" icon="ri-checkbox-circle-line" className="truncate" title={analysis.cleanPlan.join(" + ")}>
+                  <span data-testid="clean-plan">Together: {analysis.cleanPlan.join(" + ")}</span>
                 </Signal>
               )}
               {analysis.status === "already_missed" && (
@@ -160,7 +173,7 @@ export function NextPanel({
             </div>
             <ul className="mt-1 divide-y divide-[#262C38]">
               {visible.map((o, i) => (
-                <li key={o.id} className="flex items-center gap-3 py-1.5" data-testid={`recovery-option-${o.kind}`}>
+                <li key={o.id} className={`flex items-center gap-3 py-1.5 ${i > 0 ? "[@media(max-height:800px)]:hidden" : ""}`} data-testid={`recovery-option-${o.kind}`}>
                   <div className="min-w-0 flex-1">
                     <p className="text-[16px] font-medium text-[#F5F7FC] truncate">{o.label}</p>
                     <p className={`text-[13px] leading-snug text-[#B7C1CE] ${i === 0 ? "truncate [@media(min-height:860px)]:whitespace-normal [@media(min-height:860px)]:line-clamp-2" : "truncate"}`} title={o.detail}>
@@ -190,13 +203,13 @@ export function NextPanel({
                 <button
                   type="button"
                   onClick={onShowAll}
-                  className="text-[14px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap"
+                  className="min-h-[44px] px-1 text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap"
                   data-testid="all-options-btn"
                 >
-                  {hidden > 0 ? `All options (${analysis.options.length})` : "Explain options"}
+                  {analysis.options.length > 1 ? `All options (${analysis.options.length})` : "Explain options"}
                 </button>
                 {anchor && analysis.status !== "possible_risk" && (
-                  <button type="button" onClick={onReanchorNext} className="text-[14px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap">
+                  <button type="button" onClick={onReanchorNext} className="min-h-[44px] px-1 text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap">
                     Re-anchor…
                   </button>
                 )}
@@ -222,7 +235,7 @@ export function NextPanel({
             <div className="flex items-center justify-between gap-3 mt-1.5 min-h-[20px]">
               {primaryHint && <p className="text-[13px] text-[#B7C1CE]">{primaryHint}</p>}
               {waitingForAnchor && (
-                <button type="button" onClick={onReanchorNext} className="text-[14px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap">
+                <button type="button" onClick={onReanchorNext} className="min-h-[44px] px-1 text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap">
                   Re-anchor…
                 </button>
               )}

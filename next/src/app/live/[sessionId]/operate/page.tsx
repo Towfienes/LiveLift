@@ -9,7 +9,7 @@ import { Button, InlineNotice } from "@/components/ui";
 import { SessionGate } from "@/components/ops/SessionGate";
 import { NowPanel } from "@/components/ops/NowPanel";
 import { NextPanel } from "@/components/ops/NextPanel";
-import { CueBar } from "@/components/ops/CueBar";
+import { CueBar, type ReportTarget } from "@/components/ops/CueBar";
 import { RunOfShowLive, scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
 import { SupportTabs } from "@/components/ops/SupportTabs";
 import { SimulatorStrip } from "@/components/ops/SimulatorStrip";
@@ -18,10 +18,11 @@ import {
   AckDialog,
   AllOptionsDialog,
   ChooseNextDialog,
-  CueReportDialog,
+  CoverageDialog,
   EndLiveDialog,
   NoteDialog,
   ReanchorDialog,
+  ReportActionDialog,
   SkipDialog,
 } from "@/components/ops/OperateDialogs";
 import {
@@ -29,6 +30,7 @@ import {
   activeSegment,
   analyzeRecovery,
   applyCommand,
+  coverageDeclarationExpected,
   currentPlan,
   effectiveNowMs,
   forecastSession,
@@ -38,8 +40,8 @@ import {
   type RecoveryOption,
   type ScenarioId,
 } from "@/lib/domain";
-import { sessionStore, type DispatchInput } from "@/lib/store/sessionStore";
-import { useNow, useSessionActions, useStoreState } from "@/lib/store/hooks";
+import { sessionStore, type DispatchInput, type DispatchResult } from "@/lib/store/sessionStore";
+import { useDeskClock, useSessionActions, useStoreState, type ClockDiscontinuity } from "@/lib/store/hooks";
 
 interface PageProps {
   params: Promise<{ sessionId: string }>;
@@ -74,8 +76,8 @@ function OperateRoot({ session }: { session: Session }): React.ReactElement {
 }
 
 function LiveClock({ session }: { session: Session }): React.ReactElement {
-  const nowMs = useNow(session);
-  if (nowMs === null) {
+  const clock = useDeskClock(session);
+  if (clock.nowMs === null) {
     return (
       <FocusedShell
         sessionTitle={session.title}
@@ -91,10 +93,10 @@ function LiveClock({ session }: { session: Session }): React.ReactElement {
       </FocusedShell>
     );
   }
-  return <Desk session={session} nowMs={nowMs} />;
+  return <Desk session={session} nowMs={clock.nowMs} readNow={clock.read} discontinuity={clock.discontinuity} />;
 }
 
-type DialogId = "end" | "reanchor" | "choose" | "skip" | "note" | "options" | "cue" | null;
+type DialogId = "end" | "reanchor" | "choose" | "skip" | "note" | "options" | "report" | "coverage" | null;
 
 interface AckState {
   title: string;
@@ -103,17 +105,35 @@ interface AckState {
   body: DispatchInput;
 }
 
-function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.ReactElement {
+/** A command that could not be durably recorded. Kept so the operator can retry it explicitly — never replayed silently. */
+interface Unsaved {
+  intent: DispatchInput;
+  message: string;
+}
+
+function Desk({
+  session,
+  nowMs,
+  readNow,
+  discontinuity,
+}: {
+  session: Session;
+  nowMs: number;
+  readNow: () => number;
+  discontinuity: ClockDiscontinuity | null;
+}): React.ReactElement {
   const router = useRouter();
   const { dispatch } = useSessionActions(session);
   const storeState = useStoreState();
 
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  const [unsaved, setUnsaved] = useState<Unsaved | null>(null);
   const [simMessage, setSimMessage] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogId>(null);
   const [ack, setAck] = useState<AckState | null>(null);
   const [reanchorId, setReanchorId] = useState<string | null>(null);
-  const [cueId, setCueId] = useState<string | null>(null);
+  const [reportTarget, setReportTarget] = useState<ReportTarget>({ kind: "new" });
+  const [reportKey, setReportKey] = useState(0);
 
   // A recorded-command acknowledgement is routine: it fades after a few seconds. Errors stay until dismissed.
   useEffect(() => {
@@ -142,17 +162,23 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
 
   // ---- Command plumbing -------------------------------------------------------------------
 
-  const run = useCallback(
-    (body: DispatchInput, opts: { ackTitle?: string } = {}): boolean => {
-      const res = dispatch(body);
+  const handle = useCallback(
+    (res: DispatchResult | null, body: DispatchInput, opts: { ackTitle?: string } = {}): boolean => {
       if (!res) return false;
       if (res.receipt.outcome === "committed") {
+        setUnsaved(null);
         const events = res.session.events;
         const last = events[events.length - 1];
         setNotice({ tone: "ok", text: last ? last.summary : "Recorded." });
         return true;
       }
       const code = res.receipt.code;
+      if (code === "not_persisted") {
+        // Nothing was recorded. Keep the exact intent (with its time) for an explicit retry.
+        setNotice(null);
+        setUnsaved({ intent: res.intent, message: res.receipt.message ?? "Not saved. Nothing was recorded." });
+        return false;
+      }
       if (code === "needs_ack_below_minimum" || code === "needs_ack_required_coverage") {
         setAck({
           title: opts.ackTitle ?? (code === "needs_ack_below_minimum" ? "Below the declared minimum" : "Required coverage"),
@@ -168,8 +194,23 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
       setNotice({ tone: "error", text: res.receipt.message ?? "That was not accepted." });
       return false;
     },
-    [dispatch]
+    []
   );
+
+  /** Every command carries the desk's own clock (monotonic for REAL shows; the virtual clock for rehearsals). */
+  const run = useCallback(
+    (body: DispatchInput, opts: { ackTitle?: string } = {}): boolean => {
+      const withTime = body.nowMs === undefined && !simulated ? ({ ...body, nowMs: readNow() } as DispatchInput) : body;
+      return handle(dispatch(withTime), withTime, opts);
+    },
+    [dispatch, handle, readNow, simulated]
+  );
+
+  const retryUnsaved = (): void => {
+    if (!unsaved) return;
+    // Same intent, same time, same expected revision: if the show moved on meanwhile it is rejected as stale, never replayed blindly.
+    handle(sessionStore.dispatch(session.id, unsaved.intent), unsaved.intent);
+  };
 
   const applyOption = (o: RecoveryOption): void => {
     setDialog(null);
@@ -196,6 +237,21 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
     const body = ack.body;
     setAck(null);
     run(body);
+  };
+
+  const onAdvance = (): void => {
+    // Coverage is declared, not inferred: ask when the segment was cut short by a commitment or is ending early.
+    if (active && coverageDeclarationExpected(session, active.id, nowMs)) {
+      setDialog("coverage");
+      return;
+    }
+    run({ type: "advance_segment" }, { ackTitle: "Ending below the declared minimum" });
+  };
+
+  const openReport = (target: ReportTarget): void => {
+    setReportTarget(target);
+    setReportKey((k) => k + 1);
+    setDialog("report");
   };
 
   const openReanchorForNext = (): void => {
@@ -244,7 +300,8 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
   const simApplyStep = (): void => {
     const r = sessionStore.applyNextScriptStep(session.id);
     if (!r) return;
-    if (r.receipt?.outcome === "rejected") setSimMessage(`${r.receipt.message ?? "Step rejected"} Skip it if you already did this by hand.`);
+    if (r.receipt?.code === "not_persisted") setSimMessage(r.receipt.message);
+    else if (r.receipt?.outcome === "rejected") setSimMessage(`${r.receipt.message ?? "Step rejected"} Skip it if you already did this by hand.`);
     else {
       setSimMessage(null);
       if (r.receipt) setNotice({ tone: "ok", text: r.step?.label ?? "Step applied." });
@@ -252,9 +309,6 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
   };
 
   // ---- Render ------------------------------------------------------------------------------
-
-  const cue = cueId ? (plan.cues.find((c) => c.id === cueId) ?? null) : null;
-  const deviceNow = (): number => effectiveNowMs(session, Date.now());
 
   return (
     <FocusedShell
@@ -280,34 +334,90 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
             onAdvance={(sec) => run({ type: "advance_clock", byMs: sec * 1000 })}
             onToAnchor={() => nextAnchorMs !== null && run({ type: "set_clock", toMs: nextAnchorMs - 60_000 })}
             onApplyStep={simApplyStep}
-            onSkipStep={() => sessionStore.skipNextScriptStep(session.id)}
+            onSkipStep={() => {
+              const r = sessionStore.skipNextScriptStep(session.id);
+              setSimMessage(r.ok ? null : r.reason);
+            }}
             message={simMessage}
           />
         ) : undefined
       }
     >
-      <div className="h-full flex flex-col gap-3 p-3 [@media(min-height:860px)]:lg:p-4 max-w-[1720px] w-full mx-auto">
-        {storeState.storage !== "ok" && storeState.hydrated && (
+      <div className="h-full flex flex-col gap-2 p-3 [@media(min-height:860px)]:gap-3 [@media(min-height:860px)]:lg:p-4 max-w-[1720px] w-full mx-auto">
+        {storeState.storage !== "ok" && storeState.hydrated && !unsaved && (
           <InlineNotice
             variant="warning"
-            title={storeState.storage === "write_failed" ? "Latest changes could not be saved" : "Not being saved"}
-            message="Browser storage is not accepting writes. The show continues, but a reload would lose recent work."
+            title={storeState.storage === "write_failed" ? "The last change could not be saved" : "Not being saved"}
+            message="Browser storage is not accepting writes. LiveLift will not acknowledge anything it cannot store; commands are refused until storage works again."
           />
+        )}
+
+        {unsaved && (
+          <div
+            role="alert"
+            data-testid="unsaved-banner"
+            className="rounded-[8px] px-3 py-1.5 text-[15px] flex items-center justify-between gap-3 shrink-0 bg-[#302025] text-[#F4A4A4]"
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <i className="ri-error-warning-line" aria-hidden="true" />
+              <span className="truncate" title={unsaved.message}>{unsaved.message}</span>
+            </span>
+            <span className="flex items-center gap-2 shrink-0">
+              <Button size="sm" variant="secondary" onClick={retryUnsaved} data-testid="unsaved-retry-btn">
+                Retry
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setUnsaved(null)} data-testid="unsaved-discard-btn">
+                Discard
+              </Button>
+            </span>
+          </div>
+        )}
+
+        {discontinuity && (
+          <div
+            role="alert"
+            data-testid="clock-discontinuity"
+            className="rounded-[8px] px-3 py-1.5 text-[15px] flex items-center justify-between gap-3 shrink-0 bg-[#2A2316] text-[#F6C875]"
+          >
+            <span className="min-w-0">
+              <i className="ri-time-line mr-1.5" aria-hidden="true" />
+              Device clock moved back {formatDuration(Math.round(discontinuity.behindByMs / 1000))} (it reads{" "}
+              {formatClock(discontinuity.deviceNowMs, tz, true)}). LiveLift keeps counting from {formatClock(discontinuity.keptNowMs, tz, true)};
+              alignment is uncertain until the clock catches up. Anchors and recorded times are unchanged.
+            </span>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                run({ type: "acknowledge_clock_discontinuity", deviceNowMs: discontinuity.deviceNowMs, keptNowMs: discontinuity.keptNowMs })
+              }
+              data-testid="clock-discontinuity-record-btn"
+            >
+              Record in history
+            </Button>
+          </div>
         )}
 
         {notice && (
           <div
             role="status"
             data-testid="command-ack-banner"
-            className={`rounded-[8px] px-3 py-1 text-[13px] flex items-center justify-between gap-3 shrink-0 ${
-              notice.tone === "ok" ? "bg-[#161B22] text-[#DFFF00]" : "bg-[#302025] text-[#F4A4A4]"
+            className={`rounded-[8px] px-3 py-1 text-[15px] flex items-center justify-between gap-3 shrink-0 ${
+              notice.tone === "ok"
+                ? "fixed bottom-4 right-4 z-40 max-w-[min(560px,calc(100vw-2rem))] bg-[#161B22] text-[#DFFF00] border border-[#2B3324] shadow-2xl"
+                : "bg-[#302025] text-[#F4A4A4]"
             }`}
           >
             <span className="flex items-center gap-2 min-w-0">
               <i className={notice.tone === "ok" ? "ri-checkbox-circle-line" : "ri-error-warning-line"} aria-hidden="true" />
-              <span className="truncate">{notice.text}</span>
+              <span className="truncate" title={notice.text}>{notice.text}</span>
             </span>
-            <button type="button" onClick={() => setNotice(null)} className="text-[#CAD0DA] hover:text-white cursor-pointer" aria-label="Dismiss">
+            <button
+              type="button"
+              onClick={() => setNotice(null)}
+              className="min-h-[40px] min-w-[40px] text-[#CAD0DA] hover:text-white cursor-pointer"
+              aria-label="Dismiss"
+            >
               <i className="ri-close-line" aria-hidden="true" />
             </button>
           </div>
@@ -329,6 +439,9 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
             onSetEstimate={(sec) => {
               if (active) run({ type: "set_remaining_estimate", segmentId: active.id, remainingSec: sec });
             }}
+            onMarkUnknown={() => {
+              if (active) run({ type: "mark_remaining_unknown", segmentId: active.id });
+            }}
           />
           <NextPanel
             nextSegment={next}
@@ -338,7 +451,7 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
             analysis={analysis}
             nowMs={nowMs}
             tz={tz}
-            onAdvance={() => run({ type: "advance_segment" }, { ackTitle: "Ending below the declared minimum" })}
+            onAdvance={onAdvance}
             onApply={applyOption}
             onShowAll={() => setDialog("options")}
             onReanchorNext={openReanchorForNext}
@@ -347,18 +460,16 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
         </div>
 
         {/* Operator toolbar: the next cue, then routine runtime actions */}
-        <div className="flex items-center justify-between gap-3 flex-wrap shrink-0 px-1" data-testid="operator-toolbar">
+        <div className="flex items-center justify-between gap-x-3 gap-y-1 flex-wrap shrink-0 px-1 min-h-[44px]" data-testid="operator-toolbar">
           <CueBar
             cues={plan.cues}
             forecasts={forecast.cues}
             runs={session.runtime.cues}
+            actions={session.runtime.actions ?? {}}
             tz={tz}
             onPerformed={(id) => run({ type: "report_cue", cueId: id, report: "performed" })}
             onAttempted={(id) => run({ type: "report_cue", cueId: id, report: "attempted" })}
-            onMore={(id) => {
-              setCueId(id);
-              setDialog("cue");
-            }}
+            onReport={openReport}
           />
           <div className="flex items-center gap-2">
             <Button
@@ -367,12 +478,12 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
               disabled={!active}
               onClick={() => active && run({ type: "extend_segment", segmentId: active.id, deltaSec: 60 })}
               data-testid="extend-plus-one-btn"
-              className="!h-auto !py-1 flex-col !gap-0 leading-tight"
+              className="!py-0.5 flex-col !gap-0 leading-tight"
               title={extendHint ? `Extend ${active?.title} by 1:00 · ${extendHint.full}` : undefined}
             >
               <span>Extend +1m</span>
               {extendHint && (
-                <span className={`text-[12px] font-normal max-w-[170px] truncate ${extendHint.tone === "warn" ? "text-[#F6C875]" : "text-[#9AA5B5]"}`} data-testid="extend-hint" title={extendHint.full}>
+                <span className={`text-[13px] font-normal max-w-[170px] truncate ${extendHint.tone === "warn" ? "text-[#F6C875]" : "text-[#AEB7C5]"}`} data-testid="extend-hint" title={extendHint.full}>
                   {extendHint.text}
                 </span>
               )}
@@ -390,11 +501,11 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
         </div>
 
         {/* Run of Show owns scroll; one support region beside it */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] gap-3 flex-1 min-h-[220px]">
-          <section className="rounded-[12px] bg-[#13161C] p-3 flex flex-col min-h-0" aria-label="Run of Show panel">
-            <div className="flex items-center justify-between gap-3 pb-2 shrink-0 flex-wrap">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] gap-3 flex-1 min-h-[200px]">
+          <section className="rounded-[12px] bg-[#13161C] p-3 pb-1 flex flex-col min-h-0" aria-label="Run of Show panel">
+            <div className="flex items-center justify-between gap-3 pb-1 shrink-0 flex-wrap">
               <h2 className="text-[18px] font-medium text-[#F5F7FC]">Run of Show</h2>
-              <div className="flex items-center gap-3 text-[14px]">
+              <div className="flex items-center gap-3 text-[15px]">
                 {forecast.finishMs !== null && (
                   <span className="text-[#CAD0DA] tabular-nums" data-testid="projected-finish">
                     Projected finish {forecast.finishLowerBound ? "≥ " : ""}
@@ -402,23 +513,23 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
                   </span>
                 )}
                 {forecast.baselineFinishMs !== null && (
-                  <span className="inline-flex items-center gap-1.5 text-[#9AA5B5]" title="Downstream drift against the immutable baseline">
+                  <span className="inline-flex items-center gap-1.5 text-[#AEB7C5]" title={`Downstream drift against the immutable baseline (finish ${formatClock(forecast.baselineFinishMs, tz, true)})`}>
                     drift <Drift seconds={forecast.finishDriftSec} lowerBound={forecast.finishLowerBound} />
-                    <span className="tabular-nums">· baseline {formatClock(forecast.baselineFinishMs, tz, true)}</span>
                   </span>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="ri-focus-3-line"
-                  onClick={() => scrollCurrentRowIntoView()}
-                >
+                <Button variant="ghost" size="sm" icon="ri-focus-3-line" onClick={() => scrollCurrentRowIntoView()}>
                   Return to current
                 </Button>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto pr-1" data-ros-scroll>
-              <RunOfShowLive session={session} forecast={forecast} products={session.products} tz={tz} />
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1" data-ros-scroll tabIndex={0} aria-label="Run of Show rows">
+              <RunOfShowLive
+                session={session}
+                forecast={forecast}
+                products={session.products}
+                tz={tz}
+                onReportCue={(id) => openReport({ kind: "cue", id })}
+              />
             </div>
           </section>
 
@@ -488,21 +599,26 @@ function Desk({ session, nowMs }: { session: Session; nowMs: number }): React.Re
           run({ type: "add_note", text });
         }}
       />
-      <CueReportDialog
-        key={`cue-${cueId ?? "none"}`}
-        isOpen={dialog === "cue"}
-        cue={cue}
+      <ReportActionDialog
+        key={`report-${reportKey}`}
+        isOpen={dialog === "report"}
+        session={session}
+        initial={reportTarget}
+        nowMs={simulated ? virtualNow : nowMs}
         onClose={() => setDialog(null)}
-        onConfirm={({ report, secondsAgo, reason }) => {
-          if (!cue) return;
+        onConfirm={(body) => {
           setDialog(null);
-          run({
-            type: "report_cue",
-            cueId: cue.id,
-            report,
-            reason: reason || undefined,
-            occurredAtMs: report === "cancelled" ? undefined : deviceNow() - secondsAgo * 1000,
-          });
+          run(body);
+        }}
+      />
+      <CoverageDialog
+        key={`coverage-${active?.id ?? "none"}`}
+        isOpen={dialog === "coverage"}
+        segmentTitle={active?.title ?? "this segment"}
+        onClose={() => setDialog(null)}
+        onConfirm={({ coverage, followUp }) => {
+          setDialog(null);
+          run({ type: "advance_segment", coverage, followUp: followUp || undefined }, { ackTitle: "Ending below the declared minimum" });
         }}
       />
       <AllOptionsDialog isOpen={dialog === "options"} onClose={() => setDialog(null)} analysis={analysis} onApply={applyOption} />

@@ -34,7 +34,7 @@ export function SimulatorStrip({
   message?: string | null;
 }): React.ReactElement {
   const btn =
-    "h-8 px-2.5 rounded-[6px] text-[13px] font-medium bg-[#2A2540] text-[#E4DAFF] hover:bg-[#363052] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap";
+    "min-h-[36px] px-3 rounded-[8px] text-[15px] font-medium bg-[#2A2540] text-[#E4DAFF] hover:bg-[#363052] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap";
   return (
     <div data-testid="simulator-strip" className="flex items-center gap-x-3 gap-y-1 min-w-0 flex-wrap xl:flex-nowrap justify-end py-1">
       <span className="inline-flex items-center gap-1.5 font-semibold text-[#C8B2FF] whitespace-nowrap">

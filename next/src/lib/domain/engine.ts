@@ -2,6 +2,7 @@ import type {
   Cue,
   DerivedFrom,
   EnvironmentIdentity,
+  ManualActionRun,
   OperatorContext,
   PlanVersion,
   ProductSnapshot,
@@ -20,9 +21,15 @@ import { formatClock, formatDuration, secToMs } from "./time";
  * - Commands carry a key (duplicate delivery returns the committed receipt) and an optional
  *   expected revision (stale commands are rejected, never blindly replayed).
  * - Time is injected (`nowMs`); simulated sessions use their own virtual clock.
+ * - Every numeric input is checked for being finite and in range before any arithmetic or
+ *   formatting, so an invalid command is a rejected receipt, never an exception.
  * - The baseline plan is immutable once started. In-show changes append plan revisions.
  * - Events are append-only. Ending freezes runtime; only notes and corrections may follow.
  * - A hard anchor changes only through an explicit `reanchor_segment` command.
+ * - Coverage is what the operator declared. Duration never implies it.
+ *
+ * Cross-session rules (one active REAL show per device) and durability are enforced by the local
+ * authority (the session store), which commits state, event and receipt together.
  */
 
 export type RejectCode =
@@ -39,7 +46,10 @@ export type RejectCode =
   | "needs_ack_required_coverage"
   | "constraint_violation"
   | "wrong_environment"
-  | "already_reported";
+  | "already_reported"
+  // Issued by the local authority (store), not by this reducer:
+  | "not_persisted"
+  | "another_show_active";
 
 export interface CommandBase {
   /** Idempotency key. Defaults to a deterministic per-session counter. */
@@ -54,24 +64,34 @@ export interface CommandBase {
   recoveryLabel?: string;
 }
 
+export type Coverage = "complete" | "partial";
+export type ManualActionKind = ManualActionRun["action"];
+
 export type CommandBody =
   | { type: "start_live"; rebaseToNow?: boolean }
   | { type: "start_segment"; segmentId: string }
   | {
       type: "end_segment";
       segmentId: string;
-      coverage?: "complete" | "partial";
+      /** Operator declaration. Omitted = not declared (never inferred from duration). */
+      coverage?: Coverage | null;
+      /** Unfinished work the operator wants to remember. Only kept with partial coverage. */
+      followUp?: string;
       acknowledgeBelowMinimum?: boolean;
     }
   | {
       type: "advance_segment";
-      coverage?: "complete" | "partial";
+      coverage?: Coverage | null;
+      followUp?: string;
       acknowledgeBelowMinimum?: boolean;
     }
   | { type: "shorten_segment"; segmentId: string; newTargetSec: number; acknowledgeBelowMinimum?: boolean }
   | { type: "extend_segment"; segmentId: string; deltaSec: number }
   | { type: "commit_end_by"; segmentId: string; endByMs: number; acknowledgeBelowMinimum?: boolean }
+  /** remainingSec: seconds the host says are left (0 allowed — it does not end the segment); null clears the estimate. */
   | { type: "set_remaining_estimate"; segmentId: string; remainingSec: number | null }
+  /** The host explicitly does not know how long is left: suppress the target-derived end. */
+  | { type: "mark_remaining_unknown"; segmentId: string }
   | { type: "skip_segment"; segmentId: string; acknowledgeCoverageLoss?: boolean }
   | { type: "reorder_segment"; segmentId: string; beforeSegmentId: string | null }
   | { type: "reanchor_segment"; segmentId: string; anchorOffsetSec: number; reason: string }
@@ -82,10 +102,26 @@ export type CommandBody =
       occurredAtMs?: number;
       reason?: string;
     }
+  | {
+      /**
+       * A native action that was not planned as a cue, or the resolution of an earlier unplanned attempt
+       * (pass `actionId`). Each report is independent: an unresolved attempt never blocks another report.
+       */
+      type: "report_manual_action";
+      actionId?: string;
+      action?: ManualActionKind;
+      productId?: string | null;
+      targetLabel?: string;
+      report: "performed" | "attempted" | "cancelled";
+      occurredAtMs?: number;
+      reason?: string;
+    }
   | { type: "add_note"; text: string }
   | { type: "end_live" }
   | { type: "advance_clock"; byMs: number }
   | { type: "set_clock"; toMs: number }
+  /** REAL only: record that the device clock moved backwards and which time LiveLift kept. */
+  | { type: "acknowledge_clock_discontinuity"; deviceNowMs: number; keptNowMs: number }
   | { type: "append_correction"; targetEventId: string; text: string; correctedAtMs?: number };
 
 export type Command = CommandBase & CommandBody;
@@ -106,6 +142,10 @@ class Reject extends Error {
     super(message);
   }
 }
+
+/** Upper bound for any forward-looking instant or clock move in one command. */
+const MAX_HORIZON_MS = 24 * 3600 * 1000;
+const MAX_ANCHOR_OFFSET_SEC = 24 * 3600;
 
 // ---------------------------------------------------------------------------
 // Session factory
@@ -128,12 +168,31 @@ export interface CreateSessionInput {
   operator?: OperatorContext;
 }
 
-export const DEFAULT_OPERATOR: OperatorContext = {
-  id: "op_linh",
-  name: "Linh",
+/**
+ * The person at this device when no name was confirmed. Records say "Local operator", never a
+ * made-up person: LiveLift has no accounts, so a name is only what the operator typed.
+ */
+export const LOCAL_OPERATOR: OperatorContext = {
+  id: "local_operator",
+  name: "Local operator",
   role: "lead",
   isLead: true,
 };
+
+/** The operator persona inside a rehearsal. Its actions are simulated and labelled as such. */
+export const SIMULATED_OPERATOR: OperatorContext = {
+  id: "simulated_operator",
+  name: "Simulated operator",
+  role: "lead",
+  isLead: true,
+};
+
+/** An operator identity from a typed display name (trimmed); blank falls back to the local operator. */
+export function operatorFromName(name: string | null | undefined): OperatorContext {
+  const trimmed = (name ?? "").trim().slice(0, 60);
+  if (trimmed === "") return LOCAL_OPERATOR;
+  return { id: `local:${trimmed.toLowerCase().replace(/\s+/g, "-")}`, name: trimmed, role: "lead", isLead: true };
+}
 
 export function createSession(input: CreateSessionInput): Session {
   const segments = input.segments ?? [];
@@ -146,7 +205,7 @@ export function createSession(input: CreateSessionInput): Session {
     objective: input.objective ?? null,
     accountLabel: input.accountLabel ?? null,
     lifecycle: "planned",
-    operator: input.operator ?? DEFAULT_OPERATOR,
+    operator: input.operator ?? (input.environment === "SIMULATED" ? SIMULATED_OPERATOR : LOCAL_OPERATOR),
     scenarioId: input.scenarioId ?? null,
     derivedFrom: input.derivedFrom ?? null,
     products: input.products ?? [],
@@ -169,11 +228,12 @@ export function createSession(input: CreateSessionInput): Session {
       currentSegmentId: null,
       segments: {},
       cues: {},
+      actions: {},
     },
     events: [],
     receipts: {},
     revision: 0,
-    seq: { event: 0, command: 0, segment: segments.length, cue: cues.length },
+    seq: { event: 0, command: 0, segment: segments.length, cue: cues.length, action: 0 },
     virtualNowMs: input.environment === "SIMULATED" ? input.plannedStartMs : null,
     scriptCursor: 0,
     createdAtMs: input.nowMs,
@@ -206,6 +266,31 @@ export function effectiveNowMs(session: Session, deviceNowMs: number): number {
     return session.virtualNowMs ?? currentPlan(session).plannedStartMs;
   }
   return deviceNowMs;
+}
+
+/** The latest instant this session has recorded. Time used for new records never goes before it. */
+export function lastRecordedMs(session: Session): number | null {
+  return session.events.length > 0 ? session.events[session.events.length - 1].recordedAtMs : null;
+}
+
+/**
+ * Should the operator be asked about coverage when this active segment ends? Yes when it was cut short
+ * by an explicit commitment (end-by or a shorter target) or is ending before its allocation. Ordinary
+ * transitions stay one click; their coverage is simply "not declared".
+ */
+export function coverageDeclarationExpected(session: Session, segmentId: string, nowMs: number): boolean {
+  const seg = currentPlan(session).segments.find((s) => s.id === segmentId);
+  const run = session.runtime.segments[segmentId];
+  if (!seg || !run || run.state !== "active" || run.startedAtMs === null) return false;
+  const committedShort = session.events.some(
+    (e) =>
+      e.type === "plan_changed" &&
+      e.data.segmentId === segmentId &&
+      (e.data.endByMs != null || (typeof e.data.from === "number" && typeof e.data.to === "number" && e.data.to < e.data.from))
+  );
+  if (committedShort) return true;
+  const elapsedSec = Math.round((effectiveNowMs(session, nowMs) - run.startedAtMs) / 1000);
+  return seg.targetSec !== null && elapsedSec < seg.targetSec - 30;
 }
 
 // ---------------------------------------------------------------------------
@@ -315,7 +400,7 @@ function endSegmentInternal(
   ctx: Ctx,
   seg: Segment,
   endedBy: "advance" | "close" | "session_end",
-  opts: { coverage?: "complete" | "partial"; acknowledgeBelowMinimum?: boolean } = {}
+  opts: { coverage?: Coverage | null; followUp?: string; acknowledgeBelowMinimum?: boolean } = {}
 ): void {
   const s = ctx.s;
   const run = runOf(ctx, seg.id);
@@ -329,28 +414,42 @@ function endSegmentInternal(
       `${seg.title} has run ${formatDuration(elapsedSec)}; its minimum is ${formatDuration(floor!)}. Ending now needs an explicit minimum/coverage exception.`
     );
   }
-  const coverage =
-    endedBy === "session_end" ? null : (opts.coverage ?? (belowMinimum ? "partial" : "complete"));
+  // Coverage is exactly what the operator declared. Meeting a minimum is not proof that everything was covered,
+  // and the show ending is not a declaration at all.
+  const coverage: Coverage | null = endedBy === "session_end" ? null : (opts.coverage ?? null);
+  const followUpText = (opts.followUp ?? "").trim().slice(0, 300);
+  const followUp = coverage === "partial" && followUpText !== "" ? followUpText : null;
   s.runtime.segments[seg.id] = {
     ...run,
     state: "completed",
     endedAtMs: ctx.now,
     endedBy,
     coverage,
+    followUp,
     remainingEstimate: null,
+    remainingUnknownAtMs: null,
     belowMinimum,
   };
   if (s.runtime.currentSegmentId === seg.id) s.runtime.currentSegmentId = null;
+  const coverageText =
+    coverage === "partial"
+      ? ` · coverage partial (declared)${followUp ? ` · follow-up: ${followUp}` : ""}`
+      : coverage === "complete"
+        ? " · coverage complete (declared)"
+        : endedBy === "session_end"
+          ? ""
+          : " · coverage not declared";
   emit(
     ctx,
     "segment_ended",
-    `${seg.title} ended ${formatClock(ctx.now, s.timezone, true)} · ${formatDuration(elapsedSec)}${belowMinimum ? " · below minimum" : ""}${coverage === "partial" ? " · coverage partial" : ""}`,
+    `${seg.title} ended ${formatClock(ctx.now, s.timezone, true)} · ${formatDuration(elapsedSec)}${belowMinimum ? " · below minimum" : ""}${coverageText}`,
     {
       segmentId: seg.id,
       title: seg.title,
       durationSec: elapsedSec,
       endedBy,
       coverage,
+      followUp,
       belowMinimum,
     }
   );
@@ -372,6 +471,12 @@ function anchorsStrictlyIncreasing(plan: PlanVersion): string | null {
   return null;
 }
 
+function checkOccurredAt(ctx: Ctx, occurredAtMs: number): void {
+  if (occurredAtMs > ctx.now || occurredAtMs < (ctx.s.runtime.startedAtMs ?? 0)) {
+    reject("invalid_payload", "The reported time must be between the start of the show and now.");
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -381,6 +486,8 @@ function handleStartLive(ctx: Ctx, cmd: Extract<CommandBody, { type: "start_live
   if (s.lifecycle !== "planned") reject("invalid_state", "This show has already started.");
   let plan = s.plans[0];
   if (cmd.rebaseToNow) plan = { ...plan, plannedStartMs: ctx.now };
+  // Readiness is enforced here, not only by a disabled button: an unresolved hard constraint
+  // (for example an anchor the plan itself cannot meet) blocks Start for every caller.
   const blockers = validatePlan(plan, s.products, s.timezone).filter((i) => i.severity === "blocker");
   if (hasBlockers(blockers)) reject("plan_invalid", blockers[0].message);
 
@@ -393,6 +500,7 @@ function handleStartLive(ctx: Ctx, cmd: Extract<CommandBody, { type: "start_live
     currentSegmentId: null,
     segments: Object.fromEntries(plan.segments.map((seg) => [seg.id, emptySegmentRun()])),
     cues: Object.fromEntries(plan.cues.map((cue) => [cue.id, emptyCueRun()])),
+    actions: {},
   };
   emit(ctx, "session_started", `LIVE tracking started ${formatClock(ctx.now, s.timezone, true)}`, {
     plannedStartMs: plan.plannedStartMs,
@@ -484,13 +592,13 @@ function handleShorten(ctx: Ctx, cmd: Extract<CommandBody, { type: "shorten_segm
     );
   }
   recordRecoveryDecision(ctx);
-  const clearedEstimate = run.state === "active" && run.remainingEstimate !== null;
+  const clearedEstimate = run.state === "active" && (run.remainingEstimate !== null || run.remainingUnknownAtMs !== null);
   reviseDraftPlan(
     ctx,
     (p) => ({ ...p, segments: p.segments.map((x) => (x.id === seg.id ? { ...x, targetSec: newTarget } : x)) }),
     `Shortened ${seg.title} ${formatDuration(seg.targetSec!)} → ${formatDuration(newTarget)}`
   );
-  if (clearedEstimate) ctx.s.runtime.segments[seg.id] = { ...run, remainingEstimate: null };
+  if (clearedEstimate) ctx.s.runtime.segments[seg.id] = { ...run, remainingEstimate: null, remainingUnknownAtMs: null };
   emit(ctx, "plan_changed", `${seg.title} shortened ${formatDuration(seg.targetSec!)} → ${formatDuration(newTarget)}`, {
     segmentId: seg.id,
     field: "targetSec",
@@ -537,6 +645,7 @@ function handleCommitEndBy(ctx: Ctx, cmd: Extract<CommandBody, { type: "commit_e
   const run = runOf(ctx, seg.id);
   const startedAt = run.startedAtMs ?? ctx.now;
   if (cmd.endByMs <= ctx.now) reject("invalid_payload", "The end time must be in the future. Use End now instead.");
+  if (cmd.endByMs > ctx.now + MAX_HORIZON_MS) reject("invalid_payload", "The end time must be within the next 24 hours.");
   const newTarget = Math.max(1, Math.round((cmd.endByMs - startedAt) / 1000));
   const floor = effectiveMinSec(seg);
   if (floor !== null && newTarget < floor && !cmd.acknowledgeBelowMinimum) {
@@ -545,7 +654,7 @@ function handleCommitEndBy(ctx: Ctx, cmd: Extract<CommandBody, { type: "commit_e
       `Ending ${seg.title} by ${formatClock(cmd.endByMs, ctx.s.timezone, true)} is below its ${formatDuration(floor)} minimum.`
     );
   }
-  if (seg.targetSec === newTarget && run.remainingEstimate === null) {
+  if (seg.targetSec === newTarget && run.remainingEstimate === null && run.remainingUnknownAtMs === null) {
     reject("invalid_payload", `${seg.title} is already committed to end by ${formatClock(cmd.endByMs, ctx.s.timezone, true)}.`);
   }
   recordRecoveryDecision(ctx);
@@ -555,7 +664,7 @@ function handleCommitEndBy(ctx: Ctx, cmd: Extract<CommandBody, { type: "commit_e
     (p) => ({ ...p, segments: p.segments.map((x) => (x.id === seg.id ? { ...x, targetSec: newTarget } : x)) }),
     `Committed to end ${seg.title} by ${formatClock(cmd.endByMs, ctx.s.timezone, true)}`
   );
-  ctx.s.runtime.segments[seg.id] = { ...run, remainingEstimate: null };
+  ctx.s.runtime.segments[seg.id] = { ...run, remainingEstimate: null, remainingUnknownAtMs: null };
   emit(
     ctx,
     "plan_changed",
@@ -567,7 +676,7 @@ function handleCommitEndBy(ctx: Ctx, cmd: Extract<CommandBody, { type: "commit_e
       to: newTarget,
       endByMs: cmd.endByMs,
       belowMinimum: floor !== null && newTarget < floor,
-      clearedEstimate: run.remainingEstimate !== null,
+      clearedEstimate: run.remainingEstimate !== null || run.remainingUnknownAtMs !== null,
     }
   );
 }
@@ -580,23 +689,54 @@ function handleEstimate(ctx: Ctx, cmd: Extract<CommandBody, { type: "set_remaini
   }
   const run = runOf(ctx, seg.id);
   if (cmd.remainingSec === null) {
-    ctx.s.runtime.segments[seg.id] = { ...run, remainingEstimate: null };
-    emit(ctx, "remaining_estimated", `Host estimate for ${seg.title} cleared`, { segmentId: seg.id, remainingSec: null, endsAtMs: null });
+    if (run.remainingEstimate === null && run.remainingUnknownAtMs === null) {
+      reject("invalid_payload", `There is no host estimate for ${seg.title} to clear.`);
+    }
+    ctx.s.runtime.segments[seg.id] = { ...run, remainingEstimate: null, remainingUnknownAtMs: null };
+    emit(ctx, "remaining_estimated", `Host estimate for ${seg.title} cleared · the target projects the end again`, {
+      segmentId: seg.id,
+      remainingSec: null,
+      endsAtMs: null,
+      unknown: false,
+    });
     return;
   }
   const remaining = Math.round(cmd.remainingSec);
-  if (!(remaining > 0) || remaining > 3600) reject("invalid_payload", "Estimate must be between 1 second and 1 hour.");
+  // 0 is a real answer ("wrapping up now"); it does not end the segment — only a transition does.
+  if (!(remaining >= 0) || remaining > 3600) reject("invalid_payload", "Estimate must be between 0 seconds and 1 hour.");
   const endsAtMs = ctx.now + secToMs(remaining);
   ctx.s.runtime.segments[seg.id] = {
     ...run,
     remainingEstimate: { endsAtMs, reportedAtMs: ctx.now },
+    remainingUnknownAtMs: null,
   };
   emit(
     ctx,
     "remaining_estimated",
-    `Host estimate: ${seg.title} needs ${formatDuration(remaining)} more · ends ${formatClock(endsAtMs, ctx.s.timezone, true)}`,
-    { segmentId: seg.id, remainingSec: remaining, endsAtMs }
+    remaining === 0
+      ? `Host estimate: ${seg.title} is wrapping up now (0:00 left) · not ended until the transition is recorded`
+      : `Host estimate: ${seg.title} needs ${formatDuration(remaining)} more · ends ${formatClock(endsAtMs, ctx.s.timezone, true)}`,
+    { segmentId: seg.id, remainingSec: remaining, endsAtMs, unknown: false }
   );
+}
+
+function handleRemainingUnknown(ctx: Ctx, cmd: Extract<CommandBody, { type: "mark_remaining_unknown" }>): void {
+  requireActive(ctx);
+  const seg = segmentOrReject(ctx, cmd.segmentId);
+  if (ctx.s.runtime.currentSegmentId !== seg.id) {
+    reject("no_active_segment", `${seg.title} is not the active segment.`);
+  }
+  const run = runOf(ctx, seg.id);
+  if (run.remainingUnknownAtMs !== null && run.remainingEstimate === null) {
+    reject("invalid_payload", `${seg.title} is already marked as unknown remaining time.`);
+  }
+  ctx.s.runtime.segments[seg.id] = { ...run, remainingEstimate: null, remainingUnknownAtMs: ctx.now };
+  emit(ctx, "remaining_estimated", `Host cannot say how long ${seg.title} needs · remaining time unknown`, {
+    segmentId: seg.id,
+    remainingSec: null,
+    endsAtMs: null,
+    unknown: true,
+  });
 }
 
 function handleSkip(ctx: Ctx, cmd: Extract<CommandBody, { type: "skip_segment" }>): void {
@@ -692,7 +832,9 @@ function handleReanchor(ctx: Ctx, cmd: Extract<CommandBody, { type: "reanchor_se
   if (run.state !== "pending") reject("invalid_state", `${seg.title} has already started or finished.`);
   if (seg.anchorOffsetSec === null) reject("invalid_payload", `${seg.title} is not hard-anchored.`);
   const offset = Math.round(cmd.anchorOffsetSec);
-  if (!(offset >= 0)) reject("invalid_payload", "Anchor must be at or after the planned start.");
+  if (!(offset >= 0) || offset > MAX_ANCHOR_OFFSET_SEC) {
+    reject("invalid_payload", "The new commitment must be at or after the planned start and within 24 hours of it.");
+  }
   if (offset === seg.anchorOffsetSec) reject("invalid_payload", "That is already the committed time.");
   const reason = cmd.reason.trim();
   if (reason.length < 3) reject("invalid_payload", "Give a short reason for changing the commitment.");
@@ -738,6 +880,9 @@ function handleReportCue(ctx: Ctx, cmd: Extract<CommandBody, { type: "report_cue
   if (cue.audience !== "operator") {
     reject("invalid_payload", "Presenter cues are informational; there is nothing to report.");
   }
+  if (cue.productId !== null && !s.products.some((p) => p.id === cue.productId)) {
+    reject("invalid_payload", `"${cue.title}" targets a product that is not in this show's pack. Report it as an unplanned action with the exact product.`);
+  }
   const prev = s.runtime.cues[cue.id] ?? emptyCueRun();
   if (prev.state === "performed" || prev.state === "cancelled") {
     reject("already_reported", `This cue is already recorded as ${prev.state}. Corrections are appended in Review.`);
@@ -750,16 +895,14 @@ function handleReportCue(ctx: Ctx, cmd: Extract<CommandBody, { type: "report_cue
     reject("invalid_payload", "Give a short reason for cancelling the cue.");
   }
   const occurredAt = cmd.report === "cancelled" ? null : (cmd.occurredAtMs ?? ctx.now);
-  if (occurredAt !== null && (occurredAt > ctx.now || occurredAt < (s.runtime.startedAtMs ?? 0))) {
-    reject("invalid_payload", "The reported time must be between the start of the show and now.");
-  }
+  if (occurredAt !== null) checkOccurredAt(ctx, occurredAt);
   s.runtime.cues[cue.id] = {
     state: cmd.report,
     occurredAtMs: occurredAt,
     reportedAtMs: ctx.now,
     reason: reason || null,
   };
-  const verb = cmd.report === "performed" ? "reported performed" : cmd.report === "attempted" ? "reported attempted" : "cancelled";
+  const verb = cmd.report === "performed" ? "reported performed" : cmd.report === "attempted" ? "reported attempted · outcome unknown" : "cancelled";
   emit(
     ctx,
     "cue_reported",
@@ -768,12 +911,110 @@ function handleReportCue(ctx: Ctx, cmd: Extract<CommandBody, { type: "report_cue
       cueId: cue.id,
       title: cue.title,
       action: cue.action,
+      productId: cue.productId,
       report: cmd.report,
       occurredAtMs: occurredAt,
       reason: reason || null,
       verification: "unknown",
     },
     occurredAt ?? ctx.now
+  );
+}
+
+export const MANUAL_ACTION_LABEL: Record<ManualActionKind, string> = {
+  pin_product: "Pin",
+  unpin_product: "Unpin",
+  start_promotion: "Start promotion",
+  other: "Action",
+};
+
+function handleManualAction(ctx: Ctx, cmd: Extract<CommandBody, { type: "report_manual_action" }>): void {
+  requireActive(ctx);
+  const s = ctx.s;
+  const reason = cmd.reason?.trim() ?? "";
+
+  // Resolving an earlier unplanned attempt.
+  if (cmd.actionId !== undefined) {
+    const prev = s.runtime.actions[cmd.actionId];
+    if (!prev) reject("not_found", "That reported action is not in this show.");
+    if (prev.state !== "attempted") {
+      reject("already_reported", `This action is already recorded as ${prev.state}. Corrections are appended in Review.`);
+    }
+    if (cmd.report === "attempted") reject("already_reported", "An attempt is already recorded for this action.");
+    if (cmd.report === "cancelled" && reason.length < 3) reject("invalid_payload", "Give a short reason for withdrawing the attempt.");
+    const occurredAt = cmd.report === "cancelled" ? null : (cmd.occurredAtMs ?? ctx.now);
+    if (occurredAt !== null) checkOccurredAt(ctx, occurredAt);
+    s.runtime.actions[prev.id] = { ...prev, state: cmd.report, occurredAtMs: occurredAt ?? prev.occurredAtMs, reportedAtMs: ctx.now, reason: reason || prev.reason };
+    emit(
+      ctx,
+      "action_reported",
+      `${MANUAL_ACTION_LABEL[prev.action]} ${prev.targetLabel}: ${cmd.report === "performed" ? "reported performed" : "attempt withdrawn"}${occurredAt !== null ? ` at ${formatClock(occurredAt, s.timezone, true)}` : ""} · unplanned · platform verification unknown`,
+      {
+        actionId: prev.id,
+        action: prev.action,
+        productId: prev.productId,
+        targetLabel: prev.targetLabel,
+        report: cmd.report,
+        occurredAtMs: occurredAt,
+        reason: reason || null,
+        verification: "unknown",
+      },
+      occurredAt ?? ctx.now
+    );
+    return;
+  }
+
+  // A new, unplanned action.
+  const action = cmd.action;
+  if (!action || !(action in MANUAL_ACTION_LABEL)) reject("invalid_payload", "Choose what was done.");
+  if (cmd.report === "cancelled") {
+    reject("invalid_payload", "An unplanned action is reported as performed or attempted. Use a note for something that did not happen.");
+  }
+  let productId: string | null = null;
+  let targetLabel = (cmd.targetLabel ?? "").trim().slice(0, 120);
+  if (action === "pin_product" || action === "unpin_product") {
+    const product = s.products.find((p) => p.id === cmd.productId);
+    if (!product) reject("invalid_payload", "Choose the exact product from this show's pack.");
+    productId = product.id;
+    targetLabel = `${product.code} ${product.name}`;
+  } else if (cmd.productId) {
+    const product = s.products.find((p) => p.id === cmd.productId);
+    if (!product) reject("invalid_payload", "That product is not in this show's pack.");
+    productId = product.id;
+    if (targetLabel === "") targetLabel = `${product.code} ${product.name}`;
+  }
+  if (targetLabel.length < 2) reject("invalid_payload", "Name the target, e.g. the promotion or product.");
+  const occurredAt = cmd.occurredAtMs ?? ctx.now;
+  checkOccurredAt(ctx, occurredAt);
+
+  s.seq.action += 1;
+  const id = `${s.id}:x${s.seq.action}`;
+  const record: ManualActionRun = {
+    id,
+    action,
+    productId,
+    targetLabel,
+    state: cmd.report,
+    occurredAtMs: occurredAt,
+    reportedAtMs: ctx.now,
+    reason: reason || null,
+  };
+  s.runtime.actions[id] = record;
+  emit(
+    ctx,
+    "action_reported",
+    `${MANUAL_ACTION_LABEL[action]} ${targetLabel}: ${cmd.report === "performed" ? "reported performed" : "reported attempted · outcome unknown"} at ${formatClock(occurredAt, s.timezone, true)} · unplanned · platform verification unknown`,
+    {
+      actionId: id,
+      action,
+      productId,
+      targetLabel,
+      report: cmd.report,
+      occurredAtMs: occurredAt,
+      reason: reason || null,
+      verification: "unknown",
+    },
+    occurredAt
   );
 }
 
@@ -807,12 +1048,27 @@ function handleClock(ctx: Ctx, cmd: Extract<CommandBody, { type: "advance_clock"
   const from = s.virtualNowMs ?? currentPlan(s).plannedStartMs;
   const to = cmd.type === "advance_clock" ? from + cmd.byMs : cmd.toMs;
   if (!(to > from)) reject("invalid_payload", "The virtual clock only moves forward.");
+  if (to - from > MAX_HORIZON_MS) reject("invalid_payload", "Move the virtual clock at most 24 hours at a time.");
   s.virtualNowMs = to;
   ctx.now = to;
   emit(ctx, "clock_advanced", `Virtual clock ${formatClock(from, s.timezone, true)} → ${formatClock(to, s.timezone, true)}`, {
     fromMs: from,
     toMs: to,
   });
+}
+
+function handleClockDiscontinuity(ctx: Ctx, cmd: Extract<CommandBody, { type: "acknowledge_clock_discontinuity" }>): void {
+  const s = ctx.s;
+  if (s.environment !== "REAL") reject("wrong_environment", "Rehearsals use a virtual clock; there is no device clock to reconcile.");
+  requireActive(ctx);
+  const behindSec = Math.round((cmd.keptNowMs - cmd.deviceNowMs) / 1000);
+  if (!(behindSec > 0) || behindSec > 7 * 24 * 3600) reject("invalid_payload", "There is no backward clock change to record.");
+  emit(
+    ctx,
+    "clock_discontinuity",
+    `Device clock moved back ${formatDuration(behindSec)} (it read ${formatClock(cmd.deviceNowMs, s.timezone, true)}). LiveLift kept ${formatClock(cmd.keptNowMs, s.timezone, true)}; recorded times and anchors are unchanged.`,
+    { deviceNowMs: cmd.deviceNowMs, keptNowMs: cmd.keptNowMs, behindSec }
+  );
 }
 
 function handleCorrection(ctx: Ctx, cmd: Extract<CommandBody, { type: "append_correction" }>): void {
@@ -826,6 +1082,38 @@ function handleCorrection(ctx: Ctx, cmd: Extract<CommandBody, { type: "append_co
     text,
     correctedAtMs: cmd.correctedAtMs ?? null,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Input validation
+// ---------------------------------------------------------------------------
+
+/** Numeric fields a command may carry. Each present one must be a finite number. */
+const NUMERIC_FIELDS = [
+  "nowMs",
+  "expectedRevision",
+  "newTargetSec",
+  "deltaSec",
+  "endByMs",
+  "remainingSec",
+  "anchorOffsetSec",
+  "occurredAtMs",
+  "byMs",
+  "toMs",
+  "deviceNowMs",
+  "keptNowMs",
+  "correctedAtMs",
+] as const;
+
+function invalidNumberField(cmd: Command): string | null {
+  const record = cmd as unknown as Record<string, unknown>;
+  for (const field of NUMERIC_FIELDS) {
+    if (!(field in record)) continue;
+    const value = record[field];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "number" || !Number.isFinite(value)) return field;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -852,6 +1140,11 @@ export function applyCommand(session: Session, cmd: Command): CommandResult {
     },
   });
 
+  const badField = invalidNumberField(cmd);
+  if (badField) {
+    return rejectedReceipt("invalid_payload", `"${badField}" must be a finite number. Nothing was recorded.`);
+  }
+
   if (cmd.expectedRevision !== undefined && cmd.expectedRevision !== session.revision) {
     return rejectedReceipt(
       "stale_revision",
@@ -861,7 +1154,7 @@ export function applyCommand(session: Session, cmd: Command): CommandResult {
 
   const draft = structuredClone(session);
   // Time is monotonic: never record before the latest recorded event.
-  const lastRecorded = draft.events.length > 0 ? draft.events[draft.events.length - 1].recordedAtMs : -Infinity;
+  const lastRecorded = lastRecordedMs(draft) ?? -Infinity;
   const now = Math.max(effectiveNowMs(draft, cmd.nowMs), lastRecorded);
   const ctx: Ctx = {
     s: draft,
@@ -897,6 +1190,9 @@ export function applyCommand(session: Session, cmd: Command): CommandResult {
       case "set_remaining_estimate":
         handleEstimate(ctx, cmd);
         break;
+      case "mark_remaining_unknown":
+        handleRemainingUnknown(ctx, cmd);
+        break;
       case "skip_segment":
         handleSkip(ctx, cmd);
         break;
@@ -909,6 +1205,9 @@ export function applyCommand(session: Session, cmd: Command): CommandResult {
       case "report_cue":
         handleReportCue(ctx, cmd);
         break;
+      case "report_manual_action":
+        handleManualAction(ctx, cmd);
+        break;
       case "add_note":
         handleNote(ctx, cmd);
         break;
@@ -918,6 +1217,9 @@ export function applyCommand(session: Session, cmd: Command): CommandResult {
       case "advance_clock":
       case "set_clock":
         handleClock(ctx, cmd);
+        break;
+      case "acknowledge_clock_discontinuity":
+        handleClockDiscontinuity(ctx, cmd);
         break;
       case "append_correction":
         handleCorrection(ctx, cmd);

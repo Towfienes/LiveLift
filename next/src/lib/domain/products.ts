@@ -63,22 +63,39 @@ function initialsOf(name: string, code: string): string {
   return (letters || code.slice(0, 2)).toUpperCase();
 }
 
-/** Snapshots for the valid rows. IDs derive from the code, so importing twice cannot duplicate. */
-export function toProductSnapshots(rows: ImportRow[], asOf: string): ProductSnapshot[] {
+/** The readable base id for a product code. Different codes can share it ("A-B" and "A_B"), so it is not unique by itself. */
+export function productIdBase(code: string): string {
+  return `prod_${code.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "item"}`;
+}
+
+/**
+ * Snapshots for the valid rows. Every valid row becomes exactly one product: when two distinct codes
+ * normalise to the same id (or an id is already taken in the pack), a numbered suffix keeps them apart.
+ * Duplicate CODES never reach here — the preview marks them and the existing product stays unchanged.
+ */
+export function toProductSnapshots(rows: ImportRow[], asOf: string, takenIds: string[] = []): ProductSnapshot[] {
+  const taken = new Set(takenIds);
   return rows
     .filter((r) => r.status === "valid")
-    .map((r) => ({
-      id: `prod_${r.code.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-      code: r.code,
-      name: r.name,
-      price: r.price,
-      currency: r.currency,
-      priority: "normal" as const,
-      status: "enabled" as const,
-      notes: "Imported by operator",
-      talkingPoints: [],
-      constraints: [],
-      initials: initialsOf(r.name, r.code),
-      asOf,
-    }));
+    .map((r) => {
+      const base = productIdBase(r.code);
+      let id = base;
+      for (let n = 2; taken.has(id); n++) id = `${base}_${n}`;
+      taken.add(id);
+      return {
+        id,
+        code: r.code,
+        name: r.name,
+        price: r.price,
+        currency: r.currency,
+        priority: "normal" as const,
+        status: "enabled" as const,
+        notes: "Imported by operator",
+        talkingPoints: [],
+        constraints: [],
+        initials: initialsOf(r.name, r.code),
+        asOf,
+        source: "import" as const,
+      };
+    });
 }

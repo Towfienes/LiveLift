@@ -200,10 +200,12 @@ export function NextLivePanel({ session }: { session: Session }): React.ReactEle
                   </li>
                 ))}
               </ul>
-              <p className="text-[13px] text-[#9AA5B5] mt-1">Deselect a change, choose a trade-off that gives time back, or fix it in Prepare.</p>
-              <label className="flex items-center gap-2 mt-2 text-[14px] text-[#F5F7FC] cursor-pointer">
+              <p className="text-[14px] text-[#9AA5B5] mt-1">
+                Deselect a change, choose a trade-off that gives time back, or fix it in Prepare. Anchors are never moved to make it fit.
+              </p>
+              <label className="flex items-center gap-2 mt-2 min-h-[44px] text-[15px] text-[#F5F7FC] cursor-pointer">
                 <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} className="w-5 h-5 accent-[#DFFF00]" data-testid="ack-infeasible" />
-                Create it anyway and fix the conflict in Prepare
+                Create it as an unresolved draft to fix in Prepare — it cannot start until the conflict is resolved
               </label>
             </div>
           ) : (

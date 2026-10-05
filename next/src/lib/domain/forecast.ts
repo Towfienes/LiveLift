@@ -23,7 +23,9 @@ export const emptySegmentRun = (): SegmentRun => ({
   endedAtMs: null,
   endedBy: null,
   coverage: null,
+  followUp: null,
   remainingEstimate: null,
+  remainingUnknownAtMs: null,
   belowMinimum: false,
   skipAcknowledged: false,
   deferred: false,
@@ -79,7 +81,13 @@ export interface ActiveEnd {
   segmentId: string;
   endMs: number;
   known: boolean;
-  basis: "estimate" | "target" | "unknown_overrun";
+  /**
+   * estimate         — the host's explicit remaining estimate (0 allowed; it does not end the segment)
+   * target           — no estimate entered: the allocation projects the end
+   * declared_unknown — the host said the remaining time is unknown: no invented end, earliest = now
+   * unknown_overrun  — past the target (or an expired estimate) with nothing newer: earliest = now
+   */
+  basis: "estimate" | "target" | "declared_unknown" | "unknown_overrun";
 }
 
 export interface CueForecast {
@@ -177,6 +185,9 @@ export function forecastSession(session: Session, nowMs: number): Forecast {
       const targetEnd = seg.targetSec === null ? null : startMs + secToMs(seg.targetSec);
       if (run.remainingEstimate && run.remainingEstimate.endsAtMs >= now) {
         active = { segmentId: seg.id, endMs: run.remainingEstimate.endsAtMs, known: true, basis: "estimate" };
+      } else if (run.remainingUnknownAtMs !== null) {
+        // Explicitly unknown: the target must not be used to invent an end. Earliest possible end = now.
+        active = { segmentId: seg.id, endMs: now, known: false, basis: "declared_unknown" };
       } else if (targetEnd !== null && now <= targetEnd) {
         active = { segmentId: seg.id, endMs: targetEnd, known: true, basis: "target" };
       } else {

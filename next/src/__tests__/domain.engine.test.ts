@@ -42,9 +42,11 @@ function realShow(): Session {
       newSegment("b", { title: "Product B", targetSec: min(8), minSec: min(6) }),
       newSegment("qa", { title: "Q&A", kind: "qa", optional: true, targetSec: min(3), minSec: min(2) }),
     ],
+    // A pin/unpin cue must name a product in the pack (UI-13): the fixture carries one.
+    products: [{ id: "prod_b", code: "B", name: "Product B", price: null, currency: "USD", priority: "normal", status: "enabled", talkingPoints: [], constraints: [], initials: "PB" }],
     cues: [
-      { id: "pin", title: "Pin Product B", audience: "operator", action: "pin_product", productId: null, timing: { type: "segment_start", segmentId: "b", offsetSec: 0 }, text: null },
-      { id: "unpin", title: "Unpin Product B", audience: "operator", action: "unpin_product", productId: null, timing: { type: "segment_end", segmentId: "b", offsetSec: 0 }, text: null },
+      { id: "pin", title: "Pin Product B", audience: "operator", action: "pin_product", productId: "prod_b", timing: { type: "segment_start", segmentId: "b", offsetSec: 0 }, text: null },
+      { id: "unpin", title: "Unpin Product B", audience: "operator", action: "unpin_product", productId: "prod_b", timing: { type: "segment_end", segmentId: "b", offsetSec: 0 }, text: null },
       { id: "say", title: "Mention sizing", audience: "presenter", action: "none", productId: null, timing: { type: "segment_start", segmentId: "b", offsetSec: 30 }, text: null },
     ],
   });

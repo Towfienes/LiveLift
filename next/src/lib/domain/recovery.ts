@@ -11,7 +11,11 @@ import { formatClock, formatDuration, formatHuman } from "./time";
  * - Hard anchors never move implicitly. Re-anchoring is an explicit commitment change.
  * - "Clean" options respect declared minimums and required coverage. Anything that needs a
  *   minimum or coverage exception is labelled as an exception and needs acknowledgement.
- * - If no clean combination can protect the deadline we say so, and offer commitment changes.
+ * - Feasibility is decided by an actual compatible plan, not by adding up savings: each segment
+ *   contributes at most ONE lever (skipping and shortening the same segment are alternatives), and
+ *   a legal future end-by commitment counts even if the active segment has not reached its minimum yet.
+ * - If no clean combination can protect the deadline we say so, and keep exception and
+ *   commitment-change paths visibly separate.
  * - A recommendation is not acceptance: nothing here is executed.
  */
 
@@ -54,6 +58,12 @@ export interface Situation {
   detail: string;
 }
 
+/**
+ * recoverable          — a clean, compatible plan protects the anchor (one option or a combination)
+ * no_feasible_recovery — no clean plan protects it; only exceptions or commitment changes remain
+ * possible_risk        — the active end is unknown; the buffer may be consumed
+ * already_missed       — the committed time has passed without a start
+ */
 export type RecoveryStatus =
   | "stable"
   | "possible_risk"
@@ -67,15 +77,22 @@ export interface RecoveryAnalysis {
   /** Current projected lateness of the critical anchor. */
   deficitSec: number;
   options: RecoveryOption[];
-  /** Upper bound of time clean options can free before the critical anchor. */
+  /** Time the best compatible combination of clean levers frees before the critical anchor. */
   maxCleanSavingsSec: number;
+  /**
+   * When no single clean option protects the anchor but a combination of clean levers does, the levers
+   * that together protect it (apply them one at a time; each is an explicit decision).
+   */
+  cleanPlan: string[];
+  /** Some exception option (below minimum / required coverage) would protect it. Distinct from clean recovery. */
+  exceptionProtects: boolean;
   situation: Situation;
 }
 
 const toSec = (ms: number): number => Math.round(ms / 1000);
 
-function preview(session: Session, body: CommandBody, nowMs: number): Session | null {
-  const result = applyCommand(session, { ...body, nowMs, key: "preview" } as Command);
+function preview(session: Session, body: CommandBody, nowMs: number, key = "preview"): Session | null {
+  const result = applyCommand(session, { ...body, nowMs, key } as Command);
   return result.receipt.outcome === "committed" ? result.session : null;
 }
 
@@ -92,6 +109,14 @@ interface Evaluation {
   newlyBroken: boolean;
 }
 
+function evaluateAfter(after: Session, nowMs: number, criticalId: string, alreadyBroken: Set<string>): Evaluation {
+  const f = forecastSession(after, nowMs);
+  const c = f.segments.find((s) => s.segmentId === criticalId);
+  const resulting = c && c.state === "pending" && c.anchor ? c.anchor.deficitSec : 0;
+  const newlyBroken = [...brokenAnchorIds(f)].some((id) => !alreadyBroken.has(id));
+  return { resultingDeficitSec: resulting, newlyBroken };
+}
+
 function evaluate(
   session: Session,
   body: CommandBody,
@@ -100,12 +125,70 @@ function evaluate(
   alreadyBroken: Set<string>
 ): Evaluation | null {
   const after = preview(session, body, nowMs);
-  if (!after) return null;
-  const f = forecastSession(after, nowMs);
-  const c = f.segments.find((s) => s.segmentId === criticalId);
-  const resulting = c && c.state === "pending" && c.anchor ? c.anchor.deficitSec : 0;
-  const newlyBroken = [...brokenAnchorIds(f)].some((id) => !alreadyBroken.has(id));
-  return { resultingDeficitSec: resulting, newlyBroken };
+  return after ? evaluateAfter(after, nowMs, criticalId, alreadyBroken) : null;
+}
+
+/** One clean lever per segment, at its largest legal size. */
+interface Lever {
+  label: string;
+  body: CommandBody;
+}
+
+/** Apply levers in order to a copy (pure). Levers the engine refuses are left out. */
+function applyLevers(session: Session, levers: Lever[], nowMs: number): Session {
+  let s = session;
+  levers.forEach((lever, i) => {
+    const after = preview(s, lever.body, nowMs, `preview:lever:${i}`);
+    if (after) s = after;
+  });
+  return s;
+}
+
+/**
+ * The most a compatible set of clean levers can do before the critical anchor:
+ * - the active segment ends at the earliest instant its declared minimum allows (now, or a future end-by);
+ * - each pending segment before the anchor contributes its single largest clean lever:
+ *   skip if it is optional and floating, otherwise shorten to its declared minimum.
+ * Moving work earlier can never make an anchor later, so this combination bounds every clean plan.
+ */
+function maxCleanLevers(
+  session: Session,
+  forecast: Forecast,
+  activeSeg: Segment | null,
+  criticalIndex: number,
+  nowMs: number,
+  clock: (ms: number) => string
+): Lever[] {
+  const plan = currentPlan(session);
+  const levers: Lever[] = [];
+  if (activeSeg && forecast.active?.known) {
+    const run = session.runtime.segments[activeSeg.id];
+    const start = run?.startedAtMs ?? nowMs;
+    const floor = effectiveMinSec(activeSeg);
+    const floorAt = floor === null ? nowMs : Math.max(nowMs, start + floor * 1000);
+    if (floorAt < forecast.active.endMs) {
+      levers.push(
+        floorAt <= nowMs
+          ? { label: `End ${activeSeg.title} now`, body: { type: "end_segment", segmentId: activeSeg.id, coverage: "partial" } }
+          : { label: `End ${activeSeg.title} by ${clock(floorAt)}`, body: { type: "commit_end_by", segmentId: activeSeg.id, endByMs: floorAt } }
+      );
+    }
+  }
+  const fcById = new Map(forecast.segments.map((s) => [s.segmentId, s]));
+  for (let i = 0; i < criticalIndex; i++) {
+    const seg = plan.segments[i];
+    if (fcById.get(seg.id)?.state !== "pending") continue;
+    if (seg.anchorOffsetSec === null && seg.optional) {
+      levers.push({ label: `Skip ${seg.title} (optional)`, body: { type: "skip_segment", segmentId: seg.id } });
+    } else if (isCompressible(seg)) {
+      const to = Math.max(seg.minSec!, 1);
+      levers.push({
+        label: `Shorten ${seg.title} to ${formatDuration(to)}`,
+        body: { type: "shorten_segment", segmentId: seg.id, newTargetSec: to },
+      });
+    }
+  }
+  return levers;
 }
 
 /** Plain-language situation for NOW/NEXT. Generated from numbers, never from a model. */
@@ -125,25 +208,29 @@ export function describeSituation(session: Session, forecast: Forecast): Situati
   if (critical?.anchor) {
     const a = critical.anchor;
     const title = titleOf(critical.segmentId);
+    const active = forecast.active;
     const cause =
-      forecast.active?.basis === "estimate"
-        ? `${titleOf(forecast.active.segmentId)} is projected to end ${clock(forecast.active.endMs)} (host estimate)`
-        : forecast.active?.basis === "target"
-          ? `${titleOf(forecast.active.segmentId)} is scheduled to end ${clock(forecast.active.endMs)}`
-          : forecast.active
-            ? `${titleOf(forecast.active.segmentId)} is past its target`
-            : "earlier work runs past it";
+      active?.basis === "estimate"
+        ? `${titleOf(active.segmentId)} is projected to end ${clock(active.endMs)} (host estimate)`
+        : active?.basis === "target"
+          ? `${titleOf(active.segmentId)} is scheduled to end ${clock(active.endMs)}`
+          : active?.basis === "declared_unknown"
+            ? `the host cannot say when ${titleOf(active.segmentId)} ends`
+            : active
+              ? `${titleOf(active.segmentId)} is past its target`
+              : "earlier work runs past it";
+    const lower = a.lowerBound ? "at least " : "";
     if (a.status === "missed") {
       return {
         tone: "missed",
         headline: `${title} was committed for ${clock(a.committedMs)}`,
-        detail: `It can start no earlier than ${clock(a.projectedStartMs)} — ${formatDuration(a.deficitSec)} late. The commitment is not moved; ${cause}.`,
+        detail: `It can start no earlier than ${clock(a.projectedStartMs)} — ${lower}${formatDuration(a.deficitSec)} late. The commitment is not moved; ${cause}.`,
       };
     }
     return {
       tone: "risk",
       headline: `${title} is committed for ${clock(a.committedMs)}`,
-      detail: `${cause}. It would start ${clock(a.projectedStartMs)} — ${formatDuration(a.deficitSec)} late.`,
+      detail: `${cause[0].toUpperCase()}${cause.slice(1)}. It would start ${a.lowerBound ? "no earlier than " : ""}${clock(a.projectedStartMs)} — ${lower}${formatDuration(a.deficitSec)} late.`,
     };
   }
 
@@ -153,10 +240,12 @@ export function describeSituation(session: Session, forecast: Forecast): Situati
     const a = next.anchor;
     const title = titleOf(next.segmentId);
     if (a.status === "possible_risk") {
+      const activeTitle = forecast.active ? titleOf(forecast.active.segmentId) : "The current segment";
+      const declared = forecast.active?.basis === "declared_unknown";
       return {
         tone: "watch",
-        headline: `${forecast.active ? titleOf(forecast.active.segmentId) : "The current segment"} has no end estimate`,
-        detail: `It is past its target. At most ${formatDuration(a.bufferSec)} remain before ${title} at ${clock(a.committedMs)}; every extra minute uses that buffer. Set a host estimate or commit to an end time.`,
+        headline: declared ? `The host cannot say how long ${activeTitle} needs` : `${activeTitle} has no end estimate`,
+        detail: `${declared ? "Remaining time is unknown" : "It is past its target"}. At most ${formatDuration(a.bufferSec)} remain before ${title} at ${clock(a.committedMs)}; every extra minute uses that buffer. Set a host estimate or commit to an end time.`,
       };
     }
     return {
@@ -194,6 +283,8 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
     deficitSec: 0,
     options: [],
     maxCleanSavingsSec: 0,
+    cleanPlan: [],
+    exceptionProtects: false,
     situation: describeSituation(session, forecast),
   });
 
@@ -205,26 +296,36 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
   const activeSeg = forecast.active ? (segById.get(forecast.active.segmentId) ?? null) : null;
   const clock = (ms: number): string => formatClock(ms, tz, true);
 
-  // ---- Possible risk: the active segment has no end estimate -----------------------------
+  // ---- Possible risk: the active segment has no known end ----------------------------------
   const criticalFc = forecast.criticalSegmentId ? fcById.get(forecast.criticalSegmentId) : undefined;
   if (!criticalFc) {
     const nextFc = forecast.nextAnchorSegmentId ? fcById.get(forecast.nextAnchorSegmentId) : undefined;
     if (nextFc?.anchor?.status === "possible_risk" && activeSeg && guard?.latestFreeMs && guard.latestFreeMs > now) {
       const run = session.runtime.segments[activeSeg.id];
       const start = run?.startedAtMs ?? now;
-      const body: CommandBody = { type: "commit_end_by", segmentId: activeSeg.id, endByMs: guard.latestFreeMs };
+      const floor = effectiveMinSec(activeSeg);
+      const newTarget = toSec(guard.latestFreeMs - start);
+      const belowMin = floor !== null && newTarget < floor;
+      const body: CommandBody = {
+        type: "commit_end_by",
+        segmentId: activeSeg.id,
+        endByMs: guard.latestFreeMs,
+        acknowledgeBelowMinimum: belowMin ? true : undefined,
+      };
       const targetTitle = segById.get(guard.segmentId)?.title ?? "the anchor";
       const options: RecoveryOption[] = [
         {
           id: `end_by:${activeSeg.id}`,
           kind: "end_by",
           label: `End ${activeSeg.title} by ${clock(guard.latestFreeMs)}`,
-          detail: `Commit to a ${formatDuration(toSec(guard.latestFreeMs - start))} total so ${targetTitle} keeps its ${clock(guard.committedMs)} commitment.`,
+          detail: `Commit to a ${formatDuration(newTarget)} total so ${targetTitle} keeps its ${clock(guard.committedMs)} commitment. Declare coverage when it ends.`,
           savesSec: 0,
           resultingDeficitSec: 0,
           protects: true,
-          clean: true,
-          exception: null,
+          clean: !belowMin,
+          exception: belowMin
+            ? { code: "below_minimum", message: `A ${formatDuration(newTarget)} total is below the ${formatDuration(floor!)} minimum.` }
+            : null,
           command: body,
         },
       ];
@@ -234,6 +335,8 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
         deficitSec: 0,
         options,
         maxCleanSavingsSec: 0,
+        cleanPlan: [],
+        exceptionProtects: belowMin,
         situation: describeSituation(session, forecast),
       };
     }
@@ -247,7 +350,7 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
   const alreadyBroken = brokenAnchorIds(forecast);
   const criticalIndex = plan.segments.findIndex((s) => s.id === critical.id);
   const options: RecoveryOption[] = [];
-  let potentialClean = 0;
+  const missed = anchor.status === "missed";
 
   const add = (opt: Omit<RecoveryOption, "savesSec" | "resultingDeficitSec" | "protects">, ev: Evaluation | null): void => {
     if (!ev) return;
@@ -256,7 +359,7 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
       ...opt,
       savesSec: saves,
       resultingDeficitSec: ev.resultingDeficitSec,
-      protects: anchor.status !== "missed" && ev.resultingDeficitSec === 0 && !ev.newlyBroken,
+      protects: !missed && ev.resultingDeficitSec === 0 && !ev.newlyBroken,
     });
   };
 
@@ -267,15 +370,15 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
     const elapsed = toSec(now - start);
     const floor = effectiveMinSec(activeSeg);
     const belowMinBySec = floor !== null && elapsed < floor ? floor - elapsed : 0;
+    const beforeTarget = activeSeg.targetSec !== null && elapsed < activeSeg.targetSec;
 
-    // Close now.
+    // Close now. Ending before the allocation is recorded as partial coverage — stated in the option, not inferred later.
     const closeBody: CommandBody = {
       type: "end_segment",
       segmentId: activeSeg.id,
-      coverage: activeSeg.targetSec !== null && elapsed < activeSeg.targetSec ? "partial" : "complete",
+      coverage: beforeTarget ? "partial" : undefined,
       acknowledgeBelowMinimum: belowMinBySec > 0 ? true : undefined,
     };
-    const closeEv = evaluate(session, closeBody, now, critical.id, alreadyBroken);
     add(
       {
         id: `close_now:${activeSeg.id}`,
@@ -283,8 +386,8 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
         label: `End ${activeSeg.title} now`,
         detail:
           belowMinBySec > 0
-            ? `Below its ${formatDuration(floor!)} minimum by ${formatDuration(belowMinBySec)} · coverage partial. Needs a minimum exception.`
-            : `Frees the host at ${clock(now)}. Unfinished points carry to a later segment.`,
+            ? `Below its ${formatDuration(floor!)} minimum by ${formatDuration(belowMinBySec)} · coverage recorded as partial. Needs a minimum exception.`
+            : `Frees the host at ${clock(now)}.${beforeTarget ? " Coverage is recorded as partial." : ""}`,
         clean: belowMinBySec === 0,
         exception:
           belowMinBySec > 0
@@ -292,19 +395,11 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
             : null,
         command: closeBody,
       },
-      closeEv
+      evaluate(session, closeBody, now, critical.id, alreadyBroken)
     );
-    if (belowMinBySec === 0 && forecast.active.known && forecast.active.endMs > now) {
-      potentialClean += toSec(forecast.active.endMs - Math.max(now, start + (floor ?? 0) * 1000));
-    }
 
-    // End by the latest instant that still protects the first pending anchor.
-    if (
-      guard &&
-      guard.segmentId === critical.id &&
-      guard.latestFreeMs !== null &&
-      guard.latestFreeMs > now
-    ) {
+    // End by the latest instant that still protects the first pending anchor (a legal future commitment).
+    if (guard && guard.segmentId === critical.id && guard.latestFreeMs !== null && guard.latestFreeMs > now) {
       const newTarget = toSec(guard.latestFreeMs - start);
       const belowMin = floor !== null && newTarget < floor;
       const endBody: CommandBody = {
@@ -320,7 +415,7 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
           label: `End ${activeSeg.title} by ${clock(guard.latestFreeMs)}`,
           detail: `Commit to ${formatDuration(newTarget)} total${
             activeSeg.targetSec !== null ? ` (was ${formatDuration(activeSeg.targetSec)})` : ""
-          } · keeps ${critical.title} at ${clock(anchor.committedMs)}. Unfinished points carry later.`,
+          } · keeps ${critical.title} at ${clock(anchor.committedMs)}. Declare coverage when it ends.`,
           clean: !belowMin,
           exception: belowMin
             ? { code: "below_minimum", message: `A ${formatDuration(newTarget)} total is below the ${formatDuration(floor!)} minimum.` }
@@ -339,8 +434,7 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
     if (!sf || sf.state !== "pending") continue;
 
     if (isCompressible(seg)) {
-      const maxSave = seg.targetSec! - seg.minSec!;
-      potentialClean += maxSave;
+      const maxSave = seg.targetSec! - Math.max(seg.minSec!, 1);
       const delta = Math.min(maxSave, Math.max(60, Math.ceil(deficit / 30) * 30));
       const newTarget = seg.targetSec! - delta;
       const body: CommandBody = { type: "shorten_segment", segmentId: seg.id, newTargetSec: newTarget };
@@ -360,7 +454,6 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
 
     if (seg.anchorOffsetSec === null) {
       if (seg.optional) {
-        potentialClean += seg.targetSec ?? 0;
         const body: CommandBody = { type: "skip_segment", segmentId: seg.id };
         add(
           {
@@ -438,19 +531,36 @@ export function analyzeRecovery(session: Session, deviceNowMs: number): Recovery
   const useful = options.filter((o) => o.savesSec > 0 || o.kind === "reanchor" || o.kind === "cancel_commitment");
   useful.sort((a, b) => rank(a) - rank(b) || b.savesSec - a.savesSec);
 
-  const missed = anchor.status === "missed";
-  const status: RecoveryStatus = missed
-    ? "already_missed"
-    : potentialClean >= deficit
-      ? "recoverable"
-      : "no_feasible_recovery";
+  // ---- Feasibility from the best compatible clean plan --------------------------------------
+  const levers = missed ? [] : maxCleanLevers(session, forecast, activeSeg, criticalIndex, now, clock);
+  const best = evaluateAfter(applyLevers(session, levers, now), now, critical.id, alreadyBroken);
+  const cleanFeasible = !missed && levers.length > 0 && best.resultingDeficitSec === 0 && !best.newlyBroken;
+  const maxCleanSavingsSec = missed ? 0 : Math.max(0, deficit - best.resultingDeficitSec);
+
+  // If no single clean option protects the anchor but the combination does, name a minimal combination.
+  let cleanPlan: string[] = [];
+  if (cleanFeasible && !useful.some((o) => o.clean && o.protects)) {
+    let kept = [...levers];
+    // Prefer keeping the active-segment lever; drop the others while the combination still protects.
+    for (let i = kept.length - 1; i >= 0; i--) {
+      const without = kept.filter((_, j) => j !== i);
+      if (without.length === 0) continue;
+      const ev = evaluateAfter(applyLevers(session, without, now), now, critical.id, alreadyBroken);
+      if (ev.resultingDeficitSec === 0 && !ev.newlyBroken) kept = without;
+    }
+    cleanPlan = kept.map((l) => l.label);
+  }
+
+  const status: RecoveryStatus = missed ? "already_missed" : cleanFeasible ? "recoverable" : "no_feasible_recovery";
 
   return {
     status,
     criticalSegmentId: critical.id,
     deficitSec: deficit,
     options: useful,
-    maxCleanSavingsSec: potentialClean,
+    maxCleanSavingsSec,
+    cleanPlan,
+    exceptionProtects: useful.some((o) => o.exception !== null && o.exception.code !== "commitment_change" && o.protects),
     situation: describeSituation(session, forecast),
   };
 }

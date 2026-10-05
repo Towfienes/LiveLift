@@ -21,6 +21,7 @@ export function NowPanel({
   nextSegment,
   nextForecast,
   onSetEstimate,
+  onMarkUnknown,
 }: {
   segment: Segment | null;
   run: SegmentRun | null;
@@ -33,6 +34,8 @@ export function NowPanel({
   nextSegment: Segment | null;
   nextForecast: SegmentForecast | null;
   onSetEstimate: (remainingSec: number | null) => void;
+  /** The host explicitly does not know how long is left. */
+  onMarkUnknown: () => void;
 }): React.ReactElement {
   const [editing, setEditing] = useState(false);
   const [minutes, setMinutes] = useState("");
@@ -89,15 +92,25 @@ export function NowPanel({
 
   const endLine =
     active?.basis === "estimate"
-      ? { tone: "violet" as const, text: `Ends ${clock(active.endMs)} · host estimate` }
+      ? {
+          tone: "violet" as const,
+          text:
+            run.remainingEstimate && run.remainingEstimate.endsAtMs === run.remainingEstimate.reportedAtMs
+              ? `Host: wrapping up now (0:00 left) · not ended until you record it`
+              : `Ends ${clock(active.endMs)} · host estimate`,
+        }
       : active?.basis === "target"
-        ? { tone: "neutral" as const, text: `Ends ${clock(active.endMs)} · target` }
-        : { tone: "warn" as const, text: `End unknown · earliest possible ${clock(nowMs)}` };
+        ? { tone: "neutral" as const, text: `Ends ${clock(active.endMs)} · target (no estimate entered)` }
+        : active?.basis === "declared_unknown"
+          ? { tone: "warn" as const, text: `Host: remaining time unknown · earliest end ${clock(nowMs)}` }
+          : { tone: "warn" as const, text: `End unknown · earliest possible ${clock(nowMs)}` };
+  const hasHostInput = run.remainingEstimate !== null || run.remainingUnknownAtMs !== null;
 
   const submitEstimate = (): void => {
+    if (minutes.trim() === "") return; // nothing entered is not zero
     const m = Number(minutes);
-    if (!Number.isFinite(m) || m <= 0) return;
-    onSetEstimate(Math.round(m * 60));
+    if (!Number.isFinite(m) || m < 0 || m > 60) return;
+    onSetEstimate(Math.round(m * 60)); // 0 = wrapping up now; it does not end the segment
     setEditing(false);
     setMinutes("");
   };
@@ -111,7 +124,7 @@ export function NowPanel({
         </Signal>
       </div>
 
-      <div className="mt-3 flex items-center gap-4 min-w-0">
+      <div className="mt-3 [@media(max-height:800px)]:mt-2 flex items-center gap-4 min-w-0">
         <SegmentTile segment={segment} product={product} size={64} active />
         <div className="min-w-0">
           <h2 className="text-[24px] leading-tight font-medium tracking-tight text-[#F5F7FC] truncate" data-testid="now-title">
@@ -121,7 +134,7 @@ export function NowPanel({
         </div>
       </div>
 
-      <div className="mt-3 flex items-end justify-between gap-4">
+      <div className="mt-3 [@media(max-height:800px)]:mt-2 flex items-end justify-between gap-4">
         <div>
           <p className="text-[12px] tracking-[1.2px] uppercase text-[#AEB7C5]">Actual elapsed</p>
           <p
@@ -142,7 +155,7 @@ export function NowPanel({
         </div>
       </div>
 
-      <div className="mt-3" aria-hidden="true">
+      <div className="mt-3 [@media(max-height:800px)]:mt-2" aria-hidden="true">
         <div className="relative h-3 rounded-full bg-[#232935] overflow-hidden">
           <div className="absolute inset-y-0 left-0 bg-[#DFFF00]" style={{ width: pct(Math.min(elapsedSec, targetSec)) }} />
           {over > 0 && (
@@ -169,7 +182,7 @@ export function NowPanel({
               id="host-estimate"
               data-testid="estimate-input"
               type="number"
-              min={1}
+              min={0}
               max={60}
               step={0.5}
               value={minutes}
@@ -180,33 +193,46 @@ export function NowPanel({
               data-autofocus
               className="w-[72px] h-10 bg-[#13161C] border border-[#39414D] rounded-[8px] px-2 text-[16px] text-[#F5F7FC] tabular-nums"
             />
-            <span className="text-[14px] text-[#CAD0DA]">more min</span>
-            <Button size="sm" variant="primary" onClick={submitEstimate} data-testid="estimate-set-btn">
+            <span className="text-[15px] text-[#CAD0DA]">more min</span>
+            <Button size="sm" variant="primary" onClick={submitEstimate} data-testid="estimate-set-btn" disabled={minutes.trim() === ""}>
               Set
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                onMarkUnknown();
+                setEditing(false);
+              }}
+              data-testid="estimate-unknown-btn"
+              title="The host cannot say how long is left. LiveLift stops projecting the end from the target."
+            >
+              Unknown
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
               Cancel
             </Button>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-2 min-h-[36px]">
-            <Signal tone={endLine.tone} icon={endLine.tone === "warn" ? "ri-question-line" : "ri-flag-line"} className="tabular-nums">
-              {`${endLine.text}${run.remainingEstimate ? ` (set ${clock(run.remainingEstimate.reportedAtMs)})` : ""}`}
+          <div className="flex items-center justify-between gap-2 min-h-[44px]">
+            <Signal tone={endLine.tone} icon={endLine.tone === "warn" ? "ri-question-line" : "ri-flag-line"} className="tabular-nums text-[15px]" title={endLine.text}>
+              <span data-testid="now-end-line">{`${endLine.text}${run.remainingEstimate && run.remainingEstimate.endsAtMs !== run.remainingEstimate.reportedAtMs ? ` (set ${clock(run.remainingEstimate.reportedAtMs)})` : ""}`}</span>
             </Signal>
             <span className="flex items-center shrink-0">
               <button
                 type="button"
                 onClick={() => setEditing(true)}
                 data-testid="estimate-open-btn"
-                className="min-h-[36px] px-2 rounded-[6px] text-[14px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
+                className="min-h-[44px] px-2.5 rounded-[8px] text-[15px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
               >
-                {run.remainingEstimate ? "Update" : "Set host estimate"}
+                {hasHostInput ? "Update estimate" : "Host estimate"}
               </button>
-              {run.remainingEstimate && (
+              {hasHostInput && (
                 <button
                   type="button"
                   onClick={() => onSetEstimate(null)}
-                  className="min-h-[36px] px-2 rounded-[6px] text-[14px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
+                  data-testid="estimate-clear-btn"
+                  className="min-h-[44px] px-2.5 rounded-[8px] text-[15px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
                 >
                   Clear
                 </button>

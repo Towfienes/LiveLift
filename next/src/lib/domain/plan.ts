@@ -91,6 +91,7 @@ export type PlanIssueCode =
   | "anchor_infeasible"
   | "cue_orphaned"
   | "cue_title_missing"
+  | "cue_product_missing"
   | "product_missing"
   | "product_disabled";
 
@@ -168,13 +169,15 @@ export function validatePlan(
 
       const row = schedule.rows[index];
       if (row.deficitSec > 0) {
+        // A hard constraint the plan itself cannot meet. A draft may hold it while it is being repaired,
+        // but it is never runnable: Start stays blocked until the plan or the commitment changes.
         issues.push({
           code: "anchor_infeasible",
-          severity: "warning",
+          severity: "blocker",
           segmentId: seg.id,
           cueId: null,
           deficitSec: row.deficitSec,
-          message: `${label} cannot start at ${formatClock(a, timeZone, true)} even with no overruns: earlier segments run ${formatDuration(row.deficitSec)} past it.`,
+          message: `${label} cannot start at ${formatClock(a, timeZone, true)} even with no overruns: earlier segments run ${formatDuration(row.deficitSec)} past it. Shorten earlier segments or change the commitment before Start.`,
         });
       }
     }
@@ -188,9 +191,35 @@ export function validatePlan(
     if (cue.timing.type !== "at_offset" && !segmentIds.has(cue.timing.segmentId)) {
       issues.push({ code: "cue_orphaned", severity: "blocker", segmentId: null, cueId: cue.id, message: `Cue "${cue.title}" refers to a segment that no longer exists.` });
     }
+    if (cue.productId !== null && !productById.has(cue.productId)) {
+      issues.push({
+        code: "cue_product_missing",
+        severity: "blocker",
+        segmentId: null,
+        cueId: cue.id,
+        message: `Cue "${cue.title}" targets a product that is no longer in the pack. Choose its product again or delete the cue.`,
+      });
+    }
+    if ((cue.action === "pin_product" || cue.action === "unpin_product") && cue.productId === null) {
+      issues.push({
+        code: "cue_product_missing",
+        severity: "blocker",
+        segmentId: null,
+        cueId: cue.id,
+        message: `Cue "${cue.title}" is a ${cue.action === "pin_product" ? "pin" : "unpin"} action without a product.`,
+      });
+    }
   }
 
   return issues;
+}
+
+/** Products referenced by the plan (segments and cues). A referenced product cannot be removed silently. */
+export function productReferences(plan: PlanVersion, productId: string): { segments: Segment[]; cues: Cue[] } {
+  return {
+    segments: plan.segments.filter((s) => s.productId === productId),
+    cues: plan.cues.filter((c) => c.productId === productId),
+  };
 }
 
 export const hasBlockers = (issues: PlanIssue[]): boolean =>

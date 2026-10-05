@@ -42,6 +42,7 @@ function CreateLiveForm(): React.ReactElement {
   const [showObjective, setShowObjective] = useState(false);
   const [account, setAccount] = useState("");
   const [showAccount, setShowAccount] = useState(false);
+  const [operatorName, setOperatorName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
 
@@ -77,20 +78,18 @@ function CreateLiveForm(): React.ReactElement {
         : startType === "previous"
           ? { type: "previous", sourceId: effectiveSourceId }
           : { type: startType };
-    try {
-      const session = sessionStore.createSession({
-        title,
-        environment,
-        timezone,
-        plannedStartMs,
-        objective: objective.trim() || null,
-        accountLabel: account.trim() || null,
-        start,
-      });
-      router.push(`/live/${session.id}/prepare`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the show.");
-    }
+    const result = sessionStore.createSession({
+      title,
+      environment,
+      timezone,
+      plannedStartMs,
+      objective: objective.trim() || null,
+      accountLabel: account.trim() || null,
+      operatorName: environment === "REAL" ? operatorName : null,
+      start,
+    });
+    if (result.ok) router.push(`/live/${result.session.id}/prepare`);
+    else setError(result.reason);
   };
 
   const cards: Array<{ type: StartType; icon: string; name: string; hint: string }> = [
@@ -214,6 +213,34 @@ function CreateLiveForm(): React.ReactElement {
               <label htmlFor="session-acc" className="block text-[15px] font-medium text-[#CAD0DA] mb-2">Account label</label>
               <input id="session-acc" value={account} onChange={(e) => setAccount(e.target.value)} className={INPUT} placeholder="e.g. @livelift.shop · Room 8412" />
               <p className="text-[13px] text-[#9AA5B5] mt-1">A label only. LiveLift is not connected to any platform account.</p>
+            </div>
+          )}
+
+          {!simulated && (startType === "template" || startType === "pack") && (
+            <p className="text-[15px] text-[#F6C875] -mt-2" data-testid="sample-data-notice">
+              <i className="ri-information-line mr-1.5" aria-hidden="true" />
+              This starting point uses the sample product library shipped with LiveLift — example names and prices, not your catalog. Check and edit
+              every product in Prepare before a real show.
+            </p>
+          )}
+
+          {!simulated && (
+            <div>
+              <label htmlFor="operator-name" className="block text-[15px] font-medium text-[#CAD0DA] mb-2">
+                Your name (optional)
+              </label>
+              <input
+                id="operator-name"
+                data-testid="operator-name-input"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                className={INPUT}
+                placeholder="Recorded with every action in this show"
+                maxLength={60}
+              />
+              <p className="text-[14px] text-[#9AA5B5] mt-1">
+                LiveLift has no accounts. If you leave this empty, actions are recorded as “Local operator”, never under another person&apos;s name.
+              </p>
             </div>
           )}
 

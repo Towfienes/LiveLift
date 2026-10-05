@@ -78,13 +78,14 @@ export function SegmentEditorDialog({
   const [cue, setCue] = useState(segment?.cue ?? "");
 
   const targetSec = parseDuration(duration);
-  const minSec = minimum.trim() === "" ? null : parseDuration(minimum);
+  // Blank = no minimum declared (cannot be shortened). "0:00" is a real declared minimum of zero.
+  const minSec = minimum.trim() === "" ? null : parseDuration(minimum, { allowZero: true });
   const anchorOffset = anchored ? anchorOffsetFrom(plan, tz, anchorTime) : null;
 
   const errors: string[] = [];
   if (title.trim() === "") errors.push("Give the segment a title.");
   if (targetSec === null) errors.push("Enter a duration like 6:00 or 6 (minutes). Missing is not zero.");
-  if (minimum.trim() !== "" && minSec === null) errors.push("Enter the minimum like 4:00, or leave it empty for none.");
+  if (minimum.trim() !== "" && minSec === null) errors.push("Enter the minimum like 4:00 (0:00 allowed), or leave it empty for none.");
   if (targetSec !== null && minSec !== null && minSec > targetSec) errors.push("The minimum cannot exceed the duration.");
   if (anchored && (anchorOffset === null || anchorOffset < 0)) errors.push("Enter the committed start time.");
 
@@ -146,7 +147,7 @@ export function SegmentEditorDialog({
           <div>
             <label className={LABEL} htmlFor="seg-min">Minimum (optional)</label>
             <input id="seg-min" data-testid="seg-min" className={`${INPUT} tabular-nums`} placeholder="none declared" value={minimum} onChange={(e) => setMinimum(e.target.value)} />
-            <p className="text-[12px] text-[#9AA5B5] mt-1">Without a minimum the segment cannot be shortened.</p>
+            <p className="text-[13px] text-[#9AA5B5] mt-1">Empty = cannot be shortened. 0:00 = may be cut entirely.</p>
           </div>
         </div>
 

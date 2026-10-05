@@ -68,22 +68,57 @@ export const secToMs = (sec: number): number => Math.round(sec * 1000);
 /**
  * Parse "m:ss", "mm:ss" or plain minutes ("6", "6.5") into whole seconds.
  * Returns null for empty or invalid input — callers must not treat that as zero.
+ * Zero is accepted only when the caller declares it meaningful (a minimum of 0:00); a host
+ * segment's duration is never zero.
  */
-export function parseDuration(input: string): number | null {
+export function parseDuration(input: string, opts: { allowZero?: boolean } = {}): number | null {
   const text = input.trim();
   if (text === "") return null;
+  let total: number;
   if (text.includes(":")) {
     const [mm, ss, ...rest] = text.split(":");
     if (rest.length > 0) return null;
     const m = Number(mm);
     const s = Number(ss);
     if (!Number.isInteger(m) || !Number.isInteger(s) || m < 0 || s < 0 || s > 59) return null;
-    const total = m * 60 + s;
-    return total > 0 ? total : null;
+    total = m * 60 + s;
+  } else {
+    const minutes = Number(text);
+    if (!Number.isFinite(minutes) || minutes < 0) return null;
+    total = Math.round(minutes * 60);
   }
-  const minutes = Number(text);
-  if (!Number.isFinite(minutes) || minutes <= 0) return null;
-  return Math.round(minutes * 60);
+  if (total === 0) return opts.allowZero ? 0 : null;
+  return total;
+}
+
+/** A backward device-clock jump larger than this is a discontinuity, not jitter. */
+export const CLOCK_DISCONTINUITY_TOLERANCE_MS = 2000;
+
+/** The desk clock's last reading: wall time plus the monotonic timer value it was read at. */
+export interface ClockState {
+  nowMs: number;
+  perfMs: number;
+}
+
+export interface ClockReading {
+  state: ClockState;
+  /** How far the device wall clock is behind the time the desk keeps (0 = aligned). */
+  behindByMs: number;
+}
+
+/**
+ * Monotonic REAL clock. Time advances by the browser's monotonic timer between readings, so a device
+ * wall-clock jump backwards can never make "now" earlier than a time already shown or recorded — a missed
+ * anchor cannot silently become on-track again. While the wall clock is behind, the gap is reported
+ * (uncertain alignment), not hidden. Forward jumps are ordinary elapsed time.
+ */
+export function advanceDeviceClock(prev: ClockState | null, deviceNowMs: number, perfNowMs: number): ClockReading {
+  if (prev === null) return { state: { nowMs: deviceNowMs, perfMs: perfNowMs }, behindByMs: 0 };
+  const monotonic = prev.nowMs + Math.max(0, perfNowMs - prev.perfMs);
+  if (deviceNowMs + CLOCK_DISCONTINUITY_TOLERANCE_MS < monotonic) {
+    return { state: { nowMs: monotonic, perfMs: perfNowMs }, behindByMs: monotonic - deviceNowMs };
+  }
+  return { state: { nowMs: Math.max(deviceNowMs, prev.nowMs), perfMs: perfNowMs }, behindByMs: 0 };
 }
 
 function zoneOffsetMs(ms: number, timeZone: string): number {

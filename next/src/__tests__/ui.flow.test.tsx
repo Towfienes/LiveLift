@@ -25,6 +25,7 @@ import ProductsPage from "@/app/products/page";
 import IntegrationsPage from "@/app/integrations/page";
 import { sessionStore } from "@/lib/store/sessionStore";
 import { scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
+import { SCENARIO_START_MS as SCENARIO_START } from "@/lib/domain";
 
 type PageComponent = (props: { params: Promise<{ sessionId: string }> }) => React.ReactElement;
 
@@ -172,7 +173,7 @@ describe("Prepare", () => {
     expect(screen.getByTestId("start-live-cta-btn")).toBeDisabled();
   });
 
-  it("a plan that cannot meet its own anchor is disclosed with the exact deficit", async () => {
+  it("a plan that cannot meet its own anchor is disclosed with the exact deficit and cannot start (UI-05)", async () => {
     sessionStore.editDraft("sim-missed", (d) => {
       d.plans[0].segments[0].targetSec = 7 * 60; // Opening 7m + Zip Hoodie 6m arrives 20:13, one minute after the anchor
     });
@@ -182,7 +183,9 @@ describe("Prepare", () => {
     expect(deficits[0]).toHaveTextContent("1:00 after its 20:12:00 anchor");
     expect(deficits[1]).toHaveTextContent("1:00 after its 20:26:00 anchor"); // the delay carries through to Closing
     expect(screen.getByTestId("readiness-issues")).toHaveTextContent("cannot start at 20:12:00");
-    expect(screen.getByTestId("start-live-cta-btn")).not.toBeDisabled(); // disclosed, not blocked
+    expect(screen.getByTestId("plan-blocked")).toBeInTheDocument(); // not "Plan ready"
+    expect(screen.queryByTestId("plan-ready")).toBeNull();
+    expect(screen.getByTestId("start-live-cta-btn")).toBeDisabled();
   });
 
   it("Start LIVE locks the baseline, starts the show and opens the desk", async () => {
@@ -455,5 +458,184 @@ describe("Operate desk details", () => {
     expect(desk.scrollTop).toBe(0);
     expect(spy).not.toHaveBeenCalled(); // scrollIntoView would have scrolled every ancestor
     document.body.innerHTML = "";
+  });
+});
+
+describe("Stage-2 audit repairs in the UI", () => {
+  it("UI-06: an unresolved attempt does not block reporting a later cue; an unplanned action has its own path", async () => {
+    advanceRehearsal("sim-buffered", 5); // 20:12 — Flash Sale running, its cue due
+    sessionStore.dispatch("sim-buffered", { type: "report_cue", cueId: "sim-buffered:cue-flash", report: "attempted" });
+    sessionStore.dispatch("sim-buffered", { type: "set_clock", toMs: SCENARIO_START + 15 * 60_000 });
+    sessionStore.dispatch("sim-buffered", { type: "advance_segment" }); // Cargo Pants starts; its pin cue is due
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    // The bar has moved on to the next unreported cue; the attempt stays visible as unresolved.
+    expect(await screen.findByTestId("cue-title")).toHaveTextContent("Pin Cargo Pants");
+    expect(screen.getByTestId("cue-unresolved-btn")).toHaveTextContent("1 attempt unresolved");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("cue-performed-btn"));
+    });
+    let s = sessionStore.getSession("sim-buffered")!;
+    expect(s.runtime.cues["sim-buffered:cue-pin-b"].state).toBe("performed");
+    expect(s.runtime.cues["sim-buffered:cue-flash"].state).toBe("attempted");
+
+    // Unplanned action: target, action, time and outcome.
+    fireEvent.click(screen.getByTestId("cue-report-btn"));
+    await act(async () => {});
+    fireEvent.change(screen.getByTestId("report-target"), { target: { value: "new" } });
+    expect(screen.getByTestId("unplanned-fields")).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Record report" }));
+    });
+    s = sessionStore.getSession("sim-buffered")!;
+    const actions = Object.values(s.runtime.actions);
+    expect(actions.length).toBe(1);
+    expect(actions[0]).toMatchObject({ action: "pin_product", state: "performed" });
+    expect(s.runtime.cues["sim-buffered:cue-flash"].state).toBe("attempted");
+  });
+
+  it("UI-07: after an end-by commitment, Next asks for coverage instead of assuming it", async () => {
+    advanceRehearsal("sim-buffered", 4); // end-by 20:12 committed
+    sessionStore.dispatch("sim-buffered", { type: "set_clock", toMs: SCENARIO_START + 12 * 60_000 });
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    fireEvent.click(await screen.findByTestId("advance-btn"));
+    await act(async () => {});
+    expect(screen.getByTestId("coverage-dialog")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("coverage-followup"), { target: { value: "Fit comparison" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Record and continue" }));
+    });
+    const run = sessionStore.getSession("sim-buffered")!.runtime.segments["sim-buffered:a"];
+    expect(run).toMatchObject({ state: "completed", coverage: "partial", followUp: "Fit comparison" });
+  });
+
+  it("UI-04: the host can say the remaining time is unknown, distinct from no estimate", async () => {
+    advanceRehearsal("sim-buffered", 2); // Zip Hoodie running
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    expect(await screen.findByTestId("now-end-line")).toHaveTextContent("target (no estimate entered)");
+    fireEvent.click(screen.getByTestId("estimate-open-btn"));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("estimate-unknown-btn"));
+    });
+    expect(screen.getByTestId("now-end-line")).toHaveTextContent("remaining time unknown");
+    expect(sessionStore.getSession("sim-buffered")!.runtime.segments["sim-buffered:a"].remainingUnknownAtMs).not.toBeNull();
+  });
+
+  it("UI-01: a command that cannot be saved is not shown as done, and can be retried explicitly", async () => {
+    advanceRehearsal("sim-buffered", 2);
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    const spy = vi.spyOn(localStorage, "setItem").mockImplementation(() => {
+      throw new DOMException("QuotaExceededError", "QuotaExceededError");
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId("quick-add-note-btn"));
+    });
+    fireEvent.change(screen.getByTestId("note-input"), { target: { value: "Sizing questions" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+    });
+    expect(screen.getByTestId("unsaved-banner")).toHaveTextContent("Not saved");
+    expect(screen.queryByTestId("command-ack-banner")).toBeNull();
+    expect(sessionStore.getSession("sim-buffered")!.events.some((e) => e.type === "note_added")).toBe(false);
+    spy.mockRestore();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("unsaved-retry-btn"));
+    });
+    expect(screen.queryByTestId("unsaved-banner")).toBeNull();
+    expect(sessionStore.getSession("sim-buffered")!.events.filter((e) => e.type === "note_added").map((e) => e.data.text)).toEqual(["Sizing questions"]);
+  });
+
+  it("UI-08: Prepare blocks a second REAL show and links to the running one", async () => {
+    const one = sessionStore.createSession({ title: "Running show", environment: "REAL", timezone: "UTC", plannedStartMs: Date.now(), start: { type: "template" } });
+    const two = sessionStore.createSession({ title: "Second show", environment: "REAL", timezone: "UTC", plannedStartMs: Date.now(), start: { type: "template" } });
+    if (!one.ok || !two.ok) throw new Error("create failed");
+    expect(sessionStore.dispatch(one.session.id, { type: "start_live", rebaseToNow: true })!.receipt.outcome).toBe("committed");
+    await renderPage(PreparePage as PageComponent, two.session.id);
+    expect(await screen.findByTestId("other-show-active")).toHaveTextContent("Running show is running on this device");
+    expect(screen.getByTestId("start-live-cta-btn")).toBeDisabled();
+  });
+
+  it("UI-14: an incomplete record reads as incomplete, never 'Did not run'", async () => {
+    const done = sessionStore.getSession("sim-buffered-done")!;
+    // Review reads stored data: inject the censored record directly into storage.
+    const raw = JSON.parse(localStorage.getItem("livelift.v3.SIMULATED")!);
+    const rec = raw.sessions.find((s: { id: string }) => s.id === done.id);
+    rec.runtime.segments[`${done.id}:a`].endedAtMs = null;
+    localStorage.setItem("livelift.v3.SIMULATED", JSON.stringify(raw));
+    sessionStore.reloadFromStorage();
+    await renderPage(ReviewPage as PageComponent, done.id);
+    const row = await screen.findByTestId(`review-row-${done.id}:a`);
+    expect(row).toHaveAttribute("data-outcome", "incomplete");
+    expect(within(row).getByTestId("incomplete-actual")).toHaveTextContent("Started 20:03:00 · end not recorded");
+    expect(row).not.toHaveTextContent("Did not run");
+  });
+
+  it("UI-12/13: import keeps distinct codes; a product a cue targets cannot be removed", async () => {
+    await renderPage(PreparePage as PageComponent, "sim-missed");
+    fireEvent.click(await screen.findByTestId("import-btn"));
+    await act(async () => {});
+    fireEvent.change(screen.getByTestId("import-text"), { target: { value: "A-B\tFirst item\t0\nA_B\tSecond item\t" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Import 2 products" }));
+    });
+    const codes = sessionStore.getSession("sim-missed")!.products.map((p) => p.code);
+    expect(codes).toEqual(expect.arrayContaining(["A-B", "A_B"]));
+    // Cargo Pants is the target of pin/unpin cues.
+    fireEvent.click(within(screen.getByTestId("prepare-product-list")).getByText("Cargo Pants"));
+    await act(async () => {});
+    expect(screen.getByTestId("product-used-by")).toHaveTextContent("cue “Pin Cargo Pants”");
+    expect(screen.getByTestId("remove-product-btn")).toBeDisabled();
+  });
+
+  it("UI-16: product cards open by keyboard and Inspect pack works; UI-17: no fixture person in the shell", async () => {
+    await renderPlain(<ProductsPage />);
+    const card = screen.getByTestId("product-card-prod_m01");
+    expect(card).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(card, { key: "Enter" });
+    expect(await screen.findByText("Product: Ribbed Tee")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: /Packs/ }));
+    fireEvent.click(screen.getByTestId("inspect-pack-pack_02"));
+    expect(await screen.findByTestId("pack-dialog")).toHaveTextContent("Ribbed Tee");
+    expect(screen.getByTestId("sample-library-notice")).toHaveTextContent("sample library");
+    expect(document.body.textContent).not.toContain("Linh");
+  });
+
+  it("UI-18: resetting one scenario keeps other rehearsals", async () => {
+    advanceRehearsal("sim-buffered", 2);
+    advanceRehearsal("sim-missed", 2);
+    await renderPlain(<SimulatorPage />);
+    fireEvent.click(await screen.findByTestId("reset-buffered"));
+    await act(async () => {});
+    expect(screen.getByTestId("reset-scenario-dialog")).toHaveTextContent("Every other rehearsal");
+    await act(async () => {
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Reset this run" }));
+    });
+    expect(sessionStore.getSession("sim-buffered")!.lifecycle).toBe("planned");
+    expect(sessionStore.getSession("sim-missed")!.lifecycle).toBe("active");
+    expect(sessionStore.getSession("sim-buffered-done")!.lifecycle).toBe("ended");
+  });
+});
+
+describe("UI-09: a backward REAL clock is surfaced, not silently applied", () => {
+  it("shows the discontinuity and keeps time moving forward", async () => {
+    const created = sessionStore.createSession({ title: "Clock show", environment: "REAL", timezone: "Asia/Ho_Chi_Minh", plannedStartMs: Date.now(), start: { type: "template" } });
+    if (!created.ok) throw new Error(created.reason);
+    const t = Date.now();
+    sessionStore.dispatch(created.session.id, { type: "start_live", nowMs: t });
+    sessionStore.dispatch(created.session.id, { type: "add_note", text: "late note", nowMs: t + 10 * 60_000 }); // recorded 10 minutes ahead
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      await renderPage(OperatePage as PageComponent, created.session.id); // device clock is now behind the recorded time
+      expect(await screen.findByTestId("clock-discontinuity")).toHaveTextContent("Device clock moved back");
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("clock-discontinuity-record-btn"));
+      });
+      const s = sessionStore.getSession(created.session.id)!;
+      expect(s.events.some((e) => e.type === "clock_discontinuity")).toBe(true);
+      // Nothing was recorded earlier than the latest recorded time.
+      const times = s.events.map((e) => e.recordedAtMs);
+      expect(times).toEqual([...times].sort((a, b) => a - b));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

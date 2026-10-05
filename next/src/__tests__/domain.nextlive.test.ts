@@ -162,7 +162,7 @@ describe("the next show is genuinely new", () => {
     const { session } = clone(source, proposeChanges(source).map((p) => p.id));
     expect(session.lifecycle).toBe("planned");
     expect(session.baselineLocked).toBe(false);
-    expect(session.runtime).toEqual({ startedAtMs: null, endedAtMs: null, currentSegmentId: null, segments: {}, cues: {} });
+    expect(session.runtime).toEqual({ startedAtMs: null, endedAtMs: null, currentSegmentId: null, segments: {}, cues: {}, actions: {} });
     expect(session.events).toEqual([]);
     expect(session.receipts).toEqual({});
     expect(session.scriptCursor).toBe(0);

@@ -8,7 +8,7 @@ import { SessionContextBar, StandardShell } from "@/components/shell";
 import { Button } from "@/components/ui";
 import { SessionGate } from "@/components/ops/SessionGate";
 import { PlanActualLanes } from "@/components/ops/PlanActualLanes";
-import { CueResults, HistoryList, PlanActualRows, ReviewSummary } from "@/components/ops/ReviewTable";
+import { ActionResults, CueResults, HistoryList, PlanActualRows, ReviewSummary } from "@/components/ops/ReviewTable";
 import { NextLivePanel } from "@/components/ops/NextLivePanel";
 import { Signal } from "@/components/ops/StatusChips";
 import { buildReview, formatClock, formatDay, formatDuration, proposeChanges } from "@/lib/domain";
@@ -145,6 +145,16 @@ function ReviewDesk({ session }: { session: Session }): React.ReactElement {
                   </p>
                   <CueResults cues={review.cues} tz={tz} />
                 </section>
+
+                {review.actions.length > 0 && (
+                  <section className="rounded-[12px] bg-[#13161C] p-3" aria-label="Unplanned actions">
+                    <h2 className="text-[18px] font-medium text-[#F5F7FC] px-2 mb-1">Unplanned actions</h2>
+                    <p className="text-[14px] text-[#9AA5B5] px-2 mb-1">
+                      Native actions the operator reported that were not planned as cues. Reports, not platform confirmation.
+                    </p>
+                    <ActionResults actions={review.actions} tz={tz} />
+                  </section>
+                )}
 
                 {review.revisions.length > 0 && (
                   <section className="rounded-[12px] bg-[#13161C] p-4" aria-label="Plan changes during the show" data-testid="plan-revisions">

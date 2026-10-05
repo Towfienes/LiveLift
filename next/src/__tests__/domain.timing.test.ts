@@ -87,13 +87,17 @@ describe("planned schedule", () => {
     expect(r.receipt.code).toBe("plan_invalid");
   });
 
-  it("flags a baseline that cannot meet its own anchor", () => {
+  it("a baseline that cannot meet its own anchor is a Start blocker, not a warning (UI-05)", () => {
     const s = p0Session();
     const plan = { ...s.plans[0], segments: s.plans[0].segments.map((x) => (x.id === "open" ? { ...x, targetSec: min(7) } : x)) };
     const issues = validatePlan(plan, [], "Asia/Ho_Chi_Minh");
     const infeasible = issues.find((i) => i.code === "anchor_infeasible");
     expect(infeasible?.deficitSec).toBe(min(2));
-    expect(infeasible?.severity).toBe("warning");
+    expect(infeasible?.severity).toBe("blocker");
+    // The domain refuses to start it — a disabled button is not the only guard.
+    const r = applyCommand({ ...s, plans: [plan] }, { type: "start_live", nowMs: T0 });
+    expect(r.receipt.code).toBe("plan_invalid");
+    expect(r.session.lifecycle).toBe("planned");
   });
 });
 
@@ -231,7 +235,11 @@ describe("minimum exhaustion", () => {
     const denied = applyCommand(s, { type: "end_segment", segmentId: id, nowMs: at(8) });
     expect(denied.receipt.outcome).toBe("rejected");
     expect(denied.receipt.code).toBe("needs_ack_below_minimum");
-    const ok = applyCommand(s, { type: "end_segment", segmentId: id, acknowledgeBelowMinimum: true, nowMs: at(8) });
+    // Coverage is declared by the operator; ending below the minimum does not invent a coverage value (UI-07).
+    const undeclared = applyCommand(s, { type: "end_segment", segmentId: id, acknowledgeBelowMinimum: true, nowMs: at(8) });
+    expect(undeclared.session.runtime.segments[id].belowMinimum).toBe(true);
+    expect(undeclared.session.runtime.segments[id].coverage).toBeNull();
+    const ok = applyCommand(s, { type: "end_segment", segmentId: id, coverage: "partial", acknowledgeBelowMinimum: true, nowMs: at(8) });
     expect(ok.receipt.outcome).toBe("committed");
     const rowRun = ok.session.runtime.segments[id];
     expect(rowRun.belowMinimum).toBe(true);

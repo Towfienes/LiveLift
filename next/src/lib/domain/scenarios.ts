@@ -192,7 +192,13 @@ const BUFFERED: Scenario = {
       recoveryLabel: "End Zip Hoodie by 20:12:00",
       build: (c) => ({ type: "commit_end_by", segmentId: c.sid("a"), endByMs: c.at(min(12)) }),
     },
-    { id: "flash-start", label: "Zip Hoodie ends · Flash Sale starts at its anchor (20:12)", atSec: min(12), build: () => ({ type: "advance_segment" }) },
+    {
+      id: "flash-start",
+      label: "Zip Hoodie ends (operator: unfinished points, follow up in Q&A) · Flash Sale starts at its anchor (20:12)",
+      atSec: min(12),
+      // The operator's declaration, not an automatic transfer: the remaining points are a manual follow-up.
+      build: () => ({ type: "advance_segment", coverage: "partial", followUp: "Remaining Zip Hoodie points — cover in Q&A" }),
+    },
     {
       id: "flash-cue",
       label: "Operator reports Flash Sale activated in TikTok",

@@ -7,6 +7,7 @@ import {
   formatClock,
   formatDuration,
   parseProductRows,
+  productReferences,
   toProductSnapshots,
   type PlanIssue,
   type Schedule,
@@ -243,7 +244,8 @@ export function ProductPack({
 }: {
   products: ProductSnapshot[];
   plan: PlanVersion;
-  onAdd: (items: ProductSnapshot[]) => void;
+  /** Returns false when nothing was added (the reason is shown by the page). */
+  onAdd: (items: ProductSnapshot[]) => boolean;
   onPatch: (productId: string, patch: Partial<ProductSnapshot>) => void;
   onRemove: (productId: string) => void;
 }): React.ReactElement {
@@ -253,7 +255,9 @@ export function ProductPack({
   const [importText, setImportText] = useState("");
 
   const selected = products.find((p) => p.id === selectedId) ?? null;
-  const usedBy = selected ? plan.segments.filter((s) => s.productId === selected.id) : [];
+  // Segments AND cues can target a product; removing it would leave a dangling target.
+  const refs = selected ? productReferences(plan, selected.id) : { segments: [], cues: [] };
+  const usedBy = [...refs.segments.map((s) => s.title || "Untitled segment"), ...refs.cues.map((c) => `cue “${c.title}”`)];
   const rows = useMemo(() => parseProductRows(importText, products.map((p) => p.code)), [importText, products]);
   const validRows = rows.filter((r) => r.status === "valid");
   const available = PRODUCT_LIBRARY.filter((p) => !products.some((x) => x.id === p.id || x.code === p.code));
@@ -296,7 +300,10 @@ export function ProductPack({
                     {p.status === "disabled" && <Signal tone="muted" icon="ri-subtract-line" className="text-[12px]">Disabled</Signal>}
                   </div>
                   <p className="text-[16px] font-medium text-[#F5F7FC] truncate">{p.name}</p>
-                  <p className="text-[13px] text-[#CAD0DA]">{p.price !== null ? `${p.currency} ${p.price}` : "Not entered"}</p>
+                  <p className="text-[14px] text-[#CAD0DA]">
+                    {p.price !== null ? `${p.currency} ${p.price}` : "Not entered"}
+                    {p.source === "sample_library" && <span className="ml-2 text-[#F6C875]" data-testid="sample-tag">Sample</span>}
+                  </p>
                 </div>
               </button>
             </li>
@@ -327,7 +334,8 @@ export function ProductPack({
                 variant="danger"
                 size="sm"
                 disabled={usedBy.length > 0}
-                title={usedBy.length > 0 ? `Used by ${usedBy.map((s) => s.title).join(", ")}` : undefined}
+                title={usedBy.length > 0 ? `Used by ${usedBy.join(", ")}` : undefined}
+                data-testid="remove-product-btn"
                 onClick={() => {
                   onRemove(selected.id);
                   setSelectedId(null);
@@ -336,13 +344,22 @@ export function ProductPack({
                 Remove
               </Button>
             </div>
-            {usedBy.length > 0 && <p className="text-[13px] text-[#9AA5B5]">Used by {usedBy.map((s) => s.title).join(", ")}; remove those links first.</p>}
+            {usedBy.length > 0 && (
+              <p className="text-[14px] text-[#9AA5B5]" data-testid="product-used-by">
+                Used by {usedBy.join(", ")}. Change or remove those first, so no segment or cue points at a missing product.
+              </p>
+            )}
           </div>
         )}
       </Dialog>
 
       <Dialog isOpen={libraryOpen} onClose={() => setLibraryOpen(false)} title="Add from library" cancelText="Close" size="md">
         <div className="space-y-3 pb-1" data-testid="library-dialog">
+          <p className="text-[15px] text-[#F6C875]" data-testid="library-sample-notice">
+            <i className="ri-information-line mr-1.5" aria-hidden="true" />
+            Sample library shipped with LiveLift — example products, names and prices, not your catalog. Copies are marked “Sample” until you edit
+            them; check every one before a real show.
+          </p>
           {PACK_LIBRARY.map((pack) => {
             const items = PRODUCT_LIBRARY.filter((p) => pack.productIds.includes(p.id) && available.some((a) => a.id === p.id));
             return (
@@ -351,7 +368,7 @@ export function ProductPack({
                   <p className="text-[15px] font-medium text-[#F5F7FC]">{pack.name}</p>
                   <p className="text-[13px] text-[#9AA5B5]">{items.length} not yet in this show</p>
                 </div>
-                <Button size="sm" variant="secondary" disabled={items.length === 0} onClick={() => onAdd(items.map((p) => structuredClone(p)))}>
+                <Button size="sm" variant="secondary" disabled={items.length === 0} onClick={() => onAdd(items.map((p) => structuredClone(p)))} data-testid={`add-pack-${pack.id}`}>
                   Add pack
                 </Button>
               </div>
@@ -382,9 +399,12 @@ export function ProductPack({
         confirmText={`Import ${validRows.length} product${validRows.length === 1 ? "" : "s"}`}
         confirmDisabled={validRows.length === 0}
         onConfirm={() => {
-          onAdd(toProductSnapshots(rows, "Imported"));
-          setImportText("");
-          setImportOpen(false);
+          // Distinct codes keep distinct identities even when they normalise alike ("A-B" vs "A_B").
+          const items = toProductSnapshots(rows, "Imported", products.map((p) => p.id));
+          if (onAdd(items)) {
+            setImportText("");
+            setImportOpen(false);
+          }
         }}
         size="lg"
       >

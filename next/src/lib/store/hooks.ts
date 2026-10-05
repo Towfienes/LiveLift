@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { EnvironmentIdentity, Session } from "@/contracts";
-import { effectiveNowMs, type CommandResult } from "@/lib/domain";
-import { sessionStore, type DispatchInput, type StoreState } from "./sessionStore";
+import {
+  CLOCK_DISCONTINUITY_TOLERANCE_MS,
+  advanceDeviceClock,
+  effectiveNowMs,
+  lastRecordedMs,
+  type ClockState,
+} from "@/lib/domain";
+import { sessionStore, type DispatchInput, type DispatchResult, type StoreState } from "./sessionStore";
 
 /** Subscribe to the store and trigger hydration on the client (server render stays unhydrated). */
 export function useStoreState(): StoreState {
@@ -39,36 +45,91 @@ export function useSessions(env?: EnvironmentIdentity): { hydrated: boolean; ses
   };
 }
 
+export interface ClockDiscontinuity {
+  /** What the device wall clock reads. */
+  deviceNowMs: number;
+  /** The time the desk keeps using (never earlier than a time already shown or recorded). */
+  keptNowMs: number;
+  behindByMs: number;
+}
+
+export interface DeskClock {
+  /** null until mounted, so server and first client render agree. */
+  nowMs: number | null;
+  /** The device clock is behind the time LiveLift keeps: alignment is uncertain. */
+  discontinuity: ClockDiscontinuity | null;
+  /** A fresh reading for a command, taken at the moment of the click. */
+  read: () => number;
+}
+
 /**
- * The clock the screen should render with.
+ * The clock the desk renders and records with.
  * - SIMULATED: the session's virtual clock (changes only through recorded commands).
- * - REAL: the device clock, ticking once a second after mount.
- * Returns null until mounted so server and first client render agree.
+ * - REAL: the device clock, ticking once a second after mount. It is monotonic: a backward wall-clock
+ *   jump never makes "now" earlier than a time already shown or recorded (so a missed anchor cannot
+ *   quietly become on-track); time keeps advancing on the browser's monotonic timer and the gap is surfaced.
  */
-export function useNow(session: Session | null, tickMs = 1000): number | null {
-  const [deviceNow, setDeviceNow] = useState<number | null>(null);
+export function useDeskClock(session: Session | null, tickMs = 1000): DeskClock {
   const isReal = session?.environment === "REAL";
+  const sessionId = session?.id ?? null;
+  const floor = session && isReal ? lastRecordedMs(session) : null;
+  const floorRef = useRef<number | null>(floor);
+  const stateRef = useRef<ClockState | null>(null);
+  const [reading, setReading] = useState<{ nowMs: number; deviceNowMs: number; behindByMs: number } | null>(null);
+
+  useEffect(() => {
+    floorRef.current = floor;
+  }, [floor]);
+
+  const read = useCallback((): { nowMs: number; deviceNowMs: number; behindByMs: number } => {
+    const device = Date.now();
+    const perf = typeof performance !== "undefined" ? performance.now() : 0;
+    let prev = stateRef.current;
+    const f = floorRef.current;
+    // Never before the latest recorded event: that time was already used.
+    if (f !== null && (prev === null || f > prev.nowMs)) prev = { nowMs: f, perfMs: perf };
+    const r = advanceDeviceClock(prev, device, perf);
+    stateRef.current = r.state;
+    return { nowMs: r.state.nowMs, deviceNowMs: device, behindByMs: r.behindByMs };
+  }, []);
 
   useEffect(() => {
     if (!isReal) return;
-    setDeviceNow(Date.now());
-    const timer = window.setInterval(() => setDeviceNow(Date.now()), tickMs);
+    stateRef.current = null;
+    const tick = (): void => setReading(read());
+    tick();
+    const timer = window.setInterval(tick, tickMs);
     return () => window.clearInterval(timer);
-  }, [isReal, tickMs]);
+  }, [isReal, tickMs, sessionId, read]);
 
-  if (!session) return null;
-  if (session.environment === "SIMULATED") return effectiveNowMs(session, 0);
-  return deviceNow;
+  if (!session) return { nowMs: null, discontinuity: null, read: () => Date.now() };
+  if (session.environment === "SIMULATED") {
+    const v = effectiveNowMs(session, 0);
+    return { nowMs: v, discontinuity: null, read: () => v };
+  }
+  return {
+    nowMs: reading?.nowMs ?? null,
+    discontinuity:
+      reading && reading.behindByMs > CLOCK_DISCONTINUITY_TOLERANCE_MS
+        ? { deviceNowMs: reading.deviceNowMs, keptNowMs: reading.nowMs, behindByMs: reading.behindByMs }
+        : null,
+    read: () => read().nowMs,
+  };
+}
+
+/** The clock the screen should render with (see useDeskClock). */
+export function useNow(session: Session | null, tickMs = 1000): number | null {
+  return useDeskClock(session, tickMs).nowMs;
 }
 
 /** Dispatch commands for a session using the revision the screen rendered, so a stale click is rejected. */
 export function useSessionActions(session: Session | null): {
-  dispatch: (input: DispatchInput) => CommandResult | null;
+  dispatch: (input: DispatchInput) => DispatchResult | null;
 } {
   const sessionId = session?.id ?? null;
   const renderedRevision = session?.revision;
   const dispatch = useCallback(
-    (input: DispatchInput): CommandResult | null => {
+    (input: DispatchInput): DispatchResult | null => {
       if (!sessionId) return null;
       return sessionStore.dispatch(sessionId, { expectedRevision: renderedRevision, ...input });
     },

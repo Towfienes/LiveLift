@@ -10,6 +10,8 @@ export default function ProductsPage() {
   const [activeTab, setActiveTab] = useState<"products" | "packs">("products");
   const [products] = useState<ProductSnapshot[]>(PRODUCT_LIBRARY);
   const [selectedProduct, setSelectedProduct] = useState<ProductSnapshot | null>(null);
+  const [inspectPackId, setInspectPackId] = useState<string | null>(null);
+  const inspected = PACK_LIBRARY.find((p) => p.id === inspectPackId) ?? null;
 
   const packs = PACK_LIBRARY;
 
@@ -22,7 +24,7 @@ export default function ProductsPage() {
               Product Library
             </h1>
             <p className="text-[16px] text-[#B7C1CE] mt-1">
-              Reusable products and pack templates for Run of Show preparation.
+              Sample products and pack templates for Run of Show preparation.
             </p>
           </div>
 
@@ -59,8 +61,9 @@ export default function ProductsPage() {
         {/* Note on session separation */}
         <div className="rounded-[8px] bg-[#101319] border border-[#232935] px-4 py-2.5 text-[14px] text-[#8A95A5]">
           <i className="ri-information-line mr-1.5 text-[#CAD0DA]" />
-          <span>
-            Library changes create independent session snapshots. Edits here do NOT mutate past or active LIVE sessions.
+          <span data-testid="sample-library-notice">
+            This is the sample library shipped with LiveLift: example names and prices, not your catalog. Adding a product to a show copies it as
+            a snapshot marked “Sample” — check it in Prepare. Nothing here changes past or active shows.
           </span>
         </div>
 
@@ -70,8 +73,18 @@ export default function ProductsPage() {
             {products.map((prod) => (
               <div
                 key={prod.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open ${prod.code} ${prod.name}`}
+                data-testid={`product-card-${prod.id}`}
                 onClick={() => setSelectedProduct(prod)}
-                className="rounded-[12px] bg-[#13161C] border border-[#232935] p-5 flex flex-col justify-between hover:bg-[#181C24] cursor-pointer transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedProduct(prod);
+                  }
+                }}
+                className="rounded-[12px] bg-[#13161C] border border-[#232935] p-5 flex flex-col justify-between hover:bg-[#181C24] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00] focus-visible:outline-offset-3"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
@@ -129,14 +142,38 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Button variant="secondary" size="sm">
-                    Inspect Pack
+                  <Button variant="secondary" size="sm" onClick={() => setInspectPackId(pack.id)} data-testid={`inspect-pack-${pack.id}`}>
+                    Inspect pack
                   </Button>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {/* Pack inspection */}
+        <Dialog isOpen={inspected !== null} onClose={() => setInspectPackId(null)} title={inspected ? `Pack: ${inspected.name}` : ""} cancelText="Close">
+          {inspected && (
+            <div className="space-y-2 pb-1" data-testid="pack-dialog">
+              <p className="text-[15px] text-[#CAD0DA]">{inspected.description}</p>
+              <ul className="divide-y divide-[#262C38]">
+                {inspected.productIds.map((id) => {
+                  const p = PRODUCT_LIBRARY.find((x) => x.id === id);
+                  return (
+                    <li key={id} className="py-2 flex items-center justify-between gap-3 text-[15px]">
+                      <span className="text-[#F5F7FC]">
+                        <span className="font-mono text-[14px] text-[#AEB7C5] mr-2">{p?.code ?? id}</span>
+                        {p?.name ?? "Not in the library"}
+                      </span>
+                      <span className="text-[#CAD0DA] tabular-nums">{p ? (p.price !== null ? `${p.currency} ${p.price}` : "Not entered") : "—"}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="text-[14px] text-[#9AA5B5]">Use “Saved pack” in Create LIVE, or Library in Prepare, to copy this pack into a show.</p>
+            </div>
+          )}
+        </Dialog>
 
         {/* Product Inspection Modal */}
         <Dialog

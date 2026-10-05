@@ -5,7 +5,7 @@ import Link from "next/link";
 import { StandardShell } from "@/components/shell";
 import { Button, Dialog } from "@/components/ui";
 import { Signal } from "@/components/ops/StatusChips";
-import { SCENARIOS } from "@/lib/domain";
+import { SCENARIOS, type ScenarioId } from "@/lib/domain";
 import { sessionStore } from "@/lib/store/sessionStore";
 import { useSessions } from "@/lib/store/hooks";
 
@@ -18,6 +18,8 @@ const STATUS: Record<string, { text: string; action: string; path: string }> = {
 export default function SimulatorPage(): React.ReactElement {
   const { hydrated, sessions } = useSessions("SIMULATED");
   const [resetOpen, setResetOpen] = useState(false);
+  const [resetScenarioId, setResetScenarioId] = useState<ScenarioId | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const completed = sessions.filter((s) => s.lifecycle === "ended");
   const custom = sessions.filter((s) => !SCENARIOS.some((x) => x.sessionId === s.id) && s.id !== "sim-buffered-done");
 
@@ -63,13 +65,22 @@ export default function SimulatorPage(): React.ReactElement {
                   <div className="mt-4 pt-4 border-t border-[#202632]">
                     {session && st ? (
                       <>
-                        <p className="text-[13px] text-[#9AA5B5] mb-2">{st.text}</p>
-                        <Link href={`/live/${session.id}/${st.path}`}>
-                          <Button variant="primary" icon="ri-play-line" data-testid={`open-${sc.id}`}>{st.action}</Button>
-                        </Link>
+                        <p className="text-[14px] text-[#9AA5B5] mb-2">{st.text}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link href={`/live/${session.id}/${st.path}`}>
+                            <Button variant="primary" icon="ri-play-line" data-testid={`open-${sc.id}`}>{st.action}</Button>
+                          </Link>
+                          {session.lifecycle !== "planned" && (
+                            <Button variant="ghost" icon="ri-restart-line" onClick={() => setResetScenarioId(sc.id)} data-testid={`reset-${sc.id}`}>
+                              Reset this run
+                            </Button>
+                          )}
+                        </div>
                       </>
                     ) : (
-                      <p className="text-[14px] text-[#F6C875]">Not available. Reset the simulator to regenerate it.</p>
+                      <Button variant="secondary" icon="ri-restart-line" onClick={() => setResetScenarioId(sc.id)} data-testid={`reset-${sc.id}`}>
+                        Restore this scenario
+                      </Button>
                     )}
                   </div>
                 </li>
@@ -103,29 +114,69 @@ export default function SimulatorPage(): React.ReactElement {
           </p>
         )}
 
+        {message && (
+          <p role="status" className="mt-6 text-[15px] text-[#F6C875]" data-testid="simulator-message">
+            {message}
+          </p>
+        )}
+
         <div className="mt-8 flex items-center gap-4 flex-wrap">
           <Link href="/live/new?env=sim">
             <Button variant="secondary" icon="ri-add-line">Create your own rehearsal</Button>
           </Link>
-          <Button variant="ghost" icon="ri-restart-line" onClick={() => setResetOpen(true)} data-testid="reset-simulator-btn">
-            Reset rehearsals
+          <Button variant="ghost" icon="ri-delete-bin-line" onClick={() => setResetOpen(true)} data-testid="purge-rehearsals-btn">
+            Delete all rehearsals…
           </Button>
         </div>
 
         <Dialog
+          isOpen={resetScenarioId !== null}
+          onClose={() => setResetScenarioId(null)}
+          title="Reset this rehearsal run?"
+          confirmText="Reset this run"
+          onConfirm={() => {
+            if (!resetScenarioId) return;
+            const r = sessionStore.resetScenario(resetScenarioId);
+            setMessage(r.ok ? null : r.reason);
+            setResetScenarioId(null);
+          }}
+        >
+          {(() => {
+            const sc = SCENARIOS.find((x) => x.id === resetScenarioId);
+            const dependents = sc ? sessions.filter((s) => s.derivedFrom?.sessionId === sc.sessionId).length : 0;
+            return (
+              <div className="space-y-2 text-[15px] text-[#CAD0DA]" data-testid="reset-scenario-dialog">
+                <p>
+                  Only <strong className="text-[#F5F7FC]">{sc?.title}</strong> goes back to its starting state; its run history is cleared.
+                  Every other rehearsal — completed runs, your own rehearsals and plans made from them — is kept exactly as it is. REAL shows are
+                  never touched.
+                </p>
+                {dependents > 0 && (
+                  <p className="text-[#F6C875]">
+                    {dependents} plan{dependents === 1 ? " was" : "s were"} created from this run. {dependents === 1 ? "It keeps" : "They keep"} {dependents === 1 ? "its" : "their"} own copy and change list; the link back will open the fresh run.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+        </Dialog>
+
+        <Dialog
           isOpen={resetOpen}
           onClose={() => setResetOpen(false)}
-          title="Reset all rehearsals?"
-          confirmText="Reset rehearsals"
+          title="Delete every rehearsal?"
+          confirmText="Delete all rehearsals"
           confirmVariant="danger"
           onConfirm={() => {
-            sessionStore.resetSimulator();
+            const r = sessionStore.purgeRehearsals();
+            setMessage(r.ok ? null : r.reason);
             setResetOpen(false);
           }}
         >
           <p className="text-[15px] text-[#CAD0DA]" data-testid="reset-dialog">
-            This removes every SIMULATED show on this device — including ones you created — and regenerates the scenarios above. REAL shows are
-            not touched.
+            This permanently deletes all {sessions.length} SIMULATED shows on this device — completed runs, your own rehearsals and plans made from
+            them — and regenerates only the scripted scenarios. REAL shows are not touched. To reset one scenario, use “Reset this run” on its card
+            instead.
           </p>
         </Dialog>
       </div>
