@@ -4,8 +4,14 @@ import React from "react";
 import { EnvironmentBadge } from "@/components/ui/EnvironmentBadge";
 import { MetricValue } from "@/components/ui/MetricValue";
 import { EvidenceLabel } from "@/components/ui/EvidenceLabel";
-import { simulator } from "@/lib/simulator/simulatorEngine";
-import { FIXTURE_ACTIVE_SNAPSHOT } from "@/fixtures/sessions";
+import {
+  analyzeRecovery,
+  applyCommand,
+  buildReview,
+  createScenarioSession,
+  runScript,
+  SCENARIO_START_MS,
+} from "@/lib/domain";
 
 describe("Non-negotiable Semantic Invariants", () => {
   it("distinguishes REAL and SIMULATED environments visibly", () => {
@@ -34,14 +40,7 @@ describe("Non-negotiable Semantic Invariants", () => {
   });
 
   it("ensures missing metric renders as 'Not available' and NEVER as 0", () => {
-    render(
-      <MetricValue
-        label="Platform GMV"
-        value={null}
-        unit="USD"
-        finality="unavailable"
-      />
-    );
+    render(<MetricValue label="Platform GMV" value={null} unit="USD" finality="unavailable" />);
 
     const notAvailable = screen.getByTestId("metric-not-available");
     expect(notAvailable).toHaveTextContent("Not available");
@@ -51,52 +50,35 @@ describe("Non-negotiable Semantic Invariants", () => {
   });
 
   it("ensures numeric zero is rendered accurately when measured as zero", () => {
-    render(
-      <MetricValue
-        label="Returns Recorded"
-        value={0}
-        unit="items"
-        finality="final"
-      />
-    );
+    render(<MetricValue label="Returns Recorded" value={0} unit="items" finality="final" />);
 
     const numericVal = screen.getByTestId("metric-numeric-value");
     expect(numericVal).toHaveTextContent("0 items");
     expect(screen.queryByTestId("metric-not-available")).toBeNull();
   });
 
-  it("ensures recommendation acceptance does NOT start or change the presenting product", () => {
-    simulator.reset();
-    const before = simulator.getSnapshot("session_oct_evening");
-    expect(before?.presentingProduct?.code).toBe("M02"); // Currently Zip Hoodie
-    expect(before?.currentSegment?.id).toBe("seg_03");
+  it("recommendation != acceptance: showing recovery options changes nothing until one is chosen", () => {
+    // 20:07 — the host estimate has put the 20:12 Flash Sale at risk.
+    const s = runScript(createScenarioSession("buffered"), 3);
+    const before = JSON.stringify(s);
+    const analysis = analyzeRecovery(s, SCENARIO_START_MS + 7 * 60_000);
+    expect(analysis.options.length).toBeGreaterThan(0);
+    expect(JSON.stringify(s)).toBe(before);
 
-    // Accept NEXT recommendation (which targets M03 Cargo Pants)
-    const afterAccept = simulator.acceptRecommendation(
-      "session_oct_evening",
-      "rec_m03"
-    );
-
-    expect(afterAccept?.activeRecommendation?.decision).toBe("accepted");
-    expect(afterAccept?.activeRecommendation?.decisionActor).toBe("Linh");
-
-    // Invariant: NOW remains unchanged! Presenting product is STILL M02, NOT M03!
-    expect(afterAccept?.presentingProduct?.code).toBe("M02");
-    expect(afterAccept?.currentSegment?.id).toBe("seg_03");
+    // Choosing one records the decision first, then the transition — and still reports nothing to the platform.
+    const option = analysis.options[0];
+    const chosen = applyCommand(s, { ...option.command, nowMs: 0, recoveryId: option.id, recoveryLabel: option.label });
+    const types = chosen.session.events.slice(s.events.length).map((e) => e.type);
+    expect(types[0]).toBe("recovery_selected");
+    expect(Object.values(chosen.session.runtime.cues).every((c) => c.state === "pending")).toBe(true);
   });
 
-  it("ensures Presenting, Pinned, and Recommended products remain separate concepts", () => {
-    const snap = FIXTURE_ACTIVE_SNAPSHOT;
-    // Presenting: M02 (operator reported)
-    expect(snap.presentingProduct?.code).toBe("M02");
-    // Pinned: M02, but verification is UNKNOWN
-    expect(snap.pinnedProduct?.code).toBe("M02");
-    expect(snap.pinnedVerification).toBe("unknown");
-    // Recommended: M03 (LiveLift policy)
-    expect(snap.activeRecommendation?.targetProductId).toBe("prod_m03");
-
-    expect(snap.presentingProduct?.code).not.toBe(
-      snap.activeRecommendation?.targetProductId
-    );
+  it("a report is not platform confirmation: operator cues stay 'reported' with verification Unknown", () => {
+    const review = buildReview(runScript(createScenarioSession("buffered")))!;
+    const operatorCues = review.cues.filter((c) => c.audience === "operator");
+    expect(operatorCues.length).toBeGreaterThan(0);
+    expect(operatorCues.every((c) => c.state === "performed" && c.verification === "unknown")).toBe(true);
+    // Nothing in the model can represent "platform confirmed".
+    expect(JSON.stringify(review)).not.toMatch(/platform_confirmed|confirmed by platform/i);
   });
 });

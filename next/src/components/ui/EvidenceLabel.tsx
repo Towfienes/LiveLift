@@ -1,5 +1,7 @@
 import React from "react";
-import { EvidenceClass, ExecutionState, RecommendationDecision } from "@/contracts";
+type EvidenceClass = "observed" | "platform_confirmed" | "failed" | "unknown" | "simulated";
+type ExecutionState = "not_attempted" | "attempted" | "operator_reported";
+type RecommendationDecision = "proposed" | "accepted" | "rejected" | "overridden";
 
 export type EvidenceLabelType =
   | EvidenceClass

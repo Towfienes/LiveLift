@@ -2,66 +2,71 @@
 
 import React from "react";
 import Link from "next/link";
-import { EnvironmentIdentity, OperatorContext } from "@/contracts";
+import type { EnvironmentIdentity, OperatorContext } from "@/contracts";
 import { EnvironmentBadge, Button } from "@/components/ui";
 
 export interface FocusedShellProps {
-  sessionId: string;
   sessionTitle: string;
   environment: EnvironmentIdentity;
-  elapsedSeconds: number;
+  /** Runtime elapsed as m:ss, or null until the clock is available (avoids a hydration mismatch). */
+  elapsedLabel: string | null;
+  tracking: "active" | "ended";
   operator: OperatorContext;
-  accountAssociation?: string | null;
-  onEndLiveClick: () => void;
+  accountLabel?: string | null;
+  /** Right side of the operator line — e.g. the rehearsal controls for a SIMULATED show. */
+  contextExtra?: React.ReactNode;
+  onEndLiveClick?: () => void;
   children: React.ReactNode;
 }
 
 export const FocusedShell: React.FC<FocusedShellProps> = ({
-  sessionId: _sessionId,
   sessionTitle,
   environment,
-  elapsedSeconds,
+  elapsedLabel,
+  tracking,
   operator,
-  accountAssociation,
+  accountLabel,
+  contextExtra,
   onEndLiveClick,
   children,
 }) => {
-  const formatElapsed = (totalSec: number) => {
-    const mins = Math.floor(totalSec / 60);
-    const secs = totalSec % 60;
-    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  };
+  const simulated = environment === "SIMULATED";
 
   return (
-    <div className="h-screen flex flex-col bg-[#090B0F] text-[#F5F7FC] overflow-hidden">
-      {/* Focused Header (64px) */}
-      <header className="h-[64px] bg-[#101319] px-6 flex items-center justify-between border-b border-[#1E232B] shrink-0">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-[#DFFF00] hover:opacity-80" title="Return to Home">
+    <div className="h-dvh flex flex-col bg-[#090B0F] text-[#F5F7FC] overflow-hidden">
+      {/* Focused header: no global navigation. Leaving the desk does not stop runtime. */}
+      <header className="h-[60px] [@media(max-height:800px)]:h-[52px] bg-[#101319] px-5 flex items-center justify-between border-b border-[#1E232B] shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/" className="text-[#DFFF00] hover:opacity-80 shrink-0" title="Leave the desk (tracking continues)">
             <span className="text-[24px]">
               <i className="ri-bar-chart-grouped-line" aria-hidden="true" />
             </span>
           </Link>
-
-          <h1 className="text-[22px] font-medium tracking-[-0.6px] text-[#F5F7FC] truncate max-w-[400px]">
+          <h1 className="text-[20px] font-medium tracking-[-0.4px] text-[#F5F7FC] truncate max-w-[34vw]">
             {sessionTitle}
           </h1>
-
           <EnvironmentBadge environment={environment} size="sm" />
         </div>
 
-        {/* Runtime clock & Actions */}
-        <div className="flex items-center gap-5">
-          <span className="inline-flex items-center gap-2 text-[15px] font-medium text-[#DFFF00]">
-            <i className="ri-record-circle-line animate-pulse" aria-hidden="true" />
-            <span>Tracking active</span>
+        <div className="flex items-center gap-4 shrink-0">
+          <span
+            className={`inline-flex items-center gap-2 text-[15px] font-medium ${
+              tracking === "active" ? "text-[#DFFF00]" : "text-[#CAD0DA]"
+            }`}
+          >
+            <i
+              className={tracking === "active" ? "ri-record-circle-line" : "ri-stop-circle-line"}
+              aria-hidden="true"
+            />
+            <span>{tracking === "active" ? "Tracking active" : "Tracking ended"}</span>
           </span>
 
           <span
             data-testid="elapsed-runtime-clock"
-            className="text-[28px] font-medium tracking-tight text-[#F5F7FC] tabular-nums"
+            aria-label="LiveLift tracked time"
+            className="text-[26px] font-medium tracking-tight text-[#F5F7FC] tabular-nums min-w-[72px] text-right"
           >
-            {formatElapsed(elapsedSeconds)}
+            {elapsedLabel ?? "--:--"}
           </span>
 
           <Link
@@ -72,37 +77,47 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
             <span>Leave desk</span>
           </Link>
 
-          <Button
-            variant="secondary"
-            onClick={onEndLiveClick}
-            data-testid="end-live-header-btn"
-            className="bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944]"
-          >
-            End LIVE
-          </Button>
+          {onEndLiveClick && (
+            <Button
+              variant="secondary"
+              onClick={onEndLiveClick}
+              data-testid="end-live-header-btn"
+              className="bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944]"
+            >
+              End LIVE
+            </Button>
+          )}
         </div>
       </header>
 
-      {/* Operator and Room Context Bar (36px) */}
-      <div className="h-[36px] px-6 bg-[#0C0E14] border-b border-[#1A1F27] flex items-center justify-between text-[#B7C1CE] text-[14px] shrink-0">
-        <div className="flex items-center gap-2">
-          <i className="ri-user-settings-line text-[#CAD0DA]" aria-hidden="true" />
-          <span className="text-[#CAD0DA]">
-            {operator.isLead ? "You are Lead · " : "Assistant · "}
-            <strong>{operator.name}</strong>
+      {/* Operator and room context line */}
+      <div
+        className={`min-h-[36px] px-5 border-b flex items-center justify-between gap-4 text-[14px] shrink-0 ${
+          simulated
+            ? "bg-[#1A1726] border-[#2E2745] text-[#C8B2FF]"
+            : "bg-[#0C0E14] border-[#1A1F27] text-[#B7C1CE]"
+        }`}
+      >
+        <div className="flex items-center gap-4 min-w-0">
+          <span className="inline-flex items-center gap-2 text-[#CAD0DA] whitespace-nowrap">
+            <i className="ri-user-settings-line" aria-hidden="true" />
+            <span>
+              {operator.isLead ? "You are Lead · " : "Assistant · "}
+              <strong>{operator.name}</strong>
+            </span>
           </span>
+          {!simulated && (
+            <span className="inline-flex items-center gap-2 text-[#CAD0DA] truncate">
+              <i className="ri-live-line" aria-hidden="true" />
+              <span className="truncate">{accountLabel || "Manual desk · no provider attached"}</span>
+            </span>
+          )}
         </div>
-
-        <div className="flex items-center gap-2">
-          <i className="ri-live-line text-[#CAD0DA]" aria-hidden="true" />
-          <span className="text-[#CAD0DA]">
-            {accountAssociation || "Manual desk (no provider account attached)"}
-          </span>
-        </div>
+        {contextExtra}
       </div>
 
-      {/* Desk Content */}
-      <main className="flex-1 min-h-0 flex flex-col overflow-hidden">{children}</main>
+      {/* Desk content. If the window is too short the desk scrolls rather than clipping controls. */}
+      <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
     </div>
   );
 };

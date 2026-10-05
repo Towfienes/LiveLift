@@ -1,0 +1,459 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import React, { Suspense } from "react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+
+const nav = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  search: new URLSearchParams(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: nav.push, replace: nav.replace }),
+  usePathname: () => "/",
+  useSearchParams: () => nav.search,
+}));
+
+import HomePage from "@/app/page";
+import CreateLivePage from "@/app/live/new/page";
+import PreparePage from "@/app/live/[sessionId]/prepare/page";
+import OperatePage from "@/app/live/[sessionId]/operate/page";
+import ReviewPage from "@/app/live/[sessionId]/review/page";
+import SessionsPage from "@/app/sessions/page";
+import SimulatorPage from "@/app/simulator/page";
+import ProductsPage from "@/app/products/page";
+import IntegrationsPage from "@/app/integrations/page";
+import { sessionStore } from "@/lib/store/sessionStore";
+import { scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
+
+type PageComponent = (props: { params: Promise<{ sessionId: string }> }) => React.ReactElement;
+
+async function renderPage(Page: PageComponent, sessionId: string): Promise<void> {
+  const params = Promise.resolve({ sessionId });
+  await act(async () => {
+    render(
+      <Suspense fallback={<div>loading</div>}>
+        <Page params={params} />
+      </Suspense>
+    );
+  });
+}
+
+async function renderPlain(node: React.ReactElement): Promise<void> {
+  await act(async () => {
+    render(node);
+  });
+}
+
+/** Apply the first n scripted steps of a stored rehearsal. */
+function advanceRehearsal(id: string, steps: number): void {
+  for (let i = 0; i < steps; i++) {
+    const r = sessionStore.applyNextScriptStep(id);
+    if (!r?.receipt || r.receipt.outcome === "rejected") throw new Error(`step ${i} failed`);
+  }
+}
+
+/** Run a stored rehearsal's script to the end through the store. */
+function finishRehearsal(id: string): void {
+  for (;;) {
+    const r = sessionStore.applyNextScriptStep(id);
+    if (!r || !r.step || !r.receipt || r.receipt.outcome === "rejected") return;
+  }
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  sessionStore.reloadFromStorage();
+  nav.push.mockClear();
+  nav.replace.mockClear();
+  nav.search = new URLSearchParams();
+});
+
+describe("Home, Sessions, Simulator", () => {
+  it("first run shows no fabricated REAL history, only the Simulator entry", async () => {
+    await renderPlain(<HomePage />);
+    expect(await screen.findByTestId("first-run")).toBeInTheDocument();
+    expect(screen.getByTestId("try-simulator-btn")).toBeInTheDocument();
+    expect(screen.queryByTestId("active-live-card")).toBeNull();
+    // Every show on this device at first run is a rehearsal and is labelled as one.
+    const prepared = within(screen.getByTestId("prepared-list"));
+    expect(prepared.getAllByTestId("environment-badge-simulated").length).toBeGreaterThan(0);
+    expect(prepared.queryByTestId("environment-badge-real")).toBeNull();
+  });
+
+  it("an active show takes the priority slot with a Continue LIVE link", async () => {
+    advanceRehearsal("sim-buffered", 2);
+    await renderPlain(<HomePage />);
+    const card = await screen.findByTestId("active-live-card");
+    expect(card).toHaveTextContent("Zip Hoodie");
+    expect(card).toHaveTextContent("SIMULATED · Tracking active");
+    expect(screen.getByTestId("continue-live-btn").closest("a")).toHaveAttribute("href", "/live/sim-buffered/operate");
+  });
+
+  it("Sessions lists shows by environment and offers Duplicate", async () => {
+    await renderPlain(<SessionsPage />);
+    expect(await screen.findByTestId("sessions-table")).toBeInTheDocument();
+    expect(screen.getByTestId("session-row-sim-buffered")).toBeInTheDocument();
+    const envFilter = screen.getByLabelText("Environment");
+    fireEvent.change(envFilter, { target: { value: "REAL" } });
+    expect(await screen.findByTestId("sessions-empty")).toBeInTheDocument();
+  });
+
+  it("the Simulator page names the scenarios, what to watch for, and that it is SIMULATED", async () => {
+    await renderPlain(<SimulatorPage />);
+    expect(await screen.findByTestId("scenario-list")).toBeInTheDocument();
+    expect(screen.getByTestId("sim-explainer")).toHaveTextContent("virtual clock");
+    expect(screen.getByTestId("scenario-minimum")).toHaveTextContent("No feasible recovery under current constraints");
+    expect(screen.getByTestId("completed-rehearsals")).toBeInTheDocument();
+  });
+
+  it("Products and Integrations render honest static surfaces", async () => {
+    await renderPlain(<ProductsPage />);
+    expect(screen.getByTestId("products-grid")).toBeInTheDocument();
+    expect(screen.getByText("Not entered")).toBeInTheDocument(); // M04 has no price — never 0
+    const integrations = await (async () => {
+      await renderPlain(<IntegrationsPage />);
+      return screen.getByTestId("integrations-list");
+    })();
+    expect(integrations).toHaveTextContent("Unsupported");
+    expect(integrations).not.toHaveTextContent("Configure");
+  });
+});
+
+describe("Create LIVE", () => {
+  it("creates a REAL show from the 30-minute template and opens Prepare", async () => {
+    await renderPlain(<CreateLivePage />);
+    fireEvent.click(await screen.findByTestId("start-template"));
+    const submit = screen.getByTestId("submit-create-live-btn");
+    await act(async () => {});
+    expect(submit).not.toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: "Friday launch" } });
+    await act(async () => {
+      fireEvent.click(submit);
+    });
+    const created = sessionStore.list("REAL");
+    expect(created.length).toBe(1);
+    expect(created[0].environment).toBe("REAL");
+    expect(created[0].title).toBe("Friday launch");
+    expect(created[0].plans[0].segments.length).toBe(6);
+    expect(created[0].lifecycle).toBe("planned");
+    expect(nav.push).toHaveBeenCalledWith(`/live/${created[0].id}/prepare`);
+  });
+
+  it("copying a previous session is limited to the same environment", async () => {
+    nav.search = new URLSearchParams("from=sim-buffered");
+    await renderPlain(<CreateLivePage />);
+    await screen.findByTestId("previous-picker");
+    expect(screen.getByTestId("simulated-toggle")).toBeChecked();
+    fireEvent.click(screen.getByTestId("simulated-toggle")); // switch to REAL
+    expect(await screen.findByText(/no REAL session to copy/i)).toBeInTheDocument();
+  });
+});
+
+describe("Prepare", () => {
+  it("shows the timed Run of Show with the anchor buffer and zero-duration cues", async () => {
+    await renderPage(PreparePage as PageComponent, "sim-buffered");
+    expect(await screen.findByTestId("prepare-ros-list")).toBeInTheDocument();
+    expect(screen.getByTestId("buffer-row")).toHaveTextContent("Idle buffer 3:00 until the 20:12:00 anchor");
+    expect(screen.getByTestId("ros-summary")).toHaveTextContent("6 segments");
+    expect(screen.getByTestId("ros-summary")).toHaveTextContent("4 zero-duration cues");
+    expect(screen.getByTestId("schedule-impact")).toHaveTextContent("Flash Sale announcement");
+    expect(screen.getByTestId("plan-ready")).toBeInTheDocument();
+    expect(screen.getByTestId("rehearsal-guide")).toBeInTheDocument();
+  });
+
+  it("MISSING != ZERO: a missing duration blocks Start and reads 'Not entered'", async () => {
+    sessionStore.editDraft("sim-missed", (d) => {
+      d.plans[0].segments[3].targetSec = null;
+    });
+    await renderPage(PreparePage as PageComponent, "sim-missed");
+    expect(await screen.findByTestId("plan-blocked")).toHaveTextContent("Resolve 1 blocker");
+    expect(screen.getByTestId("duration-missing")).toHaveTextContent("Not entered");
+    expect(screen.getByTestId("start-live-cta-btn")).toBeDisabled();
+  });
+
+  it("a plan that cannot meet its own anchor is disclosed with the exact deficit", async () => {
+    sessionStore.editDraft("sim-missed", (d) => {
+      d.plans[0].segments[0].targetSec = 7 * 60; // Opening 7m + Zip Hoodie 6m arrives 20:13, one minute after the anchor
+    });
+    await renderPage(PreparePage as PageComponent, "sim-missed");
+    const deficits = await screen.findAllByTestId("deficit-row");
+    expect(deficits[0]).toHaveTextContent("Arrives 20:13:00");
+    expect(deficits[0]).toHaveTextContent("1:00 after its 20:12:00 anchor");
+    expect(deficits[1]).toHaveTextContent("1:00 after its 20:26:00 anchor"); // the delay carries through to Closing
+    expect(screen.getByTestId("readiness-issues")).toHaveTextContent("cannot start at 20:12:00");
+    expect(screen.getByTestId("start-live-cta-btn")).not.toBeDisabled(); // disclosed, not blocked
+  });
+
+  it("Start LIVE locks the baseline, starts the show and opens the desk", async () => {
+    await renderPage(PreparePage as PageComponent, "sim-buffered");
+    fireEvent.click(await screen.findByTestId("start-live-cta-btn"));
+    await act(async () => {});
+    const s = sessionStore.getSession("sim-buffered")!;
+    expect(s.lifecycle).toBe("active");
+    expect(s.baselineLocked).toBe(true);
+    expect(nav.push).toHaveBeenCalledWith("/live/sim-buffered/operate");
+  });
+
+  it("an unknown id is a real not-found state — never another show", async () => {
+    await renderPage(PreparePage as PageComponent, "no-such-show");
+    expect(await screen.findByTestId("session-not-found")).toHaveTextContent("no-such-show");
+    expect(screen.queryByTestId("prepare-ros-list")).toBeNull();
+  });
+});
+
+describe("Operate desk", () => {
+  it("shows NOW, NEXT, WHY and ACTION when the host estimate puts the anchor at risk", async () => {
+    advanceRehearsal("sim-buffered", 3); // 20:07 — host: Zip Hoodie needs 6 more minutes
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    expect(await screen.findByTestId("now-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("now-title")).toHaveTextContent("Zip Hoodie");
+    expect(screen.getByTestId("now-actual-elapsed")).toHaveTextContent("4:00");
+    expect(screen.getByTestId("next-title")).toHaveTextContent("Flash Sale announcement");
+    const why = screen.getByTestId("why-box");
+    expect(why).toHaveTextContent("committed for 20:12:00");
+    expect(why).toHaveTextContent("20:13:00");
+    expect(why).toHaveTextContent("1:00 late");
+    expect(screen.getByTestId("recovery-option-end_by")).toHaveTextContent("End Zip Hoodie by 20:12:00");
+    expect(screen.getByTestId("ros-row-sim-buffered:flash")).toHaveTextContent("Hard anchor 20:12:00");
+    expect(screen.getByTestId("projected-finish")).toBeInTheDocument();
+    expect(screen.getByTestId("virtual-clock")).toHaveTextContent("20:07:00");
+    expect(screen.getByTestId("simulator-strip")).toHaveTextContent("SIMULATED");
+  });
+
+  it("applying the clean option records the decision and leaves the anchor at 20:12:00", async () => {
+    advanceRehearsal("sim-buffered", 3);
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    fireEvent.click(await screen.findByTestId("apply-end_by"));
+    await act(async () => {});
+    const s = sessionStore.getSession("sim-buffered")!;
+    expect(s.events.some((e) => e.type === "recovery_selected")).toBe(true);
+    expect(s.plans[0].segments[2].anchorOffsetSec).toBe(12 * 60); // baseline untouched
+    expect(s.plans[s.plans.length - 1].segments[2].anchorOffsetSec).toBe(12 * 60); // current plan too
+    expect(screen.getByTestId("command-ack-banner")).toHaveTextContent("committed to end by 20:12:00");
+    expect(screen.getByTestId("why-box")).toHaveTextContent("On track");
+    expect(screen.getByTestId("ros-row-sim-buffered:flash")).toHaveTextContent("Hard anchor 20:12:00");
+  });
+
+  it("says plainly when no clean recovery exists, and offers only exceptions and commitment changes", async () => {
+    advanceRehearsal("sim-minimum", 2); // 20:07 — Zip Hoodie cannot reach its minimum before 20:12
+    await renderPage(OperatePage as PageComponent, "sim-minimum");
+    expect(await screen.findByTestId("no-feasible-recovery")).toHaveTextContent("No feasible recovery under current constraints");
+    const list = screen.getByTestId("recovery-list");
+    expect(within(list).queryByTestId("apply-shorten_pending")).toBeNull();
+    expect(list).toHaveTextContent(/Exception|Commitment change/);
+  });
+
+  it("an exception needs explicit acknowledgement before it is recorded", async () => {
+    advanceRehearsal("sim-minimum", 2);
+    await renderPage(OperatePage as PageComponent, "sim-minimum");
+    fireEvent.click(await screen.findByTestId("apply-close_now"));
+    await act(async () => {});
+    expect(screen.getByTestId("ack-message")).toHaveTextContent(/minimum/);
+    expect(sessionStore.getSession("sim-minimum")!.runtime.currentSegmentId).toContain(":a"); // nothing happened yet
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Apply with exception" }));
+    });
+    const s = sessionStore.getSession("sim-minimum")!;
+    expect(s.runtime.segments["sim-minimum:a"].belowMinimum).toBe(true);
+    expect(s.runtime.segments["sim-minimum:a"].coverage).toBe("partial");
+  });
+
+  it("Choose next refuses to cross a hard anchor and says why", async () => {
+    advanceRehearsal("sim-buffered", 2);
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    fireEvent.click(await screen.findByTestId("choose-next-btn"));
+    await act(async () => {});
+    const list = screen.getByTestId("choose-next-list");
+    expect(list).toHaveTextContent("Already next");
+    expect(list).toHaveTextContent("hard anchor");
+    expect(screen.getByTestId("choose-next-sim-buffered:b")).toBeDisabled();
+  });
+
+  it("a cue report is a report: attempted stays unknown, performed stays unverified", async () => {
+    advanceRehearsal("sim-buffered", 5); // 20:12 — Flash Sale running, its cue is due
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    expect(await screen.findByTestId("cue-title")).toHaveTextContent("Activate Flash Sale in TikTok");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("cue-attempted-btn"));
+    });
+    const s = sessionStore.getSession("sim-buffered")!;
+    expect(s.runtime.cues["sim-buffered:cue-flash"].state).toBe("attempted");
+    expect(screen.getByTestId("ros-cue-sim-buffered:cue-flash")).toHaveTextContent("Attempted · outcome unknown");
+  });
+
+  it("only a running show has a desk; a planned or ended show points to where the work is", async () => {
+    await renderPage(OperatePage as PageComponent, "sim-minimum");
+    expect(await screen.findByTestId("operate-not-running")).toHaveTextContent("has not started");
+  });
+
+  it("End LIVE shows what will be recorded, freezes the runtime and opens Review", async () => {
+    advanceRehearsal("sim-buffered", 5);
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    fireEvent.click(await screen.findByTestId("end-live-header-btn"));
+    await act(async () => {});
+    const dialog = screen.getByTestId("end-live-dialog");
+    expect(dialog).toHaveTextContent("does not stop your platform broadcast");
+    expect(dialog).toHaveTextContent("not reached");
+    expect(dialog).toHaveTextContent("no report");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "End tracking" }));
+    });
+    expect(sessionStore.getSession("sim-buffered")!.lifecycle).toBe("ended");
+    expect(nav.push).toHaveBeenCalledWith("/live/sim-buffered/review");
+  });
+});
+
+describe("Review and Next LIVE", () => {
+  it("Plan vs Actual is derived from this run: overruns, anchors, cues and history", async () => {
+    await renderPage(ReviewPage as PageComponent, "sim-buffered-done");
+    const table = await screen.findByTestId("plan-actual-table");
+    const hoodie = within(table).getByTestId("review-row-sim-buffered-done:a");
+    expect(hoodie).toHaveTextContent("20:03:00–20:09:00");
+    expect(hoodie).toHaveTextContent("20:03:00–20:12:00");
+    expect(hoodie).toHaveTextContent("+3:00 duration");
+    expect(within(table).getByTestId("review-row-sim-buffered-done:flash")).toHaveTextContent("anchor met");
+    expect(screen.getByTestId("review-summary")).toHaveTextContent("2/2 on time");
+    expect(screen.getByTestId("cue-results")).toHaveTextContent("Platform verification: Unknown");
+    expect(screen.getByTestId("review-history")).toHaveTextContent("Operator chose: End Zip Hoodie by 20:12:00");
+    expect(screen.getByTestId("plan-revisions")).toHaveTextContent("Committed to end Zip Hoodie by 20:12:00");
+    expect(screen.getByTestId("simulated-review-note")).toBeInTheDocument();
+  });
+
+  it("a missed anchor is shown as late against the unchanged commitment, never as recovered", async () => {
+    finishRehearsal("sim-missed");
+    await renderPage(ReviewPage as PageComponent, "sim-missed");
+    const flash = await screen.findByTestId("review-row-sim-missed:flash");
+    expect(flash).toHaveTextContent("Hard anchor 20:12:00");
+    expect(flash).toHaveTextContent("anchor late 1:00");
+    const qa = screen.getByTestId("review-row-sim-missed:qa");
+    expect(qa).toHaveTextContent("Skipped — nothing performed");
+    expect(within(qa).getByTestId("no-actual")).toBeInTheDocument();
+  });
+
+  it("a correction is appended beside the original, never over it", async () => {
+    await renderPage(ReviewPage as PageComponent, "sim-buffered-done");
+    const before = sessionStore.getSession("sim-buffered-done")!.events.length;
+    const target = sessionStore.getSession("sim-buffered-done")!.events.find((e) => e.type === "segment_ended")!;
+    fireEvent.click(await screen.findByTestId(`correct-${target.id}`));
+    await act(async () => {});
+    fireEvent.change(screen.getByTestId("correction-input"), { target: { value: "Host says it ended a minute later" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Append correction" }));
+    });
+    const after = sessionStore.getSession("sim-buffered-done")!;
+    expect(after.events.length).toBe(before + 1);
+    expect(after.events.find((e) => e.id === target.id)).toEqual(target);
+    expect(screen.getByTestId("history-correction_added")).toHaveTextContent("Original record retained");
+  });
+
+  it("Next LIVE: selected changes create a genuinely new, different plan and leave the source untouched", async () => {
+    nav.search = new URLSearchParams("view=next");
+    await renderPage(ReviewPage as PageComponent, "sim-buffered-done");
+    const sourceBefore = JSON.stringify(sessionStore.getSession("sim-buffered-done"));
+
+    expect(await screen.findByTestId("next-live")).toBeInTheDocument();
+    expect(screen.getByTestId("proposals-observed")).toHaveTextContent("Zip Hoodie: 6:00 → 9:00");
+    expect(screen.getByTestId("proposals-tradeoff")).toHaveTextContent("Opening: 3:00 → 2:00");
+
+    // Nothing is applied until selected: the preview equals the baseline.
+    expect(screen.getByTestId("feasible-note")).toHaveTextContent("Flash Sale announcement 3:00 buffer");
+
+    fireEvent.click(screen.getByTestId("select-duration:sim-buffered-done:a"));
+    expect(screen.getByTestId("clone-preview")).toHaveTextContent("9:00");
+    expect(screen.getByTestId("feasible-note")).toHaveTextContent("Flash Sale announcement 0:00 buffer");
+    fireEvent.click(screen.getByTestId("select-tradeoff:sim-buffered-done:open"));
+    expect(screen.getByTestId("feasible-note")).toHaveTextContent("Flash Sale announcement 1:00 buffer");
+
+    fireEvent.change(screen.getByTestId("next-note-input"), { target: { value: "Test a longer Zip Hoodie." } });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("create-next-live-cta-btn"));
+    });
+
+    const created = sessionStore.list("SIMULATED").find((s) => s.derivedFrom?.sessionId === "sim-buffered-done")!;
+    expect(created).toBeDefined();
+    expect(nav.push).toHaveBeenCalledWith(`/live/${created.id}/prepare`);
+    expect(JSON.stringify(sessionStore.getSession("sim-buffered-done"))).toBe(sourceBefore);
+    expect(created.events).toEqual([]);
+    expect(created.runtime.startedAtMs).toBeNull();
+    const targets = Object.fromEntries(created.plans[0].segments.map((x) => [x.title, x.targetSec]));
+    expect(targets["Zip Hoodie"]).toBe(540);
+    expect(targets["Opening"]).toBe(120);
+  });
+
+  it("selected changes that conflict with a hard anchor show the exact deficit and need acknowledgement", async () => {
+    finishRehearsal("sim-minimum");
+    nav.search = new URLSearchParams("view=next");
+    await renderPage(ReviewPage as PageComponent, "sim-minimum");
+    await screen.findByTestId("next-live");
+    fireEvent.click(screen.getByTestId("select-duration:sim-minimum:open"));
+    fireEvent.click(screen.getByTestId("select-duration:sim-minimum:a"));
+    const feasibility = screen.getByTestId("clone-feasibility");
+    expect(feasibility).toHaveTextContent("Infeasible with these changes");
+    expect(feasibility).toHaveTextContent("arrive 4:00 late");
+    const create = screen.getByTestId("create-next-live-cta-btn");
+    expect(create).toBeDisabled();
+    fireEvent.click(screen.getByTestId("ack-infeasible"));
+    expect(create).not.toBeDisabled();
+  });
+
+  it("a new Prepare shows where the plan came from and that history was not copied", async () => {
+    const source = sessionStore.getSession("sim-buffered-done")!;
+    const result = sessionStore.createNext(source.id, {
+      title: "Next show",
+      plannedStartMs: source.plans[0].plannedStartMs + 86_400_000,
+      changeIds: [`duration:${source.id}:a`],
+      note: "Longer hoodie",
+    });
+    if (!result.ok) throw new Error(result.reason);
+    await renderPage(PreparePage as PageComponent, result.session.id);
+    const banner = await screen.findByTestId("derived-from");
+    expect(banner).toHaveTextContent("Collection launch · rehearsal (completed)");
+    expect(banner).toHaveTextContent("Zip Hoodie: 6:00 → 9:00");
+    expect(banner).toHaveTextContent("Actual runtime, reports and history were not copied");
+    expect(screen.getByTestId("schedule-impact")).toHaveTextContent("Flash Sale announcement · 20:12:00no buffer"); // 9:00 hoodie leaves exactly no slack
+  });
+});
+
+describe("Operate desk details", () => {
+  it("the Extend hint is honest when the anchor is already late", async () => {
+    advanceRehearsal("sim-buffered", 3); // host estimate puts Flash Sale 1:00 late
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    const hint = await screen.findByTestId("extend-hint");
+    expect(hint).toHaveTextContent("already 1:00 late");
+    expect(hint).not.toHaveTextContent("uses buffer");
+  });
+
+  it("the Extend hint states the cost before it is committed", async () => {
+    advanceRehearsal("sim-buffered", 5); // Zip Hoodie ends exactly at the anchor: no slack left
+    sessionStore.dispatch("sim-buffered", { type: "advance_segment" });
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    // Flash Sale is now running; the next anchor is Closing 20:26, with B 8:00 + Q&A 3:00 filling the time.
+    const hint = await screen.findByTestId("extend-hint");
+    expect(hint.textContent).toMatch(/late|buffer|unchanged/);
+  });
+
+  it("returning to the current row scrolls only the Run of Show list, never the whole desk", () => {
+    document.body.innerHTML = `
+      <main id="desk" style="overflow:auto">
+        <div id="box" data-ros-scroll>
+          <ol><li id="row" aria-current="step">Zip Hoodie</li></ol>
+        </div>
+      </main>`;
+    const box = document.getElementById("box") as HTMLElement;
+    const desk = document.getElementById("desk") as HTMLElement;
+    const row = document.getElementById("row") as HTMLElement;
+    box.getBoundingClientRect = () => ({ top: 100, bottom: 300 }) as DOMRect;
+    row.getBoundingClientRect = () => ({ top: 350, bottom: 400 }) as DOMRect;
+    const spy = vi.fn();
+    (row as HTMLElement & { scrollIntoView: () => void }).scrollIntoView = spy;
+    (box as HTMLElement & { scrollIntoView: () => void }).scrollIntoView = spy;
+
+    scrollCurrentRowIntoView(row);
+
+    expect(box.scrollTop).toBe(400 - 300 + 8);
+    expect(desk.scrollTop).toBe(0);
+    expect(spy).not.toHaveBeenCalled(); // scrollIntoView would have scrolled every ancestor
+    document.body.innerHTML = "";
+  });
+});

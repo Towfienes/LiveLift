@@ -3,30 +3,15 @@
 import React, { useState } from "react";
 import { StandardShell } from "@/components/shell";
 import { Button, Dialog } from "@/components/ui";
-import { ProductSnapshot, PackSnapshot } from "@/contracts";
-import { FIXTURE_PRODUCTS } from "@/fixtures/sessions";
+import { ProductSnapshot } from "@/contracts";
+import { PACK_LIBRARY, PRODUCT_LIBRARY } from "@/fixtures/library";
 
 export default function ProductsPage() {
   const [activeTab, setActiveTab] = useState<"products" | "packs">("products");
-  const [products] = useState<ProductSnapshot[]>(FIXTURE_PRODUCTS);
+  const [products] = useState<ProductSnapshot[]>(PRODUCT_LIBRARY);
   const [selectedProduct, setSelectedProduct] = useState<ProductSnapshot | null>(null);
 
-  const packs: PackSnapshot[] = [
-    {
-      id: "pack_01",
-      name: "Autumn Outerwear Lineup",
-      description: "Standard 7-piece fall collection with hoodies and cargo pants",
-      productIds: ["prod_m01", "prod_m02", "prod_m03", "prod_m04", "prod_m06", "prod_m07"],
-      updatedAt: "Oct 2, 2026",
-    },
-    {
-      id: "pack_02",
-      name: "Weekend Basics",
-      description: "Tees, accessories, and promotional items",
-      productIds: ["prod_m01", "prod_m04", "prod_m06"],
-      updatedAt: "Sep 28, 2026",
-    },
-  ];
+  const packs = PACK_LIBRARY;
 
   return (
     <StandardShell>

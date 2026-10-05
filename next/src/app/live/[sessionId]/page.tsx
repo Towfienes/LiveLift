@@ -1,25 +1,29 @@
-import { redirect } from "next/navigation";
-import { simulator } from "@/lib/simulator/simulatorEngine";
+"use client";
+
+import React, { use, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import type { Session } from "@/contracts";
+import { SessionGate } from "@/components/ops/SessionGate";
 
 interface PageProps {
   params: Promise<{ sessionId: string }>;
 }
 
-export default async function SessionRedirectPage({ params }: PageProps) {
-  const resolvedParams = await params;
-  const sessionId = resolvedParams.sessionId;
+/** Send the operator to where the work is for this lifecycle. Unknown ids get a real not-found state. */
+export default function SessionRedirectPage({ params }: PageProps): React.ReactElement {
+  const { sessionId } = use(params);
+  return <SessionGate id={sessionId}>{(session) => <Redirect session={session} />}</SessionGate>;
+}
 
-  const session = simulator.getSession(sessionId);
-
-  if (!session) {
-    redirect(`/live/${sessionId}/prepare`);
-  }
-
-  if (session.lifecycle === "active") {
-    redirect(`/live/${sessionId}/operate`);
-  } else if (session.lifecycle === "ended") {
-    redirect(`/live/${sessionId}/review`);
-  } else {
-    redirect(`/live/${sessionId}/prepare`);
-  }
+function Redirect({ session }: { session: Session }): React.ReactElement {
+  const router = useRouter();
+  const step = session.lifecycle === "active" ? "operate" : session.lifecycle === "ended" ? "review" : "prepare";
+  useEffect(() => {
+    router.replace(`/live/${session.id}/${step}`);
+  }, [router, session.id, step]);
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#090B0F] text-[#9AA5B5]" role="status">
+      Opening {step}…
+    </div>
+  );
 }

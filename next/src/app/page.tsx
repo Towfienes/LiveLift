@@ -1,286 +1,206 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
+import type { Session } from "@/contracts";
 import { StandardShell } from "@/components/shell";
-import { EnvironmentBadge, StatusLabel, Button } from "@/components/ui";
-import { SessionIdentity } from "@/contracts";
-import { simulator } from "@/lib/simulator/simulatorEngine";
+import { Button, EnvironmentBadge } from "@/components/ui";
+import { SegmentTile } from "@/components/ops/SegmentTile";
+import { Signal } from "@/components/ops/StatusChips";
+import {
+  baselinePlan,
+  buildReview,
+  currentPlan,
+  formatClock,
+  formatDay,
+  formatDuration,
+  proposeChanges,
+} from "@/lib/domain";
+import { useSessions } from "@/lib/store/hooks";
 
-export default function HomePage() {
-  const [sessions, setSessions] = useState<SessionIdentity[]>([]);
-  const [activeSession, setActiveSession] = useState<SessionIdentity | null>(null);
+const byRecency = (a: Session, b: Session): number =>
+  (a.environment === b.environment ? 0 : a.environment === "REAL" ? -1 : 1) || b.updatedAtMs - a.updatedAtMs;
 
-  useEffect(() => {
-    const list = simulator.listSessions();
-    setSessions(list);
-    const active = list.find((s) => s.lifecycle === "active") || null;
-    setActiveSession(active);
-  }, []);
+function firstProduct(session: Session) {
+  const seg = baselinePlan(session).segments.find((s) => s.productId);
+  return seg ? (session.products.find((p) => p.id === seg.productId) ?? null) : null;
+}
 
-  const preparedSessions = sessions.filter((s) => s.lifecycle === "planned");
-  const endedSessions = sessions.filter((s) => s.lifecycle === "ended");
+export default function HomePage(): React.ReactElement {
+  const { hydrated, sessions } = useSessions();
+
+  const { active, prepared, ended } = useMemo(
+    () => ({
+      active: sessions.filter((s) => s.lifecycle === "active").sort(byRecency),
+      prepared: sessions.filter((s) => s.lifecycle === "planned").sort(byRecency),
+      ended: sessions.filter((s) => s.lifecycle === "ended").sort(byRecency),
+    }),
+    [sessions]
+  );
+  const lead = active[0] ?? null;
+  const leadSegment = lead
+    ? currentPlan(lead).segments.find((s) => s.id === lead.runtime.currentSegmentId) ?? null
+    : null;
 
   return (
-    <StandardShell
-      activeSessionId={activeSession?.id}
-      activeSessionTitle={activeSession?.title}
-    >
+    <StandardShell activeSessionId={lead?.id ?? null} activeSessionTitle={lead?.title ?? null}>
       <div className="flex-1 overflow-y-auto w-full max-w-[1160px] mx-auto px-6 lg:px-8 py-8">
-        {/* Page Header */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-[34px] leading-[1.2] font-medium tracking-[-0.6px] text-[#F5F7FC]">
-              Home
-            </h1>
-            <p className="text-[16px] leading-6 text-[#B7C1CE] mt-1.5">
-              Your next useful action, in one place.
-            </p>
+            <h1 className="text-[34px] leading-[1.2] font-medium tracking-[-0.6px] text-[#F5F7FC]">Home</h1>
+            <p className="text-[16px] leading-6 text-[#B7C1CE] mt-1.5">Your next useful action, in one place.</p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Link href="/live/new">
-              <Button variant="ghost" icon="ri-add-line">
-                Create LIVE
-              </Button>
-            </Link>
-          </div>
+          <Link href="/live/new">
+            <Button variant="ghost" icon="ri-add-line">Create LIVE</Button>
+          </Link>
         </div>
 
-        {/* Priority 1: Active LIVE Session */}
-        {activeSession ? (
-          <div className="mt-8 rounded-[12px] bg-[#1B1F27] border border-[#2B3240] p-6 lg:p-7 shadow-lg">
+        {!hydrated ? (
+          <div className="mt-8 rounded-[12px] bg-[#13161C] p-8 text-[#9AA5B5]" role="status">
+            Loading your shows…
+          </div>
+        ) : lead ? (
+          <div className="mt-8 rounded-[12px] bg-[#1B1F27] p-6 lg:p-7" data-testid="active-live-card">
             <div className="flex items-center justify-between gap-4">
-              <span className="text-[14px] leading-5 font-semibold tracking-[1.7px] text-[#DFFF00] uppercase">
-                ACTIVE LIVE
+              <span className="text-[14px] font-semibold tracking-[1.7px] text-[#DFFF00] uppercase">Active LIVE</span>
+              <span className="inline-flex items-center gap-2 text-[15px] font-medium text-[#DFFF00]">
+                <i className="ri-record-circle-line" aria-hidden="true" />
+                {lead.environment} · Tracking active
               </span>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-2 text-[15px] font-medium text-[#DFFF00]">
-                  <i className="ri-record-circle-line animate-pulse" aria-hidden="true" />
-                  <span>{activeSession.environment} · Tracking active</span>
-                </span>
-              </div>
             </div>
-
             <div className="flex items-center justify-between gap-6 mt-5 flex-wrap md:flex-nowrap">
               <div className="flex gap-4 items-center min-w-0">
-                <div
-                  className="w-[80px] h-[80px] shrink-0 rounded-[10px] bg-[#2A303B] border border-[#373F4D] flex flex-col items-center justify-center gap-0.5 select-none"
-                  aria-hidden="true"
-                >
-                  <span className="text-[26px] font-medium text-[#D2D9E4]">ZH</span>
-                  <span className="text-[13px] font-mono text-[#AFB8C7]">M02</span>
-                </div>
-
+                <SegmentTile
+                  segment={leadSegment ?? { kind: "opening", title: lead.title }}
+                  product={leadSegment?.productId ? (lead.products.find((p) => p.id === leadSegment.productId) ?? null) : null}
+                  size={72}
+                  active
+                />
                 <div className="min-w-0">
-                  <p className="text-[14px] font-mono text-[#B7C1CE]">M02</p>
-                  <h2 className="text-[24px] font-medium tracking-[-0.6px] text-[#F5F7FC] truncate">
-                    {activeSession.title}
-                  </h2>
-                  <p className="text-[15px] leading-5 text-[#C8CDD6] mt-1">
-                    Current segment · M02 Zip Hoodie
+                  <h2 className="text-[24px] font-medium tracking-[-0.6px] text-[#F5F7FC] truncate">{lead.title}</h2>
+                  <p className="text-[15px] text-[#C8CDD6] mt-1">
+                    {leadSegment ? `Current segment · ${leadSegment.title}` : "Between segments"}
+                    {lead.runtime.startedAtMs !== null && ` · started ${formatClock(lead.runtime.startedAtMs, lead.timezone, true)}`}
                   </p>
                 </div>
               </div>
-
               <div className="text-right shrink-0">
-                <div className="text-[40px] font-medium tracking-tight text-[#F5F7FC] tabular-nums">
-                  17:45
-                </div>
-                <p className="text-[14px] text-[#B7C1CE] mt-0.5">
-                  {activeSession.leadOperator.name} is Lead
-                </p>
+                <p className="text-[14px] text-[#B7C1CE]">{lead.operator.name} is Lead</p>
+                {active.length > 1 && <p className="text-[13px] text-[#9AA5B5]">+{active.length - 1} other active show{active.length === 2 ? "" : "s"}</p>}
               </div>
             </div>
-
             <div className="flex items-center justify-between gap-4 mt-6 pt-5 border-t border-[#262C38] flex-wrap">
-              <p className="text-[15px] text-[#C8CDD6]">
-                Manual operation available · Realtime unavailable
-              </p>
-
-              <Link href={`/live/${activeSession.id}/operate`}>
-                <Button
-                  variant="primary"
-                  size="lg"
-                  icon="ri-arrow-right-line"
-                  data-testid="continue-live-btn"
-                >
+              <p className="text-[15px] text-[#C8CDD6]">Manual operation available · Realtime unavailable</p>
+              <Link href={`/live/${lead.id}/operate`}>
+                <Button variant="primary" size="lg" icon="ri-arrow-right-line" data-testid="continue-live-btn">
                   Continue LIVE
                 </Button>
               </Link>
             </div>
           </div>
         ) : (
-          /* First Run / Empty Guidance State */
-          <div className="mt-8 rounded-[12px] bg-[#13161C] border border-[#2A303A] p-8">
-            <span className="text-[14px] font-semibold tracking-[1.7px] text-[#DFFF00] uppercase">
-              YOUR NEXT LIVE
-            </span>
+          <div className="mt-8 rounded-[12px] bg-[#13161C] p-8" data-testid="first-run">
+            <span className="text-[14px] font-semibold tracking-[1.7px] text-[#DFFF00] uppercase">Your next LIVE</span>
             <h2 className="text-[34px] leading-tight font-medium tracking-[-0.6px] text-[#F5F7FC] mt-3">
               Plan the show.
               <br />
               Stay in control.
             </h2>
-            <p className="text-[17px] leading-relaxed text-[#CAD0DA] mt-3 max-w-[620px]">
-              A Product Pack, a Run of Show, and an operating desk that works with or without integrations.
+            <p className="text-[17px] leading-relaxed text-[#CAD0DA] mt-3 max-w-[640px]">
+              A timed Run of Show with hard anchors, an operating desk that shows what to do when it drifts, and a review that turns what
+              actually happened into tomorrow&apos;s plan. It works with or without integrations.
             </p>
-
-            <div className="flex items-center gap-4 mt-6">
+            <div className="flex items-center gap-4 mt-6 flex-wrap">
               <Link href="/live/new">
-                <Button variant="primary" size="lg" icon="ri-add-line">
-                  Create LIVE
-                </Button>
+                <Button variant="primary" size="lg" icon="ri-add-line">Create LIVE</Button>
               </Link>
-
-              <Link href="/live/session_fall_rehearsal_sim/prepare">
-                <Button variant="ghost" size="lg" icon="ri-flask-line">
-                  Try Simulator
-                </Button>
+              <Link href="/simulator">
+                <Button variant="ghost" size="lg" icon="ri-flask-line" data-testid="try-simulator-btn">Try Simulator</Button>
               </Link>
             </div>
           </div>
         )}
 
-        {/* Supporting Work Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-          {/* Column 1: Prepared for next */}
-          <div>
-            <h2 className="text-[22px] font-medium tracking-[-0.5px] text-[#F5F7FC] mb-2">
-              Prepared for next
-            </h2>
-
-            {preparedSessions.length > 0 ? (
-              <div className="divide-y divide-[#232935]">
-                {preparedSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="flex items-center justify-between gap-4 py-4"
-                  >
-                    <div className="flex gap-3.5 items-center min-w-0">
-                      <div className="w-[50px] h-[50px] shrink-0 rounded-[10px] bg-[#2A303B] border border-[#373F4D] flex flex-col items-center justify-center gap-0.5">
-                        <span className="text-[20px] font-medium text-[#D2D9E4]">
-                          {session.id.includes("fall") ? "ZH" : "CP"}
-                        </span>
-                        <span className="text-[11px] font-mono text-[#AFB8C7]">
-                          {session.id.includes("fall") ? "M02" : "M03"}
-                        </span>
-                      </div>
-
-                      <div className="min-w-0">
-                        <h3 className="text-[18px] font-medium text-[#F5F7FC] truncate">
-                          {session.title}
-                        </h3>
-                        <p className="text-[14px] text-[#B7C1CE] mt-0.5">
-                          {session.scheduledAt
-                            ? "Oct 5 · 19:00 · Asia/Ho_Chi_Minh"
-                            : "No scheduled time"}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1.5">
-                          <EnvironmentBadge environment={session.environment} size="sm" />
-                          <StatusLabel status="planned" />
+        {hydrated && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+            <div>
+              <h2 className="text-[22px] font-medium tracking-[-0.5px] text-[#F5F7FC] mb-2">Prepared for next</h2>
+              {prepared.length > 0 ? (
+                <ul className="divide-y divide-[#232935]" data-testid="prepared-list">
+                  {prepared.slice(0, 6).map((s) => (
+                    <li key={s.id} className="flex items-center justify-between gap-4 py-4">
+                      <div className="flex gap-3.5 items-center min-w-0">
+                        <SegmentTile segment={{ kind: "opening", title: s.title }} product={firstProduct(s)} size={50} />
+                        <div className="min-w-0">
+                          <h3 className="text-[18px] font-medium text-[#F5F7FC] truncate">{s.title}</h3>
+                          <p className="text-[14px] text-[#B7C1CE] mt-0.5 tabular-nums">
+                            {formatDay(baselinePlan(s).plannedStartMs, s.timezone)} · {formatClock(baselinePlan(s).plannedStartMs, s.timezone)} · {s.timezone}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <EnvironmentBadge environment={s.environment} size="sm" />
+                            <Signal tone="muted" icon="ri-time-line">Prepared</Signal>
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="shrink-0">
-                      <Link href={`/live/${session.id}/prepare`}>
-                        <Button variant="ghost" size="sm" icon="ri-arrow-right-line">
-                          Open Prepare
-                        </Button>
+                      <Link href={`/live/${s.id}/prepare`} className="shrink-0">
+                        <Button variant="ghost" size="sm" icon="ri-arrow-right-line">Open Prepare</Button>
                       </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[15px] text-[#8A95A5] py-4">No prepared sessions.</p>
-            )}
-          </div>
-
-          {/* Column 2: Specific Unfinished Tasks */}
-          <div>
-            <div className="flex items-center justify-between gap-4 mb-2">
-              <h2 className="text-[22px] font-medium tracking-[-0.5px] text-[#F5F7FC]">
-                Finish the review
-              </h2>
-              <Link
-                href="/sessions"
-                className="text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1 transition-colors"
-              >
-                <span>All sessions</span>
-                <i className="ri-arrow-right-line" aria-hidden="true" />
-              </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[15px] text-[#9AA5B5] py-4">No prepared shows.</p>
+              )}
             </div>
 
-            <div className="divide-y divide-[#232935]">
-              {endedSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="flex items-center justify-between gap-4 py-4"
-                >
-                  <div className="flex gap-3.5 items-center min-w-0">
-                    <div className="w-[50px] h-[50px] shrink-0 rounded-[10px] bg-[#2A303B] border border-[#373F4D] flex flex-col items-center justify-center gap-0.5">
-                      <span className="text-[20px] font-medium text-[#D2D9E4]">ZH</span>
-                      <span className="text-[11px] font-mono text-[#AFB8C7]">M02</span>
-                    </div>
-
-                    <div className="min-w-0">
-                      <h3 className="text-[18px] font-medium text-[#F5F7FC] truncate">
-                        {session.title}
-                      </h3>
-                      <p className="text-[14px] text-[#B7C1CE] mt-0.5">
-                        Oct 2 · 1 action outcome unknown
-                      </p>
-                      <div className="flex items-center gap-3 mt-1.5">
-                        <EnvironmentBadge environment={session.environment} size="sm" />
-                        <span className="inline-flex items-center gap-1.5 text-[14px] text-[#C8CDD6]">
-                          <i className="ri-time-line" aria-hidden="true" />
-                          <span>Ended</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0">
-                    <Link href={`/live/${session.id}/review`}>
-                      <Button variant="ghost" size="sm" icon="ri-arrow-right-line">
-                        Open Review
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              ))}
-
-              {/* Task item */}
-              <div className="flex items-center justify-between gap-4 py-4">
-                <div className="min-w-0">
-                  <h3 className="text-[18px] font-medium text-[#F5F7FC] truncate">
-                    Basics LIVE
-                  </h3>
-                  <p className="text-[15px] text-[#B7C1CE] mt-1">
-                    2 proposed next-live changes need a decision.
-                  </p>
-                </div>
-                <div className="shrink-0">
-                  <Link href="/live/session_collection_launch/review?view=learn">
-                    <Button variant="ghost" size="sm" icon="ri-arrow-right-line">
-                      Review changes
-                    </Button>
-                  </Link>
-                </div>
+            <div>
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <h2 className="text-[22px] font-medium tracking-[-0.5px] text-[#F5F7FC]">Finish the review</h2>
+                <Link href="/sessions" className="text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1 transition-colors">
+                  <span>All sessions</span>
+                  <i className="ri-arrow-right-line" aria-hidden="true" />
+                </Link>
               </div>
+              {ended.length > 0 ? (
+                <ul className="divide-y divide-[#232935]" data-testid="ended-list">
+                  {ended.slice(0, 6).map((s) => {
+                    const review = buildReview(s);
+                    const adjustments = proposeChanges(s).length;
+                    return (
+                      <li key={s.id} className="flex items-center justify-between gap-4 py-4">
+                        <div className="min-w-0">
+                          <h3 className="text-[18px] font-medium text-[#F5F7FC] truncate">{s.title}</h3>
+                          <p className="text-[14px] text-[#B7C1CE] mt-0.5 tabular-nums">
+                            {review ? `${formatDuration(review.summary.trackedSec)} tracked` : "Ended"}
+                            {review && review.summary.anchors.late + review.summary.anchors.cancelled > 0
+                              ? ` · ${review.summary.anchors.late + review.summary.anchors.cancelled} anchor miss`
+                              : ""}
+                            {adjustments > 0 ? ` · ${adjustments} adjustment${adjustments === 1 ? "" : "s"} ready` : ""}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <EnvironmentBadge environment={s.environment} size="sm" />
+                            <Signal tone="muted" icon="ri-stop-circle-line">Ended</Signal>
+                          </div>
+                        </div>
+                        <Link href={`/live/${s.id}/review${adjustments > 0 ? "?view=next" : ""}`} className="shrink-0">
+                          <Button variant="ghost" size="sm" icon="ri-arrow-right-line">{adjustments > 0 ? "Review changes" : "Open Review"}</Button>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="text-[15px] text-[#9AA5B5] py-4">Nothing to review yet.</p>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Guidance section */}
-        <div className="mt-12 rounded-[12px] bg-[#101319] border border-[#232935] p-6">
-          <h3 className="text-[20px] font-medium text-[#F5F7FC]">
-            Nothing to connect before you begin
-          </h3>
-          <p className="text-[15px] text-[#B7C1CE] mt-2 max-w-[700px]">
-            Start blank, choose a saved pack, or rehearse a simulated session.
-            Manual operation is always available alongside optional integrations.
+        <div className="mt-12 rounded-[12px] bg-[#101319] p-6">
+          <h3 className="text-[20px] font-medium text-[#F5F7FC]">Nothing to connect before you begin</h3>
+          <p className="text-[15px] text-[#B7C1CE] mt-2 max-w-[720px]">
+            Start blank, use the 30-minute template, or rehearse a simulated show. Shows are stored in this browser only — they are not shared
+            with other browsers or devices.
           </p>
         </div>
       </div>

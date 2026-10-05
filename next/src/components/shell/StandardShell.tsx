@@ -95,6 +95,17 @@ export const StandardShell: React.FC<StandardShellProps> = ({
 
           <div className="flex items-center gap-2 text-[#CAD0DA]">
             <Link
+              href="/simulator"
+              className={`min-h-[44px] px-3 rounded-[8px] flex items-center gap-2 text-[15px] hover:text-white hover:bg-[#1B2028] transition-colors ${
+                isNavActive("/simulator") ? "text-[#C8B2FF]" : ""
+              }`}
+              aria-current={isNavActive("/simulator") ? "page" : undefined}
+            >
+              <i className="ri-flask-line text-[18px] text-[#C8B2FF]" aria-hidden="true" />
+              <span>Simulator</span>
+            </Link>
+
+            <Link
               href="/integrations"
               className={`min-h-[44px] px-3 rounded-[8px] flex items-center gap-2 text-[15px] hover:text-white hover:bg-[#1B2028] transition-colors ${
                 isNavActive("/integrations") ? "text-[#DFFF00]" : ""
