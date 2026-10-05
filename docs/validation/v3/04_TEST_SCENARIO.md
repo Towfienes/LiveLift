@@ -104,7 +104,7 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
   - Kết cấu lỏng nhẹ, thấm nhanh trong 10 giây, không nhờn rít.
   - Thành phần 10% Niacinamide tinh khiết kết hợp Hyaluronic Acid đa tầng; mờ thâm mụn sau 14 ngày.
   - Thử trực tiếp lên mu bàn tay; hướng dẫn kết hợp cho da dầu mụn.
-* **Disturbance D1 Injection Site:** At $T = 04:30$, facilitator triggers audience question: *"Shop ơi da treatment bong tróc có xài được không, test lên da ngăm xem có vón không ạ?"* Host engages and overruns.
+* **Disturbance D1 Injection Site:** At $T = 04:30$, facilitator triggers audience question: *"Shop ơi da treatment bong tróc có xài được không, test lên da ngăm xem có vón không ạ?"* Host engages and overruns past the scheduled 06:00 mark. At $T = 06:30$ ($T_{\text{start}}(S2) + 4\text{m}30\text{s}$), host requests 1 additional minute to finish pitching (projected end $07:30$, total duration $5.5\text{m}$, overrun $+1.5\text{m}$). With S3 planned at $3.0\text{m}$, Anchor 1 (09:00:00) faces a **90-second ($1.5\text{m}$) deficit** ($07:30 + 3.0\text{m} = 10:30$). Operator recovers by compressing S3 (Toner) by $1.5\text{m}$ (down to $1.5\text{m} \ge 1.0\text{m}$ floor), pulling Anchor 1 back to exactly 09:00:00.
 
 #### Segment 3: Pacing Buffer — Toner Cân Bằng Dịu Da BHA 1% & Centella (`SKU-TONER`)
 * **Product Code:** `SKU-TONER-02`
@@ -117,7 +117,7 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
   - Làm sạch sâu lỗ chân lông nhẹ nhàng với 1% BHA dịu nhẹ và 80% chiết xuất rau má Centella.
   - Cân bằng pH ngay sau khi rửa mặt; chuẩn bị lớp nền lý tưởng để hấp thụ Serum.
   - Dung tích lớn 200ml dùng được 3 tháng.
-* **Operational Buffer Flexibility:** Scheduled for 3.0m; floor is 1.0m. Can be compressed to 1.5m or 1.0m to absorb Serum overrun.
+* **Operational Buffer Flexibility:** Scheduled for 3.0m; floor is 1.0m. Can be compressed to 1.5m to absorb Serum overrun without breaching contractual floor limits.
 
 #### Segment 4: Hard Anchor 1 — Kem Dưỡng Phục Hồi Retinol 0.5% Vi Nang (`SKU-KEMD`)
 * **Product Code:** `SKU-KEMD-03`
@@ -130,7 +130,7 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
   - Công nghệ Retinol bọc vi nang giảm thiểu tối đa kích ứng; chống lão hóa, phục hồi màng ẩm ban đêm.
   - Giá sốc nhất năm: 590k giảm còn 295k, sàn TikTok trợ giá chỉ đúng 50 suất trong 3 phút.
   - Đếm ngược 5-4-3-2-1 cùng host để bấm mua; chốt đơn là giữ giá.
-* **Disturbance D3 Stockout Site:** At $T_{\text{start}}(S4) + 1\text{m}15\text{s}$, mock console alerts stock drops to 0 units.
+* **Disturbance D3 Stockout Site:** At $T_{\text{start}}(S4) + 1\text{m}15\text{s}$ ($T = 10:15$), mock console alerts stock drops to 0 units ("HẾT HÀNG"). Operator cuts S4 early (transitioning by $10:30$, actual duration $1.5\text{m}$). **Authorized Floor Exemption:** Although $1.5\text{m}$ is below S4's $2.0\text{m}$ contractual floor, abrupt inventory depletion constitutes an authorized operational exemption where pitching must cease immediately.
 
 #### Segment 5: Upsell Item — Kem Chống Nắng Quang Phổ Rộng SPF50+ PA++++ (`SKU-NANG`)
 * **Product Code:** `SKU-NANG-04`
@@ -142,7 +142,8 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
 * **Talking Points (VN):**
   - Màng lọc chống nắng thế hệ mới Tinosorb M & S; nâng tone tự nhiên không để lại vệt trắng.
   - Kháng nước 80 phút; kiềm dầu cả ngày không xuống tone.
-* **Disturbance Sites:** D4 (Console pin spinner freeze on S5 entry); D5 (Host completes talking points early at $T_{\text{start}}(S5) + 1\text{m}00\text{s}$).
+* **Disturbance Sites:** D4 (Console pin spinner freeze on S5 entry at $10:30$); D5 (Host completes talking points early at $T_{\text{start}}(S5) + 1\text{m}30\text{s}$ at $T = 12:00$, requiring host airwave hold until 14:00:00 Closing Anchor).
+* **D4 Separation of Platform vs Operator Latency:** Operator dispatches pin action on time ($\le 5\text{s}$) and issues hold cue to host; the 40-second network spinner is an unavoidable native platform delay and does not penalize operator timing scores.
 
 #### Segment 6: Hard Anchor 2 — Tổng Kết & Đóng Giỏ Hàng (`SYS-CLOSE`)
 * **Category:** Operational Sign-Off / Outro.
@@ -161,11 +162,11 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
 * **Campaign Title:** *UrbanPulse Night Drop: Công Nghệ & Thời Trang Phố*.
 * **Broadcast Window:** 15 minutes (00:00 to 15:00).
 * **Anti-Anticipation Permutation:** In Scenario 2, the buffer placement and disturbance order are deliberately permuted:
-  - **Stockout (D3)** occurs early on **Segment 2** ($T \approx 03:15$).
-  - **Overrun (D1)** occurs on **Segment 3** ($T \approx 06:15$, deficit at $07:45$).
-  - **Hard Anchor 1 (D2)** is locked at **10:30:00** on **Segment 4**.
-  - **Console Lag (D4)** occurs upon **Segment 4** entry (Flash Sale Pin).
-  - **Host Under-run (D5)** occurs on **Segment 5** ($T_{\text{start}}(S5) + 45\text{s}$).
+  - **Stockout (D3)** occurs early on **Segment 2** at $T = 03:15$ ($T_{\text{start}}(S2) + 1\text{m}45\text{s}$), with transition executing at $03:30$ ($2.0\text{m}$ actual duration, meeting floor).
+  - **Overrun (D1)** occurs on **Segment 3** (which starts early at $03:30$). Audience question injected at $T = 06:00$ ($T_{\text{start}}(S3) + 2\text{m}30\text{s}$); at $T = 09:30$ ($T_{\text{start}}(S3) + 6\text{m}00\text{s}$), host signals $1\text{m}45\text{s}$ remaining time (projected end $11:15$). This surfaces an **anchor deficit of exactly 45 seconds** against Hard Anchor 1 (10:30:00). Operator recovers by wrapping S3 by 10:30:00 ($7.0\text{m}$ actual, $\ge 3.0\text{m}$ floor).
+  - **Hard Anchor 1 (D2)** is locked at **10:30:00** on **Segment 4** (verbal announcement and pin dispatch scheduled for 10:30:00).
+  - **Console Lag (D4)** hits Seller Center upon **Segment 4 entry** (40s network spinner; operator cues size minigame; platform delay separated from operator performance).
+  - **Host Under-run (D5)** occurs on **Segment 5** at $T_{\text{start}}(S5) + 45\text{s}$ ($T = 13:15$); operator cues hold until 14:00:00 closing anchor.
   - **Closing Anchor 2** is locked at **14:00:00**.
 
 ---
@@ -173,21 +174,21 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
 ### 3.2 Scenario 2 Master Permuted Rundown Table
 
 ```
-00:00    01:30                05:00                           10:30             12:30        14:00   15:00
+00:00    01:30                03:30 (Early Pivot)             10:30:00          12:30        14:00   15:00
   |--------|--------------------|-------------------------------|-----------------|------------|-------|
   [ INTRO ][ 2. POWERBANK MAG ] [ 3. TAI NGHE ANC PRO ]         [ 4. FLASH TEE ]  [ 5. CARGO ] [ CLOSE ]
            ^                    ^                               ^                 ^            ^
-        03:15:               06:15:                          10:30:00:         13:15:       14:00:00:
-        [INJECT D3]          [INJECT D1]                     [EVAL D2 & D4]    [INJECT D5]  [EVAL CLOSE]
-        Stockout!            Host overruns past 09:00        Flash Sale Anchor Under-run!   End adherence
-        Pivot to S3?         Deficit vs Anchor 1 (10:30)     Pin lag freeze    Fill to 14m? at 14:00:00
+        03:15:               06:00 / 09:30:                  10:30:00:         13:15:       14:00:00:
+        [INJECT D3]          [INJECT D1 & EVAL DEFICIT]      [EVAL D2 & D4]    [INJECT D5]  [EVAL CLOSE]
+        Stockout!            Overrun extends to 11:15        Flash Sale Anchor Under-run!   End adherence
+        Pivot to S3 at 03:30 45s deficit vs 10:30 Anchor     Pin lag 40s       Hold to 14m  at 14:00:00
 ```
 
 | Seq | Segment Name | SKU ID | Planned Dur | Floor Dur | Compressible | Hard Anchor | Scheduled Window | Available Buffer | Operational Role & Disturbance Site |
 |:---:|---|---|:---:|:---:|:---:|:---:|:---:|:---:|---|
 | **1** | Mở màn & Voucher Phố | `SYS-INTRO2`| **1.5m** | 1.0m | `FALSE` | `FALSE` | `00:00 - 01:30` | 0.0m | Stream kickoff; welcome tech/streetwear audience; reveal drop roadmap. |
 | **2** | Tech Hero 1: Pin Sạc MagSafe| `SKU-TECH1` | **3.5m** | 2.0m | `TRUE` | `FALSE` | `01:30 - 05:00` | 1.5m | Hero pitch; magnetic charging demo; **Site for D3 Early Stockout**. |
-| **3** | Tech Hero 2: Tai Nghe ANC Pro| `SKU-TECH2` | **5.5m** | 3.0m | `TRUE` | `FALSE` | `05:00 - 10:30` | 2.5m | Extended demo; sound quality test; **Site for D1 Overrun**. |
+| **3** | Tech Hero 2: Tai Nghe ANC Pro| `SKU-TECH2` | **5.5m** | 3.0m | `TRUE` | `FALSE` | `05:00 - 10:30` | 2.5m | Extended demo; sound quality test; **Site for D1 Overrun** (absorbs early S3 start; overrun evaluated at 09:30). |
 | **4** | **FLASH SALE: Áo Thun Acid Wash**| `SKU-FASH1` | **2.0m** | 2.0m | `FALSE` | **`TRUE (10:30)`**| `10:30 - 12:30` | 0.0m | **Hard Anchor 1: 50% Flash Sale locked to 10:30:00**. (D4 Pin Lag site). |
 | **5** | Thời Trang: Quần Cargo Pants| `SKU-FASH2` | **1.5m** | 0.5m | `TRUE` | `FALSE` | `12:30 - 14:00` | 1.0m | Streetwear styling upsell; **Site for D5 Host Under-run**. |
 | **6** | **KẾT SHOW: Đóng Giỏ & Hẹn Giờ**| `SYS-CLOSE2`| **1.0m** | 1.0m | `FALSE` | **`TRUE (14:00)`**| `14:00 - 15:00` | 0.0m | **Hard Anchor 2: Final broadcast cutoff & tomorrow teaser.** |
@@ -218,7 +219,7 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
   - Lực hút nam châm chuẩn Qi2 15W dính chặt lưng máy, không sợ rơi khi lắc mạnh.
   - Dung tích thực 10,000mAh sạc đầy 2.2 lần iPhone 15 Pro; hỗ trợ sạc có dây PD 20W.
   - Vỏ kim loại tản nhiệt cao cấp, kích thước bỏ túi nhỏ gọn.
-* **Disturbance D3 Stockout Site:** At $T_{\text{start}}(S2) + 1\text{m}45\text{s}$ ($T = 03:15$), mock console indicates stock drops abruptly to 0 ("HẾT HÀNG"). Operator must pivot to Segment 3 early.
+* **Disturbance D3 Stockout Site:** At $T_{\text{start}}(S2) + 1\text{m}45\text{s}$ ($T = 03:15$), mock console indicates stock drops abruptly to 0 ("HẾT HÀNG"). Operator cues host to cut MagSafe; transition executes cleanly at $03:30$ ($2.0\text{m}$ actual duration, meeting contractual floor). Operator pulls S3 forward cleanly.
 
 #### Segment 3: Tech Hero 2 — Tai Nghe Chống Ồn Chủ Động ANC PulsePods Pro (`SKU-TECH2`)
 * **Product Code:** `SKU-TECH2-02`
@@ -230,7 +231,7 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
   - Chống ồn chủ động 42dB triệt tiêu tiếng còi xe, âm thanh quán cà phê; chế độ xuyên âm tự nhiên.
   - Màng loa mạ titan 12mm cho dải bass uy lực, phù hợp nhạc EDM, Hiphop.
   - Pin trâu 32 giờ kèm hộp sạc; chống nước IPX5 tập gym thoải mái.
-* **Disturbance D1 Overrun Site:** At $T = 06:15$ ($T_{\text{start}}(S3) + 1\text{m}15\text{s}$), facilitator prompts host with technical queries about microphone call clarity in windy conditions. Host overruns deeply past 09:00. At $T = 07:45$, deficit escalates against Anchor 1 (10:30:00).
+* **Disturbance D1 Overrun Site:** S3 starts at $03:30$ following early S2 transition. At $T = 06:00$ ($T_{\text{start}}(S3) + 2\text{m}30\text{s}$), facilitator prompts host with technical queries about microphone call clarity in windy conditions. Host engages in deep demonstration. At $T = 09:30$ ($T_{\text{start}}(S3) + 6\text{m}00\text{s}$), host signals $1\text{m}45\text{s}$ remaining time (projected end $11:15$). Because Flash Sale is locked to $10:30:00$, a **45-second deficit** escalates against Anchor 1 ($11:15 - 10:30 = 0.75\text{m}$). Operator recovers by directing host to conclude S3 by $10:30:00$ (total S3 actual duration = $7.0\text{m} \ge 3.0\text{m}$ floor).
 
 #### Segment 4: Hard Anchor 1 — Áo Thun Oversized Heavyweight 260GSM Acid Wash (`SKU-FASH1`)
 * **Product Code:** `SKU-FASH1-03`
@@ -243,7 +244,7 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
   - Chất vải 100% cotton định lượng 260GSM dày dặn, xử lý hiệu ứng loang Acid Wash thủ công độc bản.
   - Bo cổ dệt dày không giãn sau 50 lần giặt; form boxy rộng rãi chuẩn street style.
   - Deal trợ giá sàn đúng 180k; chỉ mở đúng 120 giây lúc 10:30:00.
-* **Disturbance D4 Console Lag Site:** Injected immediately upon transition into Segment 4. When the operator attempts to pin `SKU-FASH1` in Seller Center, a 40-second network spinner halts the console.
+* **Disturbance D4 Console Lag Site:** Injected immediately upon transition into Segment 4 at $10:30:00$. Host delivers verbal announcement on time at $10:30:00$, and operator dispatches pin in Seller Center on time. A 40-second network spinner halts the console until $11:10$. Operator mitigates with backchannel hold cue (`[HOLD: Minigame chọn size 40s trong lúc ghim]`). The 40s platform lag is recorded as an unavoidable native platform delay, distinct from operator reaction and verbal announcement adherence.
 
 #### Segment 5: Streetwear Upsell — Quần Dài Túi Hộp Utility Cargo Pants (`SKU-FASH2`)
 * **Product Code:** `SKU-FASH2-04`
@@ -254,7 +255,7 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
 * **Talking Points (VN):**
   - Vải dù dệt chéo chống bám nước nhẹ, 6 túi hộp đa năng thời thượng.
   - Dây rút gấu quần tùy chỉnh ống suông hoặc jogger cá tính.
-* **Disturbance D5 Under-run Site:** Injected at $T_{\text{start}}(S5) + 45\text{s}$. Host quickly covers points and signals readiness to conclude, opening a schedule void before the 14:00:00 closing anchor.
+* **Disturbance D5 Under-run Site:** Injected at $T_{\text{start}}(S5) + 45\text{s}$ ($T = 13:15$). Host quickly covers points and signals readiness to conclude, opening a schedule void before the 14:00:00 closing anchor. Operator cues host to hold airwaves via voucher recap until 14:00:00 closing anchor.
 
 #### Segment 6: Hard Anchor 2 — Tổng Kết & Đóng Giỏ Hàng (`SYS-CLOSE2`)
 * **Category:** Operational Sign-Off / Outro.

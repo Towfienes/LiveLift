@@ -164,10 +164,8 @@ The participant sample is anchored by standard merchant teams while deliberately
 | 2. Advanced Spreadsheet Power-User     | >= 1 Operator | Guarantees baseline is fair and competent |
 | 3. Skeptical / Anti-Screen Operator    | >= 1 Operator | Tests friction and resistance to new tools|
 | 4. Simple-Show Counterexample Team     |    1 Team     | Identifies lower boundary of utility      |
-| ------------------------------------------------------------------------------------------------- |
-| [EXPLORATORY BENCHMARK EXTENSION]                                                                 |
-| 5. Professional Rundown Challenger     | 1-2 Operators | Exploratory post-validation comparison    |
-|    (Ontime / Shoflo / Rundown Studio)  | (Exploratory) | against dedicated stage/broadcast timers  |
+| 5. Professional-Tool Comparator        | >= 2 Operators| Mandatory comparator frontier vs Ontime/  |
+|    (Ontime / Shoflo / Rundown Studio)  | (Mandatory)   | Shoflo/dedicated broadcast event timers   |
 +---------------------------------------------------------------------------------------------------+
 ```
 
@@ -183,10 +181,13 @@ The participant sample is anchored by standard merchant teams while deliberately
 4. **1 Simple-Show Counterexample Team ($n = 1$ Team):**
    - *Requirement:* A team running low-complexity broadcasts (e.g., 3–4 products total, no flash deals, minimal timing constraints), admitted under the explicit Quota 4 Exception Clause.
    - *Purpose:* Establishes the lower threshold of product utility, proving where LiveLift is unnecessary and where Google Sheets or simple Zalo chat remains the superior, more efficient choice.
-5. **Exploratory Benchmark Extension — Professional Rundown Tools (1–2 Operators):**
-   - *Classification:* **Exploratory Benchmark Extension.** Not a prerequisite gate blocker for Phase 0 core validation.
-   - *Requirement:* When available within agency/broadcast-adjacent studios, 1–2 operators complete an exploratory supplemental benchmark against a configured professional broadcast rundown tool (**Ontime, Shoflo, or Rundown Studio**).
-   - *Purpose:* Exploratory comparison testing whether LiveLift provides unique commerce-specific value (dynamic anchor deficit calculations, inventory stockout cuts, Next LIVE cloning) beyond general-purpose event timer software.
+5. **Required Professional-Tool Comparator Operators ($n \ge 2$ Operators):**
+   - *Classification:* **Mandatory Comparator Benchmark.** Prerequisite requirement for Gate G0 clearance.
+   - *Requirement:* At least 2 operators who routinely operate configured professional broadcast rundown tools (**Ontime, Shoflo, or Rundown Studio**) or dedicated broadcast automation setups.
+   - *Purpose:* Rigorously tests LiveLift against dedicated professional timing tools to establish whether LiveLift provides unique commerce-specific value (dynamic anchor deficit calculations, inventory stockout cuts, Next LIVE cloning) beyond general-purpose event timer software.
+6. **Native Vietnam Account Walkthrough & Telemetry Boundary:**
+   - *Prerequisite:* Prior to laboratory trials, researchers must conduct a detailed walkthrough of an authentic native Vietnamese TikTok Shop Seller Center console (verifying product showcase pinning flows, voucher setup, and real console latencies).
+   - *Telemetry Uncertainty Disclosure:* Any inaccessible real-time Seller Center or Opsique internal telemetry must be formally documented as an explicit empirical uncertainty rather than assumed to be accessible via private APIs.
 
 ---
 
@@ -300,22 +301,28 @@ A critical architectural and methodological requirement of LiveLift V3 is the **
 
 ## 7. Participant Governance & Tracking Log
 
+> [!IMPORTANT]
+> **SYNTHETIC EXAMPLE — NOT PARTICIPANT DATA — ILLUSTRATIVE ROSTER TEMPLATE ONLY**
+> The entries below are fictional illustrative examples demonstrating the schema, cohort balancing, and scheduling format. They do **not** represent real human participant enrollments, confirmed recruitments, or completed experimental sessions. No real participant recruitment or trial has occurred.
+
 All recruited participants must be cataloged in the master validation registry using the standardized schema below:
 
 | Participant ID | Team Key | Role | Cadence (Shows/Wk) | Typical SKU Count | Tool Stack | Cohort Sub-Type | Condition Sequence | Scheduled Date | Status |
 |:---:|:---:|:---:|:---:|:---:|---|---|:---:|:---:|:---:|
-| `P01-OP` | `TEAM-01` | Lead Operator | 4 | 18 | Sheets + Zalo | Power-User | $A \rightarrow B$ | 2026-10-12 | Confirmed |
-| `P01-HOST`| `TEAM-01` | Main Host | 4 | 18 | Whiteboard / Zalo| Standard Host | $A \rightarrow B$ | 2026-10-12 | Confirmed |
-| `P02-OP` | `TEAM-02` | Operator | 3 | 12 | Sheets + Telegram| Skeptical Operator| $B \rightarrow A$ | 2026-10-13 | Confirmed |
-| `P02-HOST`| `TEAM-02` | Main Host | 3 | 12 | Chat phone | Standard Host | $B \rightarrow A$ | 2026-10-13 | Confirmed |
-| `P03-OP` | `TEAM-03` | Studio Producer | 5 | 20 | Sheets + Zalo | Standard Merchant | $A \rightarrow B$ | 2026-10-14 | Confirmed |
-| `P03-HOST`| `TEAM-03` | Main Host | 5 | 20 | Tablet cue screen | Standard Host | $A \rightarrow B$ | 2026-10-14 | Confirmed |
-| `P04-OP` | `TEAM-04` | Producer | 3 | 15 | Sheets + Zalo | Standard Merchant | $B \rightarrow A$ | 2026-10-15 | Confirmed |
-| `P04-HOST`| `TEAM-04` | Host/KOC | 3 | 15 | IFB Earpiece | Standard Host | $B \rightarrow A$ | 2026-10-15 | Confirmed |
-| `P05-OP` | `TEAM-05` | Operator | 2 | 4 | Paper + Zalo | Simple-Show Case (Quota 4 Exc.) | $A \rightarrow B$ | 2026-10-16 | Confirmed |
-| `P05-HOST`| `TEAM-05` | Creator/Host | 2 | 4 | Self-paced | Standard Host | $A \rightarrow B$ | 2026-10-16 | Confirmed |
-| `P06-OP` | `TEAM-06` | Lead Operator | 4 | 16 | Sheets / Ontime | Standard Merchant (Exploratory Benchmark) | $B \rightarrow A$ | 2026-10-17 | Confirmed |
-| `P06-HOST`| `TEAM-06` | Main Host | 4 | 16 | Tablet cue screen | Standard Host | $B \rightarrow A$ | 2026-10-17 | Confirmed |
+| `P01-OP` | `TEAM-01` | Lead Operator | 4 | 18 | Sheets + Zalo | Power-User | $A \rightarrow B$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P01-HOST`| `TEAM-01` | Main Host | 4 | 18 | Whiteboard / Zalo| Standard Host | $A \rightarrow B$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P02-OP` | `TEAM-02` | Operator | 3 | 12 | Sheets + Telegram| Skeptical Operator| $B \rightarrow A$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P02-HOST`| `TEAM-02` | Main Host | 3 | 12 | Chat phone | Standard Host | $B \rightarrow A$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P03-OP` | `TEAM-03` | Studio Producer | 5 | 20 | Sheets + Zalo | Standard Merchant | $A \rightarrow B$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P03-HOST`| `TEAM-03` | Main Host | 5 | 20 | Tablet cue screen | Standard Host | $A \rightarrow B$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P04-OP` | `TEAM-04` | Producer | 3 | 15 | Sheets + Zalo | Standard Merchant | $B \rightarrow A$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P04-HOST`| `TEAM-04` | Host/KOC | 3 | 15 | IFB Earpiece | Standard Host | $B \rightarrow A$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P05-OP` | `TEAM-05` | Operator | 2 | 4 | Paper + Zalo | Simple-Show Case (Quota 4 Exc.) | $A \rightarrow B$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P05-HOST`| `TEAM-05` | Creator/Host | 2 | 4 | Self-paced | Standard Host | $A \rightarrow B$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P06-OP` | `TEAM-06` | Lead Operator | 4 | 16 | Ontime / Sheets | Professional Tool Comparator | $B \rightarrow A$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P06-HOST`| `TEAM-06` | Main Host | 4 | 16 | Tablet cue screen | Standard Host | $B \rightarrow A$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P07-OP` | `TEAM-07` | Broadcast Op | 5 | 22 | Shoflo / Sheets | Professional Tool Comparator | $A \rightarrow B$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
+| `P07-HOST`| `TEAM-07` | Main Host | 5 | 22 | Studio Monitor | Standard Host | $A \rightarrow B$ | [ILLUSTRATIVE] | [SYNTHETIC EXAMPLE] |
 
 ---
 

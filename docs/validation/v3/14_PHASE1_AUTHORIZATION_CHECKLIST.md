@@ -29,10 +29,11 @@ Engineering teams are strictly prohibited from implementing Phase 1 product code
 |   - Laboratory Trials                  - Zero Triggers Activated               - Zero backend      |
 |                                                                                      │             |
 |                                                                                      ▼             |
-|   [ PHASE 2: SERVER BACKEND ]          [ GATE G1: PILOT CLEARANCE ]                          │             |
-|   - Multi-tenant cloud sync            - In-vivo field trials                                │             |
-|   - WebSockets & multi-room <───────── - >=3 teams, >=3 live shows <─────────────────────────┘             |
+|   [ PHASE 2: TEAM BACKEND ]            [ GATE G1: PILOT CLEARANCE ]                          │             |
+|   - One-room authoritative server      - In-vivo field trials                                │             |
+|   - WebSockets (1-room sync) <──────── - >=3 teams, >=3 live shows <─────────────────────────┘             |
 |   *STRICTLY PROHIBITED AT G0*          - Functional stability verified                             |
+|   (Multi-room deferred/future)                                                                     |
 |                                                                                                    |
 +----------------------------------------------------------------------------------------------------+
 ```
@@ -41,7 +42,7 @@ Engineering teams are strictly prohibited from implementing Phase 1 product code
 
 ## 2. Gate G0 Prerequisite Validation Checklist
 
-Before engineering may write a single line of production code for Phase 1, the following empirical and architectural verifications must be certified:
+Before engineering may write a single line of production code for Phase 1, the following empirical, competitive, and architectural verifications must be certified:
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -52,22 +53,37 @@ Before engineering may write a single line of production code for Phase 1, the f
 | 01 | Phase 0 Empirical Trial Execution  | Completed N = 6 to 10    | Ledger Signed | [ ] CERTIFIED |
 |    |                                    | counterbalanced trials   | in 12_RESL.md |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
-| 02 | Preregistered Desk Thresholds      | Thresholds 01–06, 08, 09 | All Primary   | [ ] CERTIFIED |
-|    | Clearance                          | met with statistical sig.| Gates PASS    |               |
+| 02 | Native Vietnam TikTok Shop Seller  | Screen recording & step- | Complete flow | [ ] CERTIFIED |
+|    | Center Live Walkthrough            | through of actual VN     | documented in |               |
+|    |                                    | Seller Center interface  | study dossier |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
-| 03 | Zero-Tolerance Triggers Audit      | Zero Silent Anchor Shifts| Zero Triggers | [ ] CERTIFIED |
-|    |                                    | False Actions, Crashes   | Activated     |               |
+| 03 | Professional Substitute Comparator | Evaluation against pro   | >= 2 pro-tool | [ ] CERTIFIED |
+|    | Benchmark (Ontime / Shoflo / vMix) | rundown software by pro  | operators     |               |
+|    |                                    | operators completed      | evaluated     |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
-| 04 | Nonparametric Statistical Defense  | Wilcoxon Signed-Rank Test| p < 0.05 on   | [ ] CERTIFIED |
+| 04 | Seller Center / Opsique Telemetry  | Inaccessible native API  | Documented as | [ ] CERTIFIED |
+|    | Uncertainty Formally Recorded      | telemetry documented as  | explicit      |               |
+|    |                                    | an external uncertainty  | uncertainty   |               |
++----+------------------------------------+--------------------------+---------------+---------------+
+| 05 | Preregistered Desk Thresholds      | Dimensions 01–06, 08, 09 | All Primary   | [ ] CERTIFIED |
+|    | Clearance (Including Next LIVE)    | met: T_plan <= 5m, >=30% | Gates PASS    |               |
+|    |                                    | faster, Feas >= 90%, TLX | (or workload  |               |
+|    |                                    | workload alt. satisfied  | alternative)  |               |
++----+------------------------------------+--------------------------+---------------+---------------+
+| 06 | Zero-Tolerance Triggers Audit      | Zero Silent Shifts (T1), | Zero Triggers | [ ] CERTIFIED |
+|    |                                    | False (T2), Lost (T3),   | Activated     |               |
+|    |                                    | or unhandled Crash (T4)  |               |               |
++----+------------------------------------+--------------------------+---------------+---------------+
+| 07 | Nonparametric Statistical Defense  | Wilcoxon Signed-Rank Test| p < 0.05 on   | [ ] CERTIFIED |
 |    |                                    | on recovery and workload | primary delta |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
-| 05 | Host View Decoupled Sub-Study      | Host View passed OR      | Gate Cleared  | [ ] CERTIFIED |
+| 08 | Host View Decoupled Sub-Study      | Host View passed OR      | Gate Cleared  | [ ] CERTIFIED |
 |    | Evaluation                         | Pivot A formally adopted | or Pivoted    |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
-| 06 | Subjective Operator Preference     | Forced-choice probe      | >= 70.0%      | [ ] CERTIFIED |
+| 09 | Subjective Operator Preference     | Forced-choice probe      | >= 70.0%      | [ ] CERTIFIED |
 |    |                                    | preference for LiveLift  | Operators     |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
-| 07 | Independent Forensic Audit Sign-off| Forensic auditor reviewed| Integrity     | [ ] CERTIFIED |
+| 10 | Independent Forensic Audit Sign-off| Forensic auditor reviewed| Integrity     | [ ] CERTIFIED |
 |    |                                    | raw video and telemetry  | Attested      |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
 ```
@@ -90,8 +106,8 @@ To prevent speculative complexity, scope creep, and unmaintainable infrastructur
 | 2. Durable local persistence (IndexedDB /   | 2. Remote database synchronization, WebSockets, or   |
 |    embedded SQLite via OPFS/Wasm).          |    cross-device real-time collaboration.             |
 +---------------------------------------------+------------------------------------------------------+
-| 3. Single active live room per workstation. | 3. Multi-room concurrent operations or multi-agency  |
-|                                             |    enterprise dashboards.                            |
+| 3. Single active live room per workstation. | 3. Multi-room concurrent operations, cross-studio    |
+|                                             |    dashboards, or multi-agency enterprise suites.    |
 +---------------------------------------------+------------------------------------------------------+
 | 4. Deterministic state machine & event log  | 4. Autonomous AI pacing agents or automatic segment  |
 |    (Immutable baselines, atomic receipts).  |    transition triggers.                              |
@@ -142,11 +158,11 @@ The programmatic recovery engine must implement the mathematical invariants defi
 **The clearance of Gate G0 authorizes Phase 1 engineering ONLY.** Under no circumstances does Gate G0 authorize:
 1. Provisioning cloud infrastructure (AWS, GCP, Supabase, Vercel Postgres).
 2. Implementing multi-tenant user authentication or team permissions.
-3. Building real-time WebSocket sync servers or host-operator networking.
-4. Designing multi-room enterprise dashboards.
+3. Building real-time WebSocket sync servers or host-operator networking (reserved strictly for Phase 2 single-room scope).
+4. Designing multi-room enterprise dashboards, cross-studio views, or multi-agency management (deferred to future phases and separate authorization).
 
 ### 5.2 Gate G1 Clearance Prerequisite for Phase 2
-Phase 2 engineering may **only** be authorized upon formal clearance of **Gate G1**, which requires:
+Phase 2 engineering (strictly scoped to a **single-room / one-room team authoritative backend**) may **only** be authorized upon formal clearance of **Gate G1**, which requires:
 1. Completion of the Phase 1 functional single-device product.
 2. Deployment of the Phase 1 build in **authentic in-vivo production broadcasts** across:
    $$\text{Merchant Teams} \ge 3 \quad \wedge \quad \text{Consecutive Live Shows} \ge 3 \text{ per team}$$
@@ -162,10 +178,11 @@ Engineering implementation of Phase 1 may begin if and only if all four designat
 ```
 ====================================================================================================
 LIVELIFT V3 PHASE 1 ENGINEERING AUTHORIZATION LEDGER
+[TEMPLATE — NOT CERTIFIED PARTICIPANT DATA]
 ====================================================================================================
 GATE DESIGNATION:       GATE G0 (PHASE 0 VALIDATION CLEARANCE -> PHASE 1 BUILD)
 AUTHORIZATION SCOPE:    PHASE 1 SINGLE-DEVICE LOCAL OPERATIONS DESK (ZERO BACKEND)
-PROHIBITED SCOPE:       PHASE 2 SERVER BACKEND / MULTI-TENANT / CLOUD SYNC (STRICTLY PROHIBITED)
+PROHIBITED SCOPE:       PHASE 2 TEAM BACKEND / MULTI-TENANT / CLOUD SYNC / MULTI-ROOM (STRICTLY PROHIBITED AT G0)
 
 ----------------------------------------------------------------------------------------------------
 GOVERNANCE SIGN-OFF BLOCK:
@@ -179,7 +196,8 @@ GOVERNANCE SIGN-OFF BLOCK:
 2. PRODUCT STRATEGY LEAD
    Name:      ____________________________________________________
    Statement: "I authorize Phase 1 engineering strictly within single-device manual operations scope.
-               Phase 2 multi-tenant cloud sync is explicitly prohibited until Gate G1."
+               Phase 2 single-room team backend is explicitly prohibited until Gate G1;
+               multi-room dashboards are deferred to future phases."
    Signature: ________________________________  Date: [ YYYY-MM-DD: ____________ ]
 
 3. ENGINEERING ARCHITECTURE LEAD

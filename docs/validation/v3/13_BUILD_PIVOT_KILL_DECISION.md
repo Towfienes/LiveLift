@@ -24,45 +24,62 @@ In accordance with master project governance, **audited behavioral evidence stri
 - If operators express enthusiastic praise ("I love the UI!") but telemetry proves they missed hard anchors, suffered increased cognitive workload, or logged late transitions, the verdict is **FAIL**.
 - If operators express skepticism of software additions but achieve $\ge 30\%$ faster recovery, zero critical misses, and $\ge 20\%$ lower cognitive workload, the operational advantage is **CONFIRMED**.
 
+### 1.2 Hierarchical Evaluation Precedence
+To guarantee that the exact same empirical evidence never produces conflicting verdicts (e.g., both BUILD and KILL), product leadership must apply evaluation gates in strict hierarchical order:
+
+1. **Gate 0A: Reliability & Experimental Validity Gate (Engineering REPAIR / RETEST):**
+   - Software crashes, unhandled thread exceptions, blank screens, or lost acknowledged local commands invalidate the experimental trial run.
+   - In accordance with master roadmap governance (§26), **reliability defects alone do not disprove the product value hypothesis**.
+   - Trigger T4 (Crash/Lockup) or T3 (Lost Command) halts the trial, flags the build for an immediate **REPAIR / RETEST** engineering cycle, and schedules a clean retest under identical protocol conditions.
+   - A product **KILL** occurs under Gate 0A *only* if engineering fails to achieve stability after authorized repair cycles or if the architecture exhibits persistent, irremediable runtime unreliability.
+2. **Gate 0B: Substantive Falsification Gate (Product KILL):**
+   - If the prototype executes a valid trial without software crashes, but empirical evidence demonstrates that LiveLift increases cognitive workload, induces critical anchor misses, suffers capture abandonment, or is beaten by the spreadsheet baseline across two iterations, the product hypothesis is falsified.
+   - Activates **KILL / DO NOT ADVANCE TO PHASE 1** (Triggers K1–K4, K6).
+3. **Gate 0C: Secondary Wedge Assessment (PIVOT Gate):**
+   - If the core Operator Desk passes all primary timing and validity thresholds, but secondary subsystems (Host View, live manual capture) create operational friction or fail their sub-study criteria, product leadership executes a scoped pivot (**Pivot A: Desk-Only**, **Pivot B: Review Companion**, or **Pivot C: Template/Plugin**).
+4. **Gate 0D: Unambiguous BUILD Gate:**
+   - Advancement to Phase 1 Single-Device Desk occurs if and only if **100% of primary desk dimensions pass**, zero falsification triggers are activated, operator preference is $\ge 70.0\%$, and the Host View sub-study passes (or Pivot A is formally adopted).
+
 ```
 +----------------------------------------------------------------------------------------------------+
-|                                      DECISION LOGIC FLOWCHART                                      |
+|                                  HIERARCHICAL DECISION FLOWCHART                                   |
 +----------------------------------------------------------------------------------------------------+
 |                                                                                                    |
 |                                    [ EMPIRICAL VALIDATION TRIAL ]                                  |
 |                                                  │                                                 |
 |                                                  ▼                                                 |
-|                                     [ ZERO-TOLERANCE AUDIT ]                                       |
-|                                     Did prototype trigger:                                         |
-|                                     - Silent Anchor Shift?                                         |
-|                                     - False Confirmed Action?                                      |
-|                                     - Lost Acknowledged Command?                                   |
-|                                     - Prototype Crash / Freeze?                                    |
+|                                    [ LEVEL 0A: VALIDITY CHECK ]                                    |
+|                                    Software crash, lost command,                                   |
+|                                    or unhandled thread lockup?                                     |
 |                                                  │                                                 |
 |                                   YES ───────────┴─────────── NO                                   |
 |                                    │                           │                                   |
 |                                    ▼                           ▼                                   |
-|                                [ KILL ]          [ PRIMARY DESK THRESHOLDS ]                       |
-|                             Automatic Term.      - Risk Awareness >= 80% <= 10s                    |
-|                                                  - Recovery >= 30% faster & >= 90% valid           |
-|                                                  - Critical Misses == 0                            |
-|                                                  - Capture Burden <= 1 cmd, <= 3s                  |
-|                                                  - TLX Workload >= 20% lower                       |
-|                                                  - PVA Review <= 5m, >= 30% faster                 |
-|                                                  - Operator Preference >= 70%                      |
-|                                                                │                                   |
-|                                ┌───────────────────────────────┼───────────────────────────────┐   |
-|                                ▼                               ▼                               ▼   |
-|                         [ ALL PASS ]                    [ PARTIAL PASS ]                 [ FAIL ]  |
-|                                │                               │                               │   |
-|                   Host View Sub-Study Check?            Diagnostic Audit                 Spreadsheet beats |
-|                    ┌───────────┴───────────┐            - Host View fails? -> PIVOT A    LiveLift in >= 2  |
-|                   PASS                    FAIL          - In-live rejected?-> PIVOT B    iterations.       |
-|                    │                       │            - Standalone rej?  -> PIVOT C          │           |
-|                    ▼                       ▼                                                   ▼           |
-|                [ BUILD ]               [ PIVOT A ]                                         [ KILL ]        |
-|             Phase 1 Product         Desk-Only Scope                                     Archive Project    |
-|                                                                                                    |
+|                            [ REPAIR / RETEST ]            [ LEVEL 0B: FALSIFICATION CHECK ]        |
+|                            Invalid trial run;             - Baseline beats LiveLift (K1)?          |
+|                            engineering bug fix.           - Critical anchor miss (K2)?             |
+|                            (Persistent unreliability      - Cognitive workload increase (K3)?      |
+|                             -> KILL K5)                   - Capture chore rejection (K4)?          |
+|                                                           - Preference < 50% (K6)?                 |
+|                                                                        │                           |
+|                                                         YES ───────────┴─────────── NO             |
+|                                                          │                           │             |
+|                                                          ▼                           ▼             |
+|                                                      [ KILL ]             [ LEVEL 0C: PRIMARY ]    |
+|                                                   Do Not Advance          All 8 Primary Desk       |
+|                                                   to Phase 1              Dimensions Passed?       |
+|                                                                                      │             |
+|                                                                       YES ───────────┴──────── NO  |
+|                                                                        │                        │  |
+|                                                  Host View Sub-Study?  │                        ▼  |
+|                                                ┌───────────┴───────────┐│                   [ PIVOT ]      |
+|                                               PASS                    FAIL                  Diagnostics:   |
+|                                                │                       │                    - Desk only: A |
+|                                                ▼                       ▼                    - Review: B    |
+|                                            [ BUILD ]               [ PIVOT A ]              - Template: C  |
+|                                         Phase 1 Product         Desk-Only Scope                    │       |
+|                                         (Single-Device)         (Kill Host View)                   ▼       |
+|                                                                                             [ RESTRUCTURE ]|
 +----------------------------------------------------------------------------------------------------+
 ```
 
@@ -72,16 +89,19 @@ In accordance with master project governance, **audited behavioral evidence stri
 
 ### 2.1 Prerequisite Gate Clearance
 Advancement to the BUILD pathway requires meeting **100% of the following criteria**:
-1. **Zero Disqualification Triggers:** Zero occurrences of Silent Anchor Shifts, False Confirmed Actions, Lost Acknowledged Commands, or Prototype Crashes.
-2. **Primary Desk Thresholds Met:**
-   - *Risk Awareness:* $\ge 80\%$ of injected conflicts recognized within $\le 10$ seconds.
-   - *Recovery Decision Speed:* Median decision latency $\ge 30\%$ faster than baseline.
-   - *Recovery Constraint Validity:* $\ge 90\%$ of recovery choices mathematically respect product floors and downstream anchors.
-   - *Critical Cue Reliability:* Exactly 0 unintended critical anchor misses; median anchor variance $\le 15$ seconds.
-   - *Routine Capture Burden:* $\le 1$ command per transition, median capture latency $\le 3$ seconds, boundary error rate $E_{\text{PVA}} \le 10\%$.
-   - *Operator Cognitive Workload:* Median raw NASA-TLX score $\ge 20\%$ lower than baseline ($p < 0.05$).
-   - *Review & Next Plan:* Total review duration $\le 5$ minutes (median $\ge 30\%$ faster than baseline) with $\ge 90\%$ fact accuracy.
-   - *Subjective Operator Preference:* $\ge 70\%$ of participating operators voluntarily choose LiveLift for tomorrow's real show.
+1. **Zero Disqualification Triggers:** Zero occurrences of Silent Anchor Shifts (T1), False Confirmed Actions (T2), Lost Acknowledged Commands (T3), or unhandled Prototype Crashes (T4).
+2. **Primary Desk Thresholds Met (Dimensions 01–06, 08, 09):**
+   - *Dimension 01 (Setup & Configuration):* Initial configuration duration $T_{\text{setup}} \le 180$ seconds, with $\le 3$ configuration errors.
+   - *Dimension 02 (Schedule-Risk Awareness):* $\ge 80.0\%$ of injected schedule conflicts correctly recognized (identifying the threatened anchor) within $\le 10$ seconds of stimulus.
+   - *Dimension 03 (Overrun Recovery Speed & Constraint Validity):* Median recovery decision latency $T_{\text{decision}} \ge 30.0\%$ faster than baseline, with $\ge 90.0\%$ of recovery actions mathematically respecting minimum segment durations and downstream anchor commitments.
+   - *Dimension 04 (Hard Promotion Anchor Protection):* Exactly 0 unintended critical anchor misses; median verbal anchor variance $|V_{\text{anchor, verbal}}| \le 15$ seconds (native platform delay recorded separately as external latency).
+   - *Dimension 05 (Routine Capture Burden & PVA Accuracy):* $\le 1$ command per transition, median capture latency $t_{\text{capture}} \le 3$ seconds, boundary error rate $E_{\text{PVA}} \le 10.0\%$.
+   - *Dimension 06 (Operator Cognitive Workload):* Median raw NASA-TLX score $\ge 20.0\%$ lower than baseline ($p < 0.05$); OR within $\pm 5.0$ points of baseline with statistically significant ($p < 0.05$) recovery latency improvement.
+   - *Dimension 08 (Post-Show Fact Accuracy & Review Reconciliation):* Total review reconciliation duration $T_{\text{recon}} \le 5.0$ minutes (median $\ge 30.0\%$ faster than baseline) with $\ge 90.0\%$ fact accuracy.
+   - *Dimension 09 (Feasible Next LIVE Adaptation):* Next-plan authoring duration $T_{\text{plan}} \le 5.0$ minutes (median $\ge 30.0\%$ faster than baseline), with $\ge 90.0\%$ plan constraint feasibility, and combined post-show duration $T_{\text{recon}} + T_{\text{plan}} \le 10.0$ minutes.
+3. **Subjective Operator Preference (Dimension 10):**
+   - $\ge 70.0\%$ of participating operators voluntarily choose LiveLift for tomorrow's real live sales broadcast.
+   *(Note: Voluntary Repeat Use across $\ge 3$ merchant teams $\times \ge 3$ consecutive live shows is Gate G1 field acceptance, evaluated in production pilots following Phase 1 completion).*
 
 ---
 
@@ -89,17 +109,19 @@ Advancement to the BUILD pathway requires meeting **100% of the following criter
 Clearance of the BUILD gate authorizes engineering to implement the **Phase 1 Single-Device Manual Operations Desk**:
 * **Persistence Layer:** Durable local storage utilizing **browser-local IndexedDB or embedded SQLite (via OPFS / WebAssembly)**.
 * **Architecture:** Strictly **single-device, zero-backend, offline-first**. All state machines, event logs, and command receipts execute within the local client runtime.
-* **Studio Room Scope:** Strictly **one active room per device**. Multi-room concurrent dashboards are explicitly deferred.
+* **Studio Room Scope:** Strictly **one active room per device**. Multi-room concurrent dashboards and agency management are explicitly deferred.
 * **External Integration Boundary:**
-  - **Zero TikTok API Dependencies:** No reliance on private or unofficial TikTok endpoints.
+  - **Zero TikTok API Dependencies:** No reliance on private, undocumented, or official TikTok endpoints.
   - **Manual External Action Reporting:** Product pins, voucher activations, and price changes remain strictly manual operator clicks logged as `operator_reported`.
   - **No Autonomous Automation:** No auto-pinning bots, no headless browser scraping, no AI auto-pacing.
 
 ---
 
-### 2.3 Strict Phase 2 Prohibition
+### 2.3 Strict Phase 2 Prohibition & Scope Boundary
 Clearance of the Phase 0 BUILD gate **DOES NOT authorize Phase 2 engineering**:
-- Cloud synchronization, server backends, PostgreSQL databases, multi-tenant authentication, WebSockets, and agency multi-room features remain **STRICTLY PROHIBITED** until Phase 1 passes its own in-vivo field acceptance gate (**Gate G1**).
+- Phase 2 scope is strictly defined as a **single-room / one-room team authoritative backend** (server authority, WebSockets, and synchronized operator/host/producer devices for one studio room).
+- Multi-room concurrent dashboards, multi-agency fleet management, and cross-studio views are **DEFERRED TO FUTURE PHASES** and subject to separate independent authorization.
+- Cloud synchronization, server backends, PostgreSQL databases, multi-tenant authentication, WebSockets, and team networking remain **STRICTLY PROHIBITED** until Phase 1 passes its own in-vivo field acceptance gate (**Gate G1**).
 
 ---
 
@@ -144,8 +166,8 @@ If the core Operator Desk demonstrates genuine operational superiority, but seco
 
 ### 3.2 Pivot B: Review-Only Companion Pivot
 * **Trigger Conditions:**
-  1. Live in-show runtime tracking (Threshold 05) fails: Operators report that clicking segment transitions during high-stress selling is an intolerable chore, resulting in $E_{\text{PVA}} > 10\%$.
-  2. Post-show Plan-vs-Actual review (Threshold 08) and Next LIVE planning (Threshold 10) receive high acclaim ($\ge 80\%$ fact accuracy, $\ge 80\%$ preference for the planning engine).
+  1. Live in-show runtime tracking (Dimension 05) fails: Operators report that clicking segment transitions during high-stress selling is an intolerable chore, resulting in $E_{\text{PVA}} > 10.0\%$.
+  2. Post-show Plan-vs-Actual review (Dimension 08) and Next LIVE planning (Dimension 09) receive high acclaim ($\ge 90.0\%$ fact accuracy, $\ge 90.0\%$ feasibility for the planning engine).
 * **Operational Action:**
   - **De-prioritize live-second-by-second tracking.**
   - Reframe the product as a **Post-Live Debrief & Rundown Planning Companion**.
@@ -178,7 +200,7 @@ Product leadership must **immediately terminate LiveLift V3 development** and bl
 | #  | Termination Trigger        | Concrete Empirical Evidence Condition                            |
 +----+----------------------------+------------------------------------------------------------------+
 | K1 | Baseline Spreadsheet       | The competent Google Sheets baseline matches or outperforms      |
-|    | Dominance                  | LiveLift in Recovery Decision Speed (T_decision) and Review      |
+|    | Dominance                  | LiveLift in Recovery Decision Speed (T_decision) and Fact        |
 |    |                            | Accuracy (A_facts) across two focused product iterations.        |
 +----+----------------------------+------------------------------------------------------------------+
 | K2 | Critical Operational Harm  | LiveLift induces >= 1 critical unintended anchor miss or causes  |
@@ -190,11 +212,13 @@ Product leadership must **immediately terminate LiveLift V3 development** and bl
 | K4 | Routine Capture Chore      | Operators abandon live transition logging in >= 30% of trials,   |
 |    | Rejection                  | citing screen overload and Seller Center multi-tasking conflict. |
 +----+----------------------------+------------------------------------------------------------------+
-| K5 | Disqualification Trigger   | Prototype activates any zero-tolerance trigger: Silent Anchor    |
-|    | Activation                 | Shift, False Confirmed Action, Lost Command, or Crash.           |
+| K5 | Disqualification Trigger   | Prototype crash, freeze, or lost command triggers an immediate   |
+|    | Activation (Persistent)    | REPAIR / RETEST engineering gate. If engineering cannot resolve  |
+|    |                            | the bug, or prototype demonstrates persistent fatal unreliability|
+|    |                            | across retests, development is terminated (KILL).                |
 +----+----------------------------+------------------------------------------------------------------+
-| K6 | Zero Commercial Willingness| < 50% of operators choose LiveLift, or zero merchant teams agree |
-|    | to Adopt                   | to deploy the tool in repeated live broadcasts.                  |
+| K6 | Zero Commercial Willingness| < 50.0% of operators choose LiveLift, or operators demonstrate   |
+|    | to Adopt                   | preference for spreadsheets, proving lack of market viability.   |
 +----+----------------------------+------------------------------------------------------------------+
 ```
 
@@ -211,7 +235,7 @@ Upon triggering a KILL decision:
 
 ## 5. Objective Behavioral Evidence vs Subjective Opinion
 
-To prevent cognitive dissonance, confirmation bias, or polite participant flattery from contaminating the decision, research evaluations must follow the **Triangulation Matrix**:
+To prevent cognitive dissonance, confirmation bias, or polite participant flattery from contaminating the decision, research evaluations must follow the **Triangulation Conflict Resolution Matrix**:
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -220,21 +244,28 @@ To prevent cognitive dissonance, confirmation bias, or polite participant flatte
 | Behavioral Telemetry   | Subjective Interview   | Authoritative Strategic Interpretation           |
 +------------------------+------------------------+--------------------------------------------------+
 | **PASS**               | **POSITIVE**           | **UNAMBIGUOUS BUILD:**                           |
-| Latency improved >=30%;| Operator enthusiastically| Behavioral advantage validated by user sentiment.|
-| Zero critical misses;  | chooses LiveLift;      | Clear mandate for Phase 1 single-device build.   |
-| Workload lower >=20%.  | confirms commercial fit|                                                  |
+| Latency improved >=30%;| >= 70.0% of operators  | Behavioral efficiency validated by user sentiment.|
+| Zero critical misses;  | voluntarily choose     | Clear mandate for Phase 1 single-device build.   |
+| Workload lower >=20%.  | LiveLift for live show.|                                                  |
 +------------------------+------------------------+--------------------------------------------------+
-| **PASS**               | **NEGATIVE**           | **BUILD WITH TARGETED UX REFINEMENT:**           |
-| Latency improved >=30%;| Operator expresses     | Behavioral efficiency is real, but UI friction,  |
-| Zero critical misses;  | skepticism; prefers    | styling, or habits cause subjective resistance.  |
-| Workload lower >=20%.  | familiar sheets.       | Conduct onboarding and visual design polish.     |
+| **PASS**               | **MODERATE**           | **PIVOT / UX REVISION GATE:**                    |
+| Latency improved >=30%;| 50.0% - 69.9% choose   | Behavioral advantage confirmed, but operator     |
+| Zero critical misses;  | LiveLift; hesitation   | willingness is insufficient for immediate BUILD. |
+| Workload lower >=20%.  | regarding UI friction. | Evaluate Pivot A/B/C or conduct targeted UX      |
+|                        |                        | redesign and re-test. Blocks BUILD until resolved|
 +------------------------+------------------------+--------------------------------------------------+
-| **FAIL**               | **POSITIVE**           | **HARD REJECTION / RE-AUDIT (FALSE CHARM):**     |
-| Latencies lag baseline;| Operator claims tool   | Participant is exhibiting courtesy bias or novelty|
-| Missed anchors > 0;    | is "amazing" and "saves| attraction. System failed operational reality.   |
-| Workload higher.       | time".                 | Subjective praise is DISCARDED. Verdict is FAIL. |
+| **PASS**               | **NEGATIVE**           | **KILL / DO NOT ADVANCE TO PHASE 1 (Trigger K6):**|
+| Latency improved >=30%;| < 50.0% choose         | Commercial unwillingness overrides raw telemetry.|
+| Zero critical misses;  | LiveLift; operators    | If operators reject the tool in favor of sheets  |
+| Workload lower >=20%.  | prefer spreadsheets.   | despite speed, the product cannot achieve organic|
+|                        |                        | adoption in the wild. Project terminated.        |
 +------------------------+------------------------+--------------------------------------------------+
-| **FAIL**               | **NEGATIVE**           | **UNAMBIGUOUS KILL / PIVOT:**                    |
+| **FAIL**               | **POSITIVE**           | **HARD REJECTION / COURTESY BIAS (FALSE CHARM):**|
+| Latencies lag baseline;| Operator claims tool   | Participant is exhibiting courtesy bias or       |
+| Missed anchors > 0;    | is "great" and "saves  | novelty attraction. Telemetry proves operational |
+| Workload higher.       | time".                 | breakdown. Subjective praise is DISCARDED. FAIL. |
++------------------------+------------------------+--------------------------------------------------+
+| **FAIL**               | **NEGATIVE**           | **UNAMBIGUOUS KILL / DO NOT ADVANCE TO PHASE 1:**|
 | Latencies lag baseline;| Operator rejects tool; | Total alignment between operational breakdown    |
 | Cognitive overload.    | states sheet is better.| and user rejection. Immediate project kill.      |
 +------------------------+------------------------+--------------------------------------------------+

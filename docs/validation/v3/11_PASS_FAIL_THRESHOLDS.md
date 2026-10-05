@@ -54,43 +54,44 @@ In behavioral and operational systems research, adjusting evaluation thresholds 
 
 ## 2. Master Preregistered Threshold Matrix
 
-The 10 preregistered criteria are systematically mapped across the six core operational dimensions:
+The 11 quantitative metrics (M1–M11) and qualitative preferences map systematically across the **ten preregistered decision dimensions**:
 
 ```
 +-----------------------------------------------------------------------------------------------------------------------------------+
 |                                            PREREGISTERED THRESHOLD MASTER SCORECARD                                               |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| #  | Operational Dimension      | Tier     | Primary Metric         | Preregistered Threshold  | Mathematical Condition           |
+| #  | Operational Dimension      | Tier     | Primary Metric (M#)    | Preregistered Threshold  | Mathematical Condition           |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 01 | Setup & Configuration      | Secondary| Setup Time (T_setup)   | <= 10.0m total;          | T_setup <= 10.0m AND             |
+| 01 | Setup & Configuration      | Secondary| Setup Time (M1)        | <= 10.0m total;          | T_setup <= 10.0m AND             |
 |    |                            |          |                        | <= 2.0m slower than Base | Delta_T_setup <= 2.0m            |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 02 | Schedule-Risk Awareness    | Primary  | Detection Latency      | >= 80% recognized        | Count(T_detect <= 10.0s) /       |
-|    |                            |          | (T_detect)             | in <= 10.0 seconds       |   N_disturbances >= 0.80         |
+| 02 | Schedule-Risk Awareness    | Primary  | Detection Latency (M2) | >= 80% recognized        | Count(T_detect <= 10.0s) /       |
+|    |                            |          | (Correct identification| in <= 10.0 seconds       |   N_disturbances >= 0.80         |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 03 | Overrun Recovery Speed     | Primary  | Decision Latency       | Median >= 30.0% faster;  | Pct_Improve(T_decision) >= 30.0% |
-|    | & Constraint Validity      |          | & Validity Rate        | >= 90.0% valid choices   | AND R_valid >= 90.0%             |
+| 03 | Overrun Recovery Speed     | Primary  | Decision Latency (M3)  | Median >= 30.0% faster;  | Pct_Improve(T_decision) >= 30.0% |
+|    | & Constraint Validity      |          | & Validity Rate (M4)   | >= 90.0% valid choices   | AND R_valid >= 90.0%             |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 04 | Hard Promotion Anchor      | Primary  | Anchor Variance &      | Zero critical misses;    | N_critical_misses == 0 AND       |
-|    | Protection                 |          | Critical Miss Count    | Median Var <= 15.0s      | Median(V_anchor) <= 15.0s        |
+| 04 | Hard Promotion Anchor      | Primary  | Anchor Variance (M5) & | Zero critical misses;    | N_critical_misses == 0 AND       |
+|    | Protection                 |          | Verbal Miss Count      | Median Var <= 15.0s      | Med(V_anchor)<=15s & No increase |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 05 | Routine Capture Burden     | Primary  | Transitions & Latency  | <= 1 command/transition; | Commands <= 1.0 AND              |
-|    |                            |          |                        | Median <= 3.0s; >=90%<15s| Med(T_cap)<=3.0s & E_PVA<=10.0%  |
+| 05 | Routine Capture Burden     | Primary  | PVA Boundary Error (M6)| <= 1 command/transition; | Commands <= 1.0 AND              |
+|    | & Plan-vs-Actual Accuracy  |          | & Capture Latency (M7) | Median <= 3.0s; >=90%<15s| Med(T_cap)<=3.0s & E_PVA<=10.0%  |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 06 | Operator Cognitive Burden  | Primary  | Raw NASA-TLX           | Median score >= 20.0%    | Pct_Improve(NASA_TLX) >= 20.0%   |
-|    |                            |          | Workload Scale         | lower than baseline      | (Statistically Sig: p < 0.05)    |
+|    |                            |          | Workload Scale (M9)    | lower (or within +/-5 pts| (p < 0.05) OR (|Delta|<=5 AND   |
+|    |                            |          |                        | with recovery p < 0.05)  |   recovery p < 0.05)             |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 07 | Host Coordination (P0.5)   | Gated    | Cues & Message Volume  | >= 30.0% fewer messages; | Pct_Reduction(N_msgs) >= 30.0%   |
-|    | (Host View Sub-Study)      |          |                        | >= 80% understood <= 5.0s| AND Count(T_comp<=5s)/N >= 0.80  |
+| 07 | Host Coordination (P0.5)   | Gated    | Avoidable Cues (M8)    | >= 30.0% fewer messages; | Pct_Reduct(N_avoidable) >= 30.0% |
+|    | (Host View Sub-Study)      |          | & Comprehension        | >= 80% understood <= 5.0s| (or <=2 if Base=0) & T_comp<=5.0s|
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 08 | Post-Show PVA Review       | Primary  | Reconstruction Time &  | <= 5.0m total, >= 30%    | T_recon <= 5.0m & Pct_Imp >= 30% |
-|    |                            |          | Fact Accuracy (A_facts)| faster; >= 90% facts ok  | AND A_facts >= 90.0%             |
+| 08 | Post-Show PVA Review       | Primary  | Review Duration & Fact | <= 5.0m total, >= 30%    | T_recon <= 5.0m & Pct_Imp >= 30% |
+|    |                            |          | Accuracy (M10)         | faster; >= 90% facts ok  | AND A_facts >= 90.0%             |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 09 | Subjective Adoption Choice | Primary  | Forced-Choice Probe    | >= 70.0% of operators    | N_choose_LiveLift / N_operators  |
-|    |                            |          |                        | voluntarily choose desk  |   >= 0.70                        |
+| 09 | Next LIVE Adaptation       | Primary  | Next LIVE Planning &   | <= 5.0m total, >= 30%    | T_plan <= 5.0m & Pct_Imp >= 30%  |
+|    |                            |          | Feasibility (M11)      | faster; >= 90% feasible  | AND Feas >= 90%; Total<=10.0m    |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 10 | Voluntary Repeat Use       | Field G1 | Repeated In-Vivo Runs  | >= 3 recurring teams     | Count(Teams >= 3 runs) >= 3      |
-|    | (Phase 1 Acceptance Gate)  |          |                        | across >= 3 sessions     | (Voluntary production adoption)  |
+| 10 | Subjective Adoption Choice | Primary  | Forced-Choice Probe    | >= 70.0% of operators    | N_choose_LiveLift / N_operators  |
+|    |                            |          | (Operator & Host Team) | voluntarily choose desk  |   >= 0.70                        |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 ```
 
@@ -98,7 +99,7 @@ The 10 preregistered criteria are systematically mapped across the six core oper
 
 ## 3. Detailed Dimension Specifications & Scoring Rubrics
 
-### 3.1 Threshold 1: Setup Time ($T_{\text{setup}}$)
+### 3.1 Dimension 1: Setup Time ($T_{\text{setup}}$, Metric M1)
 * **Operational Rationale:** If preparing a show in LiveLift is heavier or more cumbersome than duplicating a spreadsheet tab, solo operators and small agencies will abandon the tool before broadcast kickoff.
 * **Numeric Boundary:**
   - Absolute Cap: $\text{Median}(T_{\text{setup}}) \le 10.0\text{ minutes}$.
@@ -111,24 +112,24 @@ The 10 preregistered criteria are systematically mapped across the six core oper
 
 ---
 
-### 3.2 Threshold 2: Schedule-Risk Detection Latency ($T_{\text{detect}}$)
+### 3.2 Dimension 2: Schedule-Risk Detection Latency ($T_{\text{detect}}$, Metric M2)
 * **Operational Rationale:** Detecting an emerging schedule deficit early allows gentle, non-disruptive compression of upcoming buffers. Detecting it late causes catastrophic panic, emergency cutting of hero products, or missed promotions.
 * **Numeric Boundary:**
   $$\frac{\sum_{i=1}^{N_{\text{trials}}} \mathbf{1}(T_{\text{detect}, i} \le 10.0\text{s})}{N_{\text{trials}}} \ge 80.0\%$$
-* **Evaluation Method:** Dual-rater stopwatch from mathematical deficit instant to operator verbal or behavioral acknowledgment.
+* **Evaluation Method:** Stopwatch from mathematical deficit emergence to operator *correct identification* of the specific threatened anchor or deficit condition. Physical glance or cursor movement without verified identification is not scored as detection.
 * **Scoring Rubric:**
-  - `PASS`: At least $80.0\%$ of scored trials recognized within $\le 10.0$ seconds.
+  - `PASS`: At least $80.0\%$ of scored trials recognized with correct anchor identification within $\le 10.0$ seconds.
   - `MARGINAL`: $60.0\%\text{--}79.9\%$ recognized in $\le 10.0$s; indicates visual hierarchy ambiguity.
   - `FAIL`: $< 60.0\%$ recognized; baseline conditional formatting matches or outperforms LiveLift.
 
 ---
 
-### 3.3 Threshold 3: Overrun Recovery Speed ($T_{\text{decision}}$) & Validity ($R_{\text{valid}}$)
+### 3.3 Dimension 3: Overrun Recovery Speed ($T_{\text{decision}}$, Metric M3) & Validity ($R_{\text{valid}}$, Metric M4)
 * **Operational Rationale:** Once a deficit is recognized, calculating which downstream segments can yield time without violating manufacturer floors is mentally exhausting. The LiveLift recovery engine must materially accelerate decision velocity while guaranteeing mathematical feasibility.
 * **Numeric Boundary:**
-  $$\text{Percentage Improvement in Median } T_{\text{decision}} \ge 30.0\%$$
+  $$\text{Percentage Improvement in Median } T_{\text{decision}} \ge 30.0\% \quad \text{and} \quad \text{Median } T_{\text{total}} \ge 30.0\% \text{ faster}$$
   $$R_{\text{valid}} \ge 90.0\%$$
-* **Evaluation Method:** Paired Wilcoxon signed-rank test comparing $T_{\text{decision}}$ in seconds; constraint audit on all logged choices.
+* **Evaluation Method:** Paired Wilcoxon signed-rank test comparing $T_{\text{decision}}$ and $T_{\text{total}}$ in seconds; constraint audit on all logged choices.
 * **Scoring Rubric:**
   - `PASS`: Median recovery time $\ge 30.0\%$ faster than baseline AND $\ge 90.0\%$ of choices valid under constraints.
   - `MARGINAL`: Recovery is $10.0\%\text{--}29.9\%$ faster, or validity is $75.0\%\text{--}89.9\%$.
@@ -136,66 +137,69 @@ The 10 preregistered criteria are systematically mapped across the six core oper
 
 ---
 
-### 3.4 Threshold 4: Critical Cue Misses & Anchor Variance ($V_{\text{anchor}}$)
+### 3.4 Dimension 4: Hard Promotion Anchor Protection & Variance ($V_{\text{anchor}}$, Metric M5)
 * **Operational Rationale:** Live TikTok Shop commerce depends on scheduled promotions (Seller Center flash sales, platform co-funded vouchers). Missing an anchor destroys GMV and violates commercial agreements.
 * **Numeric Boundary:**
   $$N_{\text{critical\_unintended\_misses}} = 0 \quad (\text{Zero Tolerance})$$
-  $$\text{Median}(V_{\text{anchor}}) \le 15.0\text{ seconds}$$
+  $$\text{Median}(V_{\text{anchor, verbal}}) \le 15.0\text{ seconds}$$
+  $$\text{Misses}_{\text{LiveLift}} \le \text{Misses}_{\text{Baseline}} \quad (\text{No increase in anchor misses vs baseline})$$
 * **Critical Miss Definition:** A hard anchor is classified as a Critical Miss if:
-  1. Broadcast execution begins $> 30.0$ seconds after scheduled wall-clock instant.
-  2. The anchor is omitted, skipped, or executed without the product card pinned in Seller Center.
-  3. The anchor start time was shifted without explicit prior human authorization.
+  1. On-camera verbal announcement occurs $> 30.0$ seconds after scheduled wall-clock instant without prior authorized schedule adjustment.
+  2. The anchor is omitted or skipped entirely.
+  3. The anchor start time was silently altered by software without explicit human authorization.
+  *(Note: Native platform delay, such as the 40s console spinner in Scenario 2 D4, is tracked separately as $\Delta t_{\text{platform}}$ and does not penalize operator timing adherence provided holding cues were dispatched).*
 * **Scoring Rubric:**
-  - `PASS`: Zero critical misses across all experimental trials AND median variance $\le 15.0$ seconds.
+  - `PASS`: Zero critical misses across all experimental trials, median verbal variance $\le 15.0$ seconds, and no increase in misses vs baseline.
   - `FAIL`: Any critical missed anchor attributable to software confusion, or median variance $> 15.0$s.
 
 ---
 
-### 3.5 Threshold 5: Routine Capture Burden ($N_{\text{commands}}$, $T_{\text{capture}}$, $E_{\text{PVA}}$)
+### 3.5 Dimension 5: Routine Capture Burden ($N_{\text{commands}}$, $T_{\text{capture}}$, Metric M7) & PVA Error Rate ($E_{\text{PVA}}$, Metric M6)
 * **Operational Rationale:** If logging segment progress requires complex navigation or multi-click workflows, operators will abandon tracking during chaotic live broadcasts, corrupting post-show analytics.
 * **Numeric Boundary:**
   - Clicks per Transition: $\le 1.0$ command interaction per routine segment transition.
   - Median Capture Latency: $\text{Median}(T_{\text{capture}}) \le 3.0\text{ seconds}$.
   - Plan-vs-Actual Boundary Accuracy: $\ge 90.0\%$ of segment transitions recorded within $15.0$ seconds of ground-truth video timecode ($E_{\text{PVA}} \le 10.0\%$).
 * **Scoring Rubric:**
-  - `PASS`: $\le 1$ click, median $\le 3.0$s, and $E_{\text{PVA}} \le 10.0\%$.
+  - `PASS`: $\le 1$ click, median capture latency $\le 3.0$s, and $E_{\text{PVA}} \le 10.0\%$.
   - `MARGINAL`: $1.1\text{--}2.0$ clicks, or latency $3.1\text{--}6.0$s; operator notes capture friction.
   - `FAIL`: $> 2$ clicks, latency $> 6.0$s, or $E_{\text{PVA}} > 10.0\%$; capture chore compromises operations.
 
 ---
 
-### 3.6 Threshold 6: Operator Cognitive Workload (NASA-TLX)
+### 3.6 Dimension 6: Operator Cognitive Workload (NASA-TLX, Metric M9)
 * **Operational Rationale:** Live stream operators operate at near-total cognitive saturation. LiveLift must materially unload mental arithmetic and window-switching anxiety.
-* **Numeric Boundary:**
-  $$\frac{\text{Median}(\text{TLX}_{\text{Base}}) - \text{Median}(\text{TLX}_{\text{LiveLift}})}{\text{Median}(\text{TLX}_{\text{Base}})} \times 100\% \ge 20.0\%$$
+* **Numeric Boundary (Including Preregistered Workload Alternative):**
+  $$\text{Workload Improvement: } \frac{\text{Median}(\text{TLX}_{\text{Base}}) - \text{Median}(\text{TLX}_{\text{LiveLift}})}{\text{Median}(\text{TLX}_{\text{Base}})} \times 100\% \ge 20.0\% \quad (p < 0.05)$$
+  $$\mathbf{OR} \quad |\text{Median}(\text{TLX}_{\text{LiveLift}}) - \text{Median}(\text{TLX}_{\text{Base}})| \le 5.0\text{ points} \quad \text{provided } p_{\text{recovery}} < 0.05$$
 * **Evaluation Method:** Raw NASA-TLX 6-dimensional scale (0–100) administered immediately post-trial; paired difference evaluated via Wilcoxon signed-rank test ($\alpha = 0.05$).
 * **Scoring Rubric:**
-  - `PASS`: Statistically significant reduction in median workload of $\ge 20.0\%$ ($p < 0.05$).
-  - `MARGINAL`: Workload reduction of $5.0\%\text{--}19.9\%$, or non-significant trend ($p \ge 0.05$).
-  - `FAIL`: Workload reduction $< 5.0\%$, or LiveLift workload is higher than baseline.
+  - `PASS`: Statistically significant reduction in median workload of $\ge 20.0\%$ ($p < 0.05$), OR no-worse workload ($\pm 5.0$ points) with statistically significant recovery latency superiority ($p < 0.05$).
+  - `MARGINAL`: Workload reduction of $5.0\%\text{--}19.9\%$, or non-significant trend ($p \ge 0.05$) without recovery significance.
+  - `FAIL`: Workload reduction $< 5.0\%$ without recovery superiority, or LiveLift workload is significantly higher than baseline.
 
 ---
 
-### 3.7 Threshold 7: Host Coordination & Comprehension (Host View Gated Sub-Study)
+### 3.7 Dimension 7: Host Coordination & Comprehension (Metric M8, Host View Gated Sub-Study)
 * **Operational Rationale:** Talent on camera must not be distracted by chat notifications or verbose instructions. The Host View must provide glanceable, atomic cues that reduce communication clutter without harming delivery.
 * **Numeric Boundary:**
-  $$\text{Message Reduction Rate} \ge 30.0\%$$
+  $$\text{Avoidable Message Reduction Rate} \ge 30.0\% \quad (\text{or } N_{\text{avoidable, LiveLift}} \le 2 \text{ if Baseline } = 0)$$
   $$\frac{\sum \mathbf{1}(T_{\text{comprehend}} \le 5.0\text{s})}{N_{\text{cues}}} \ge 80.0\%$$
   $$N_{\text{speech\_stumbles\_caused\_by\_cue}} = 0$$
 * **Gated Architecture:** Host View (P0.5) is evaluated as an **independent, decoupled sub-study**. If Host View fails to achieve these thresholds, it is eliminated or pivoted to Desk-Only (Pivot A), without invalidating the core Operator Desk (P0).
 * **Scoring Rubric:**
-  - `PASS`: $\ge 30.0\%$ fewer messages, $\ge 80.0\%$ cues comprehended in $\le 5$s, and zero delivery degradation.
+  - `PASS`: $\ge 30.0\%$ fewer avoidable messages (or $\le 2$ if baseline is 0), $\ge 80.0\%$ cues comprehended in $\le 5$s, and zero delivery degradation.
   - `FAIL (PIVOT A)`: Messages not reduced or host exhibits teleprompter glaze / speech stumbles; trigger immediate Desk-Only pivot.
 
 ---
 
-### 3.8 Threshold 8: Post-Show PVA Review & Fact Accuracy
-* **Operational Rationale:** Reconstructing what occurred during a live show is vital for merchant brand reporting and revenue settlement. LiveLift must eliminate painful manual video scrubbing.
+### 3.8 Dimension 8: Post-Show Fact Accuracy & Review Reconciliation (Metric M10)
+* **Operational Rationale:** Reconstructing what occurred during a live show is vital for merchant brand reporting and revenue settlement. LiveLift must eliminate painful manual video scrubbing and argument.
 * **Numeric Boundary:**
   $$\text{Total Review Duration } (T_{\text{recon}}) \le 5.0\text{ minutes}$$
   $$\text{Percentage Improvement in Median } T_{\text{recon}} \ge 30.0\%$$
   $$A_{\text{facts}} \ge 90.0\% \quad (\ge 9 \text{ out of 10 standardized probes correct})$$
-* **Evaluation Method:** Timed review task followed by standardized 10-question factual audit.
+* **Evaluation Method:** Timed 5-minute reconciliation task followed by standardized 10-question factual audit.
 * **Scoring Rubric:**
   - `PASS`: Review completed $\le 5.0$m, median $\ge 30.0\%$ faster than baseline, and $A_{\text{facts}} \ge 90.0\%$.
   - `MARGINAL`: Review takes $5.1\text{--}8.0$m, or accuracy is $75.0\%\text{--}89.9\%$.
@@ -203,23 +207,38 @@ The 10 preregistered criteria are systematically mapped across the six core oper
 
 ---
 
-### 3.9 Threshold 9: Subjective Commercial Adoption Preference
+### 3.9 Dimension 9: Feasible Next LIVE Adaptation (Metric M11)
+* **Operational Rationale:** Post-show review is incomplete if operators cannot rapidly turn operational learnings (+2m Hero, -1m Intro) into a constraint-feasible rundown for tomorrow's show. LiveLift must provide rapid, feasible plan generation.
+* **Numeric Boundary:**
+  $$\text{Next LIVE Planning Time } (T_{\text{plan}}) \le 5.0\text{ minutes}$$
+  $$\text{Percentage Improvement in Median } T_{\text{plan}} \ge 30.0\%$$
+  $$\text{Plan Feasibility Rate } (\text{Feas}) \ge 90.0\% \quad (\text{Respects all floors and anchors})$$
+  $$\text{Total Post-Show Envelope: } T_{\text{recon}} + T_{\text{plan}} \le 10.0\text{ minutes} \quad (\text{Target } \le 5.0\text{m in LiveLift})$$
+* **Evaluation Method:** Timed 5-minute next-plan adaptation task followed by mathematical constraint verification of the resulting draft rundown.
+* **Scoring Rubric:**
+  - `PASS`: $T_{\text{plan}} \le 5.0$m, median $\ge 30.0\%$ faster than baseline, $\text{Feas} \ge 90.0\%$, and total post-show duration $T_{\text{recon}} + T_{\text{plan}} \le 10.0$m.
+  - `MARGINAL`: Planning takes $5.1\text{--}8.0$m, or feasibility is $75.0\%\text{--}89.9\%$.
+  - `FAIL`: Planning takes $> 8.0$m, or $\text{Feas} < 75.0\%$; planning engine generates broken schedules.
+
+---
+
+### 3.10 Dimension 10: Subjective Operator & Team Preference
 * **Operational Rationale:** Behavioral efficiency must translate into genuine commercial preference. If operators outperform with LiveLift but still choose Google Sheets for their next real broadcast, product adoption will fail in the wild.
 * **Numeric Boundary:**
   $$\frac{N_{\text{operators\_choosing\_LiveLift}}}{N_{\text{total\_operators}}} \ge 70.0\%$$
 * **Evaluation Method:** Forced-choice post-test interview commitment probe: *"If you were directing tomorrow's real live sales broadcast, which tool would you voluntarily mandate for your studio, and why?"*
 * **Scoring Rubric:**
   - `PASS`: $\ge 70.0\%$ of operators choose LiveLift.
-  - `MARGINAL`: $50.0\%\text{--}69.9\%$ choose LiveLift; qualitative feedback required to diagnose resistance.
-  - `FAIL`: $< 50.0\%$ choose LiveLift; operators prefer spreadsheet/chat.
+  - `MARGINAL`: $50.0\%\text{--}69.9\%$ choose LiveLift; triggers qualitative UX refinement and blocks immediate BUILD without resolution.
+  - `FAIL`: $< 50.0\%$ choose LiveLift; operators prefer spreadsheet/chat (Triggers KILL K6).
 
 ---
 
-### 3.10 Threshold 10: Voluntary Repeat Use (Phase 1 In-Vivo Acceptance Gate)
-* **Operational Rationale:** Laboratory trials prove capability; field trials prove utility. Before authorizing commercial production (Phase 2), LiveLift must prove sticky in repeated live studio operations.
+### 3.11 Gate G1 Post-Authorization Field Acceptance: Voluntary Repeat Use
+* **Operational Rationale:** Laboratory trials prove capability; field trials prove utility. Before authorizing cloud backend development (Phase 2), LiveLift must prove sticky in repeated live studio operations.
 * **Numeric Boundary:**
   $$\text{Count}(\text{Merchant Teams Completing } \ge 3 \text{ Consecutive Sessions}) \ge 3\text{ teams}$$
-* **Timing & Execution:** Evaluated at Gate G1 during Phase 1 functional field trials.
+* **Timing & Execution:** Evaluated exclusively at **Gate G1** during Phase 1 functional field trials, not during the Phase 0 laboratory concept test.
 * **Scoring Rubric:**
   - `PASS`: At least 3 independent recurring merchant teams voluntarily use the Phase 1 single-device desk across $\ge 3$ consecutive production broadcasts.
   - `FAIL`: Teams abandon the desk after 1 session or refuse field deployment.

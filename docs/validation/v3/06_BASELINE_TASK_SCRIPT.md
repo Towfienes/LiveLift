@@ -78,13 +78,13 @@ The operator must cross-check the baseline workbook against the verification req
       * Scenario 2: CAT-TECHFASH-02 (UrbanPulse)
 
 [ ] 2. FORMULA INTEGRITY AUDIT (VIEW-ONLY LOCKED RANGES)
-    - Confirm Col K (Planned_Start) formulas: =K2 + (G2 / 1440).
+    - Confirm Col K (Planned_Start) formulas: ='00_Config'!$B$1 for row 2; =K2 + (G2 / 1440) for row >= 3.
     - Confirm Col L (Planned_End) formulas: =K2 + (G2 / 1440).
-    - Confirm Col O (Actual_Dur_Min): =IF(OR(ISBLANK(M2), ISBLANK(N2)), "", ROUND((N2 - M2) * 1440, 2)).
-    - Confirm Col P (Variance_Min): =IF(ISBLANK(O2), "", ROUND(O2 - G2, 2)).
-    - Confirm Col Q (Projected_Start): Dynamic rolling cascade referencing NOW() and preceding actuals.
-    - Confirm Col R (Anchor_Deficit_Min): =IF(I2=TRUE, IF(ISBLANK(J2), 0, MAX(0, ROUND((Q2 - J2) * 1440, 1))), 0).
-    - Confirm Sheet '02_Summary_KPI': Cell B4 Total Buffer Pool = 5.0m; Cell B5 Pending Buffer Available = 5.0m.
+    - Confirm Col O (Actual_Dur_Min): =IF(OR(ISBLANK(M2), ISBLANK(N2), M2="", N2=""), "", ROUND(MOD(N2 - M2 + 1, 1) * 1440, 2)).
+    - Confirm Col P (Variance_Min): =IF(OR(ISBLANK(O2), O2=""), "", ROUND(O2 - G2, 2)).
+    - Confirm Col Q (Projected_Start): Dynamic rolling cascade holding at hard anchors via MAX(prior_cursor, J3) and bypassing skipped rows.
+    - Confirm Col R (Anchor_Deficit_Min): =IF(AND(I2=TRUE, NOT(ISBLANK(J2)), J2<>""), IF(Q2 > J2, ROUND((Q2 - J2) * 1440, 1), 0), 0).
+    - Confirm Sheet '02_Summary_KPI': Cell B4 Total Buffer Pool = 5.0m (SUMIFS on compressible rows H=TRUE); Cell B5 Pending Buffer Available = 5.0m.
 
 [ ] 3. CONDITIONAL FORMATTING VERIFICATION
     - Test Rule CF-01: Change S2 Status to "ACTIVE" -> Verify row A2:U2 highlights in Soft Ice Blue (#CFE2F3).
@@ -243,35 +243,56 @@ During live broadcast operations, the operator executes a continuous **5-step co
 
 ---
 
-## 6. Wrap & Post-Show Operational Reconstruction Protocol
+## 6. Wrap & Matched Post-Show Operational Protocol
 
-In the Google Sheets + Chat baseline, the post-show workflow represents a major operational friction point. The operator must reconstruct what actually occurred on stream from fragmented artifacts.
+To maintain experimental parity with the LiveLift condition, the baseline post-show procedure consists of the **identical 2-part matched operational task**, timed continuously by the proctor without predetermined duration assertions:
 
-### 6.1 The 3-Step Reconstruction Workflow
-1. **Step 1: Cell Formula Audit & Discrepancy Check (5–10 minutes):**
-   - Verify that all rows have both `Actual_Start` (`Col M`) and `Actual_End` (`Col N`) recorded.
-   - If an operator accidentally forgot to press `Ctrl+Shift+;` at a transition, cell `Col O` (`Actual_Dur_Min`) returns a blank string `""`, and `Col P` (`Variance_Min`) fails to compute.
-   - The operator must open Zalo chat logs, locate the corresponding `[NOW]` message timestamp, and manually calculate the missing entry.
-2. **Step 2: Cross-Referencing Chat Logs with Seller Center Analytics (15–25 minutes):**
-   - Open TikTok Shop Seller Center *Data Compass / Live Analytics*.
-   - Compare Seller Center product exposure durations against Google Sheets `Actual_Dur_Min`.
-   - Reconcile operator notes (`Col U`) against Zalo message dispatches to determine:
-     * *Exact moment of D1 overrun detection.*
-     * *Exact duration of D3 stockout gap before unpinning.*
-     * *Exact duration of D4 console lag spinner.*
-3. **Step 3: Calculating Variance & Completing Post-Show Reporting (10–15 minutes):**
-   - Inspect Sheet `02_Summary_KPI`:
-     * Total realized runtime vs planned 15.0m.
-     * Cumulative slip across completed segments (`Cell B6`).
-     * Net anchor start variances for Anchor 1 and Anchor 2.
-   - Answer the standardized Operational Fact Probes administered by the research proctor.
+### 6.1 Matched Post-Show Task Specification
 
-### 6.2 Why Reconstruction Requires 30–60 Minutes in Baseline
-Field research and historical incident logs (`docs/incident-log.md`) identify four structural causes for baseline reconstruction latency:
-1. **Overwritten Rolling Projections:** When actual times (`Col M`, `Col N`) are logged, Google Sheets recalculates the rolling cursor (`Col Q`), permanently erasing the pre-overrun projected state. Post-hoc auditors cannot see *what the schedule looked like at the moment the overrun occurred*.
-2. **Scattered Audit Trails:** Operational context is split across three unlinked silos: Google Sheet cells, Zalo text message timestamps, and Seller Center console logs. Reconstructing a coherent timeline requires tedious manual reconciliation.
-3. **Missing Telemetry Provenance:** When an operator types a note in `Col U`, there is no automatic system-certified evidence tag (e.g. `asserted_by_operator` vs `system_observed`). Verifying whether an action actually took place on stream requires scrubbing video recordings.
-4. **Formula Breakage Under Stress:** In authentic trials, operators under pressure frequently overwrite formula cells by accident, requiring manual restoration of relative cell coordinates (`K2 + G2/1440`).
+```
++----------------------------------------------------------------------------------------------------+
+|                                MATCHED POST-SHOW PROTOCOL (PARITY SPECIFICATION)                   |
++----------------------------------------------------------------------------------------------------+
+| Part 1: Plan-vs-Actual Fact Reconciliation (Metric M10 — T_recon)                                  |
+|   - Scope: Verify actual start/end timestamps in '01_Live_Rundown' and '02_Summary_KPI'.           |
+|   - Output: Answer standardized Fact Probes (actual durations, peak anchor drift, stockout time).  |
+|   - Measurement: Timed from stream conclusion until fact sheet submission (Target Budget <= 5.0m). |
+|                                                                                                    |
+| Part 2: Next LIVE Rundown Adaptation (Metric M11 — T_next_plan & F_next)                           |
+|   - Scope: Author an adapted 15-minute rundown in the 'Next_LIVE' tab incorporating learnings.     |
+|   - Output: Adjusted segment allocations, valid compressible buffer pool >= 5.0m, protected anchors|
+|   - Measurement: Timed from Next LIVE start to completion; evaluated for mathematical feasibility. |
++----------------------------------------------------------------------------------------------------+
+```
+
+#### Step 1: Plan-vs-Actual Fact Reconciliation (Metric M10)
+1. Immediately upon broadcast sign-off ($T = 15:00$), the research proctor starts the post-show stopwatch for **Metric M10 ($T_{\text{recon}}$)**.
+2. The operator reviews the completed sheet:
+   - Verifies all actual timestamps in `Col M` (`Actual_Start`) and `Col N` (`Actual_End`).
+   - Checks `Col O` (`Actual_Dur_Min`) and `Col P` (`Variance_Min`).
+   - If a timestamp was missed during live execution, the operator consults the Zalo backchannel message log to recover the transition instant.
+   - Inspects `02_Summary_KPI` for total show runtime and peak anchor variance.
+3. The operator completes the standardized 5-question Fact Sheet administered by the proctor:
+   - *Probe 1:* What was the actual executed duration of Hero SKU 1?
+   - *Probe 2:* What was the exact wall-clock start time of Flash Sale Anchor 1?
+   - *Probe 3:* What was the realized timing variance on Anchor 1 ($V_{\text{anchor}}$)?
+   - *Probe 4:* At what exact elapsed time was the stockout/overrun detected?
+   - *Probe 5:* What was the net duration drift across the entire stream?
+4. Proctor records $T_{\text{recon}}$ stop time upon Fact Sheet submission and evaluates accuracy ($\ge 90\%$ required for full validity).
+
+#### Step 2: Next LIVE Rundown Adaptation (Metric M11)
+1. Immediately following Fact Sheet submission, the proctor starts the stopwatch for **Metric M11 ($T_{\text{next\_plan}}$)**.
+2. The operator opens the pre-templated `Next_LIVE` sheet and adapts the rundown for the subsequent broadcast based on observed live dynamics:
+   - Adjusts segment duration allocations to account for observed hero product pitch requirements.
+   - Ensures all hard promotion anchor windows remain strictly protected.
+   - Validates that the total compressible buffer pool remains mathematically sound ($\ge 5.0\text{m}$) and respects contractual floor limits (`Floor_Min`).
+3. Proctor records $T_{\text{next\_plan}}$ upon plan completion and verifies plan feasibility ($F_{\text{next}} \in \{0, 1\}$).
+
+### 6.2 Structural Comparison Points (Empirical Hypotheses to be Measured)
+Rather than asserting arbitrary post-show durations as pre-determined facts, the validation study empirically measures how tool integration impacts post-show workflow efficiency:
+1. **Decoupled vs Unified History:** Baseline operators manually cross-reference disconnected tools (spreadsheet cells, chat timestamps, and notes), whereas LiveLift operators review an immutable event-derived ledger in a single unified interface.
+2. **Manual Recalculation vs Automated Next Plan:** Baseline operators manually re-calculate formula cascades and verify floor constraints when drafting a new plan, whereas LiveLift operators select structured trade-offs with automated conflict detection.
+3. **Objective Measurement:** Both conditions are measured on identical deliverables, enabling an unbiased, falsifiable comparison of total review-plus-planning latency ($T_{\text{recon}} + T_{\text{next\_plan}}$) and plan feasibility ($F_{\text{next}}$).
 
 ---
 

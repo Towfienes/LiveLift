@@ -120,35 +120,29 @@ To eliminate order effects, asymmetric skill transfer, and fatigue bias, partici
 
 ---
 
-## 4. Software State & Feature Classification Matrix
+## 4. Software State & Feature Classification Matrix (Aligned with UI SHA `71807ed`)
 
-In strict compliance with the **Integrity Mandate** and the rule that *"Never pretend unfinished functionality exists"*, every software capability utilized during validation is certified in the following matrix:
+In strict compliance with the **Integrity Mandate** and the rule that *"Never pretend unfinished functionality exists"*, every software capability utilized during validation is certified against the frozen UI implementation (`71807ed`):
 
 | Feature / Subsystem | Certified Classification | Codebase Reality & Repository Reference | Validation Protocol Implementation |
 |---|:---:|---|---|
-| **Session Creation & Navigation** | `IMPLEMENTED` | Functional form in `next/src/app/live/new/page.tsx:25-42` and `simulatorEngine.ts:118-193`. | Participant fills form in browser; navigates to `/prepare`. In-memory state only. |
-| **Product Pack Configuration** | `IMPLEMENTED` | Functional controls in `prepare/page.tsx:66-92`. Toggles enabled/disabled and priority. | Pre-loaded prior to session; participant verifies product status. |
-| **Run of Show Ordering** | `IMPLEMENTED` | Segment creation and reordering buttons in `prepare/page.tsx:94-141`. | Participant reviews segment sequence; clicks up/down controls. |
-| **Active Segment Tracking (NOW)** | `IMPLEMENTED` | Display in `operate/page.tsx:232-296`. Renders active item and target duration. | Displayed live during test. Timer advances via browser clock. |
-| **Segment Transition ("Start segment")**| `IMPLEMENTED` | Functional button in `operate/page.tsx:94-97` and `simulatorEngine.ts:308-377`. | Participant clicks button to advance segment; logs timestamp in memory. |
-| **Duration Extension ("Extend +1m")** | `IMPLEMENTED` | Button in `operate/page.tsx:104-107` and `simulatorEngine.ts:399-415`. | Participant clicks to add +1m to target without altering baseline plan. |
-| **Segment Skip ("Skip segment")** | `IMPLEMENTED` | Button in `operate/page.tsx:109-122` and `simulatorEngine.ts:379-397`. | Participant clicks to drop segment; marks status as skipped. |
-| **Direct Override ("Choose next")** | `IMPLEMENTED` | Modal in `operate/page.tsx:519-526, 938-961`. Jumps to any segment. | Participant opens modal to override execution order. |
-| **Proposal Hold / Resume** | `IMPLEMENTED` | Button in `operate/page.tsx:99-102` and `simulatorEngine.ts:416-432`. | Participant holds or resumes NEXT recommendation. |
-| **Manual Action Reporting** | `IMPLEMENTED` | Modal in `operate/page.tsx:129-153` and `simulatorEngine.ts:455-484`. | Participant records external pin; sets `pinnedVerification="unknown"`. |
-| **Operator Note Capture** | `IMPLEMENTED` (UI)<br>`SIMULATED` (Store) | Modal in `operate/page.tsx:155-174`; in-memory draft store (`draftStore.ts:31-42`). | Participant types notes. Volatile in memory; browser refresh resets data. |
-| **Session Wrap Summary** | `IMPLEMENTED` | Wrap view in `next/src/app/live/[sessionId]/wrap/page.tsx:1-200`. | Participant ends show; inspects session summary. |
-| **Semantic Replay Event Log** | `SIMULATED` | Review view in `review/page.tsx:39-41`. Renders `FIXTURE_REPLAY_EVENTS`. | Operator inspects event log generated from pre-seeded scenario events. |
-| **Knowledge Lens ("As Known Then")** | `IMPLEMENTED` (UI)<br>`SIMULATED` (Data) | Toggle in `review/page.tsx:77-87`. Filters late-arriving events. | Operator toggles between "As Known Then" and "With Later Evidence". |
-| **Next LIVE Change Toggles** | `IMPLEMENTED` (UI)<br>`SIMULATED` (Data) | Checkboxes in `review/page.tsx:91-98`. Toggles `FIXTURE_NEXT_LIVE_CHANGES`. | Operator checks/unchecks proposed rundown modifications. |
-| **Clone Session Shell** | `IMPLEMENTED` | Flow in `live/new/page.tsx:37-38` and `simulatorEngine.ts:156-167`. | Operator clones show; resets segment status to pending. |
-| **Cascading Downstream Deficit Solver**| `WIZARD-OF-OZ` | No dynamic multi-anchor forecast engine exists in `next/`. | Facilitator/observer displays calculated deficit alert card to operator. |
-| **Constraint-Aware Recovery Drawer** | `WIZARD-OF-OZ` | No dynamic recovery algorithm exists in `operate/page.tsx`. | Facilitator presents valid constraint-respecting recovery options. |
-| **Fixed Wall-Clock Anchor Countdown**| `WIZARD-OF-OZ` | Queue tab has static text; lacks dynamic countdown to anchor. | Auxiliary anchor clock provided or verbally prompted by observer. |
-| **Dedicated Host View Screen Sync** | `WIZARD-OF-OZ` | No `/host` route in `next/`; `realtimeClient.ts` has no network sync. | Host participant displays cue tablet updated via facilitator remote push. |
-| **Next-Plan Patch Application** | `WIZARD-OF-OZ` | `simulatorEngine.ts` clone ignores checked learning changes. | Operator manually adjusts cloned segment durations in Prepare view. |
-| **CSV / Bulk Catalog Import** | `NOT AVAILABLE` | Modal in `prepare/page.tsx:584-592` is non-functional UI shell. | Excluded from test. Participants use pre-loaded product packs. |
-| **Automated Native TikTok Pinning** | `NOT AVAILABLE` | Excluded by Master Roadmap §6, §7, §28. | Excluded from test. Native actions remain manual on phone/tablet. |
+| **Session Creation & Navigation** | `IMPLEMENTED` | Form in `next/src/app/live/new/page.tsx`; routes to `/prepare`, `/operate`, and `/review`. | Participant creates or clones show session; validated through local transactional store. |
+| **Product Pack Configuration & Import** | `IMPLEMENTED` | Component `PrepareRos.tsx`; TSV/CSV import in `next/src/lib/domain/products.ts`. | Pre-loaded prior to session; participant verifies product status and imports rows. |
+| **Run of Show Ordering & Readiness** | `IMPLEMENTED` | Segment creation, reordering, and anchor conflict detection in `PrepareRos.tsx` and `plan.ts`. | Participant reviews segment sequence; invalid anchor states block Start until resolved. |
+| **Active Segment Tracking (NOW)** | `IMPLEMENTED` | Rendered in `NowPanel.tsx`. Real-time countdown and active target telemetry. | Displayed live during test. Driven by system clock with discontinuity detection. |
+| **Segment Transitions & Timing Commands**| `IMPLEMENTED` | Commands in `engine.ts` (`start_live`, `advance_segment`, `extend_segment`, `commit_end_by`, `reanchor_segment`, `end_live`). | Operator issues explicit runtime timing adjustments via UI desk. |
+| **Manual Cue Action Reporting** | `IMPLEMENTED` | Component `CueBar.tsx` and `OperateDialogs.tsx`; command `report_cue_action` in `engine.ts`. | Operator logs external promotional pin attempts (`attempted`, `performed`, `cancelled`). |
+| **Operator Note Capture** | `IMPLEMENTED` | Dialog in `OperateDialogs.tsx`; command `record_note` in `engine.ts`. | Operator logs runtime context; persisted immutably in session history. |
+| **Dynamic Rolling Forecast Engine** | `IMPLEMENTED` | Engine in `next/src/lib/domain/forecast.ts` (`forecastSession`). | Recalculates projected starts/ends from actual boundaries and explicit remaining estimates; holds at hard anchors. |
+| **Constraint-Aware Recovery Drawer** | `IMPLEMENTED` | Algorithm in `next/src/lib/domain/recovery.ts` (`analyzeRecovery`); UI in `OperateDialogs.tsx`. | Evaluates candidate clean recovery plans (shorten, skip, end-by, reanchor); surfaces status and protects anchors. |
+| **Durable Local Storage Authority** | `IMPLEMENTED` | Module `next/src/lib/store/sessionStore.ts` backed by `localStorage`. | Transactional commit with revision checking; rehydration preserves complete state on browser reload. |
+| **Plan-vs-Actual Review Workspace** | `IMPLEMENTED` | View in `/live/[sessionId]/review`; table in `ReviewTable.tsx`; domain logic in `review.ts`. | Automatically compiles actual durations, variances, anchor drift, and execution outcomes upon ending tracking. |
+| **Next LIVE Adaptation Generator** | `IMPLEMENTED` | Panel in `NextLivePanel.tsx`; domain logic in `nextLive.ts` (`createNextLivePlan`). | Operator selects reviewed trade-offs; generates new draft session shell with anchor feasibility validation. |
+| **Deterministic Rehearsal Scenarios** | `SIMULATED` | Scenarios `sim-1`, `sim-2`, `sim-3` in `next/src/lib/domain/scenarios.ts`; view in `/simulator`. | Repeatable rehearsal scripts executed on the shared domain engine with explicit virtual clock stepping. |
+| **Sample Product Catalogs** | `SIMULATED` | Fixtures in `next/src/fixtures/library.ts`. | Provides standard cosmetics, fashion, and tech SKUs for test runs. Disclosed as sample data. |
+| **Dedicated Host View Screen Sync** | `WIZARD-OF-OZ` | No network prompter sync route exists in `next/`. | Host participant displays cue tablet updated via facilitator proctor mirror. |
+| **Native TikTok Shop Pinning Action** | `WIZARD-OF-OZ` | No native TikTok Seller Center integration. | Facilitator simulates native Seller Center pin states and console network latency (40s lag). |
+| **Automated Native TikTok Pinning** | `NOT AVAILABLE` | Excluded by Master Roadmap §6, §7, §28. | Excluded from test. Native actions remain manual on phone/tablet or simulated in Seller Center. |
 | **TikTok Private Streaming Telemetry**| `NOT AVAILABLE` | No official or unofficial live sales API exists. | Excluded from test. LiveLift makes zero real-time platform assumptions. |
 | **AI Content/Script Generator** | `NOT AVAILABLE` | Excluded by Master Roadmap §14. | Excluded from test. All pitch scripts are human-authored. |
 
@@ -156,52 +150,46 @@ In strict compliance with the **Integrity Mandate** and the rule that *"Never pr
 
 ## 5. Wizard-of-Oz (WoZ) Protocol & Facilitator Rules
 
-Because automated downstream deficit forecasting, constraint-aware recovery calculation, and cross-device synchronization are not yet implemented in backend code, these capabilities are delivered through a preregistered **Wizard-of-Oz (WoZ)** protocol.
+Capabilities that require cross-device teleprompter networking or direct native TikTok Shop console interaction are delivered through a preregistered **Wizard-of-Oz (WoZ)** protocol:
 
 ### 5.1 WoZ Governance Principles
-1. **Clinical Neutrality:** The facilitator must never assist, coach, or prompt the participant toward a specific decision. The WoZ engine behaves strictly as a deterministic state machine, delivering objective constraint signals while leaving recovery choices entirely to the participant operator.
-2. **Transparent Disclosure:** Participants are briefed prior to the trial that certain background calculation and display engines are operating under research simulation.
-3. **Rigid Latency Standards:** WoZ stimuli must be delivered within predefined, second-accurate time windows to ensure experimental reproducibility across all participant pairs.
+1. **Clinical Neutrality:** The facilitator must never assist, coach, or prompt the participant toward a specific decision. The software's implemented recovery engine (`next/src/lib/domain/recovery.ts`) generates candidate options automatically; the facilitator does NOT suggest recovery actions.
+2. **Transparent Disclosure:** Participants are briefed prior to the trial that host prompter synchronization and Seller Center console network behaviors operate under research facilitation.
+3. **Rigid Latency Standards:** Facilitator stimuli (mock comments, stockout alerts, console lag spinners) must be injected within predefined, second-accurate time windows to ensure experimental reproducibility across all participant pairs.
 
 ### 5.2 Specific WoZ Mechanics
 
-#### 1. Overrun & Deficit Warning (Disturbance D1)
-* **Trigger:** Active Segment 2 pitch is stimulated via chat comments to overrun past its planned 06:00 end. When elapsed schedule math indicates a projected deficit against Hard Anchor 1:
-* **WoZ Action:** At the exact second the mathematical deficit reaches $+0.5\text{ minutes}$ (30 seconds deficit at show clock $T = 06:30$), the facilitator triggers the simulated alert cue:
-  - In LiveLift condition: An alert overlay is toggled on the operator screen displaying purely descriptive constraint telemetry: `[CẢNH BÁO TIẾN ĐỘ: Dự phóng trễ 30s so với Flash Deal 09:00:00 (Thâm hụt: 0:30)]`. The WoZ engine strictly refrains from prescriptive coaching (delivering objective deficit telemetry without directive suggestions or tactical advice). The operator must independently formulate their recovery strategy.
-  - In Baseline condition: The operator must detect the deficit via the Google Sheets dynamic formula cell `Col R` (`Anchor_Deficit_Min > 0`), which changes fill color via conditional formatting.
+#### 1. Overrun & Deficit Triggering (Disturbance D1)
+* **Trigger:** Facilitator stimulates active Segment 2 pitch via mock chat comment.
+* **Mechanism:** In LiveLift, the implemented forecast engine (`forecastSession`) detects the deficit against Hard Anchor 1 and surfaces the alert card automatically on the desk. In Baseline, the spreadsheet formula in `Col R` highlights Dark Crimson Red. Facilitators do not manually calculate or verbally prompt the deficit.
 
-#### 2. Constraint-Aware Recovery Menu
-* **Trigger:** Operator clicks the Recovery / Adjust button on the LiveLift desk.
-* **WoZ Action:** The facilitator presents a standardized recovery card offering the three mathematically valid options:
-  - *Option 1 (Buffer Absorption):* Truncate active Serum pitch at $07:00$; compress Toner to $2.0\text{m}$ (Floor: $1.0\text{m}$). Anchor protected at $09:00$.
-  - *Option 2 (Aggressive Compression):* Allow Serum to run to $07:30$; compress Toner to floor ($1.0\text{m}$). Anchor protected at $09:00$.
-  - *Option 3 (Skip Intermediary):* Allow Serum to run to $08:00$; skip Toner entirely ($0\text{m}$). Reclaim $3.0\text{m}$ buffer. Anchor protected at $09:00$.
-* *Invalid Option Control:* If the operator attempts to reduce Toner below its $1.0\text{m}$ floor or attempts to shorten a segment downstream of the anchor, the WoZ engine displays: `[INVALID: Vi phạm thời lượng sàn 1.0m của SKU-TONER]`.
-
-#### 3. Host Display Synchronization
+#### 2. Host Display Synchronization
 * **Trigger:** Operator confirms a segment transition or enters an operational note.
-* **WoZ Action:** The facilitator, running a mirror controller on an auxiliary tablet positioned in the host's direct line of sight, updates the host display within $\le 1.0$ second to reflect:
+* **WoZ Action:** Because the prototype is a single-workstation desk without multi-device WebSocket networking, the facilitator updates the host's secondary prompt tablet within $\le 1.0$ second to reflect:
   - Active segment countdown timer.
   - Presenting product name and SKU.
   - Next immediate operational cue ($\le 5$ words).
 
+#### 3. Native Platform Console Simulation (Disturbances D3 & D4)
+* **Trigger:** Stockout (D3) at scheduled second; Console Lag (D4) upon anchor entry.
+* **WoZ Action:** Facilitator triggers mock inventory drop to 0 units in the Seller Center console view, and injects the 40-second network spinner during product pinning. Facilitator records operator response and separates native platform lag from operator timing performance.
+
 ### 5.3 Technical Exception & Crash Recovery Runbook
 
-Because the Phase 0 prototype stores execution state in volatile browser memory (`simulatorEngine.ts`), and baseline Google Sheets can suffer unexpected user disruptions, live trials must adhere to rigorous technical exception handling:
+The LiveLift prototype utilizes a durable local transactional store (`SessionStore`), while the baseline utilizes Google Sheets:
 
 #### 1. Preventative Browser Lock & Kiosk Protocol
 * **Fullscreen Kiosk Mode:** The operator desktop browser must run in dedicated fullscreen presentation / kiosk mode (`F11`) with bookmarked shortcuts and navigation bars hidden.
-* **Navigation Trap (`beforeunload`):** Prototype and baseline browser windows must have an active `window.addEventListener('beforeunload', ...)` handler that displays a confirmation modal upon any reload attempt (`F5`, `Ctrl+R`, `Cmd+R`, trackpad back-swipe).
 * **Macro & Extension Lock:** Operating systems must be audited prior to trial start. Macro keyboards, AutoHotkey scripts, browser timer extensions, and external automation software are strictly prohibited.
 
 #### 2. Crash Triage & Invalidation Protocols
 * **Case A: Pre-Disturbance Crash ($T_{\text{show}} < 04:00$, Prior to D1):**
-  - If a browser crash, reload, or system freeze occurs prior to $T = 04:00$, the trial is **immediately restarted from $T = 00:00$** under a new session identifier (`[SubjectID]_[Cond]_Restart1`).
+  - If a browser crash or hardware freeze occurs prior to $T = 04:00$, the trial is **immediately restarted from $T = 00:00$** under a new session identifier (`[SubjectID]_[Cond]_Restart1`).
   - *Validity:* Permitted because the operator has not yet encountered any disturbance stimuli, preserving naive reaction latency.
 * **Case B: Post-Disturbance Crash ($T_{\text{show}} \ge 04:00$, Active Disturbances):**
-  - If a disruption occurs after D1 has been injected ($T \ge 04:00$), **the live trial must NOT be restarted**. Restarting would introduce severe re-exposure and temporal anticipation bias.
-  - **OBS Video Salvage Protocol:** The live run is immediately terminated. Research staff salvage the trial using the synchronized OBS multi-track master recording:
+  - If a disruption occurs after D1 has been injected ($T \ge 04:00$), **the live trial must NOT be restarted**.
+  - **Durable Local Recovery:** The operator refreshes the page (`F5`). `SessionStore` rehydrates the session from `localStorage`, preserving all recorded actual timestamps, notes, and receipts.
+  - If hardware completely fails, research staff salvage the trial using synchronized OBS multi-track recording:
     - *Track 1:* Operator desktop screen recording at 60 fps (1080p).
     - *Track 2:* On-camera host video stream.
     - *Track 3:* Synchronized millisecond master digital clock overlay.

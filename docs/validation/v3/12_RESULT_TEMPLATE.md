@@ -80,30 +80,32 @@ AUDITOR SIGN-OFF:           [ TEAMWORK_PREVIEW_AUDITOR ]  SIGNATURE DATE:  [ YYY
 
 ---
 
-## 3. Certified Feature State Audit Ledger
+## 3. Certified Feature State Audit Ledger (Aligned with UI SHA `71807ed`)
 
-In compliance with the requirement that *"Never pretend unfinished functionality exists"*, the research team certifies that every capability evaluated during testing strictly conformed to its pre-authorized state:
+In compliance with the requirement that *"Never pretend unfinished functionality exists"*, the research team certifies that every capability evaluated during testing strictly conformed to its pre-authorized state against UI SHA `71807ed`:
 
 ```
 +----------------------------------------------------------------------------------------------------+
 |                                CERTIFIED FEATURE STATE AUDIT LEDGER                                |
 +----+--------------------------------+-----------------+---------------------+----------------------+
-| #  | Feature / Subsystem            | Certified State | Execution Mode      | Researcher Audit Log |
+| #  | Feature / Subsystem            | Certified State | Implementation Path | Researcher Audit Log |
 +----+--------------------------------+-----------------+---------------------+----------------------+
 | 01 | Session Lifecycle (Start/End)  | IMPLEMENTED     | Native Code in UI   | [ ] Verified Genuine |
 | 02 | Run of Show Manual Controls    | IMPLEMENTED     | Native Code in UI   | [ ] Verified Genuine |
 | 03 | Catalog SKU Snapshot Cards     | IMPLEMENTED     | Pre-loaded Fixture  | [ ] Verified Genuine |
-| 04 | Manual Action Reporting Log    | IMPLEMENTED     | Operator Checkbox   | [ ] Verified Genuine |
-| 05 | Elapsed Pacing Countdown Timer | SIMULATED       | In-Browser Clock    | [ ] Verified Genuine |
-| 06 | In-Memory Transition Logging   | SIMULATED       | Local React State   | [ ] Verified Genuine |
-| 07 | Plan-vs-Actual Variance Table  | SIMULATED       | In-Memory Fixtures  | [ ] Verified Genuine |
-| 08 | Dynamic Cascading Deficit Calc | WIZARD-OF-OZ    | Facilitator Prompt  | [ ] Verified Genuine |
-| 09 | Constraint-Aware Recovery Opts | WIZARD-OF-OZ    | Facilitator Drawer  | [ ] Verified Genuine |
-| 10 | Host View Screen & Sync        | WIZARD-OF-OZ    | Facilitator Tablet  | [ ] Verified Genuine |
-| 11 | Next LIVE Patched Rundown Clone| WIZARD-OF-OZ    | Facilitator Clone   | [ ] Verified Genuine |
-| 12 | Direct TikTok API Integration  | NOT AVAILABLE   | Completely Excluded | [ ] Verified Absent  |
-| 13 | Autonomous Native Pinning/Deals| NOT AVAILABLE   | Completely Excluded | [ ] Verified Absent  |
-| 14 | Automated AI Pacing Engine     | NOT AVAILABLE   | Completely Excluded | [ ] Verified Absent  |
+| 04 | Manual Cue Action Reporting    | IMPLEMENTED     | Operator Checkbox   | [ ] Verified Genuine |
+| 05 | Dynamic Rolling Forecast Engine| IMPLEMENTED     | forecastSession()   | [ ] Verified Genuine |
+| 06 | Constraint-Aware Recovery Engine| IMPLEMENTED    | analyzeRecovery()   | [ ] Verified Genuine |
+| 07 | Durable Local Storage Authority| IMPLEMENTED     | SessionStore (disk) | [ ] Verified Genuine |
+| 08 | Plan-vs-Actual Review Table    | IMPLEMENTED     | buildReview() / UI  | [ ] Verified Genuine |
+| 09 | Next LIVE Plan Adaptation Gen  | IMPLEMENTED     | createNextLivePlan()| [ ] Verified Genuine |
+| 10 | Deterministic Rehearsals       | SIMULATED       | scenarios.ts        | [ ] Verified Genuine |
+| 11 | Sample Product Catalogs        | SIMULATED       | library.ts fixtures | [ ] Verified Genuine |
+| 12 | Dedicated Host View Screen Sync| WIZARD-OF-OZ    | Facilitator Tablet  | [ ] Verified Genuine |
+| 13 | Native TikTok Console Latency  | WIZARD-OF-OZ    | 40s Mock Spinner    | [ ] Verified Genuine |
+| 14 | Direct TikTok Seller APIs      | NOT AVAILABLE   | Completely Excluded | [ ] Verified Absent  |
+| 15 | Autonomous Native Auto-Pinning | NOT AVAILABLE   | Completely Excluded | [ ] Verified Absent  |
+| 16 | Autonomous AI Pacing Engine    | NOT AVAILABLE   | Completely Excluded | [ ] Verified Absent  |
 +----+--------------------------------+-----------------+---------------------+----------------------+
 ```
 
@@ -111,32 +113,36 @@ In compliance with the requirement that *"Never pretend unfinished functionality
 
 ## 4. Master Metric Pass/Fail Scorecard
 
-Aggregates empirical results across all participant trials against the 10 preregistered quantitative thresholds:
+Aggregates empirical results across all participant trials against the 10 preregistered decision dimensions:
 
 ```
 +-------------------------------------------------------------------------------------------------------------------------------------+
 |                                            LIVELIFT V3 VALIDATION SCORECARD TABLE                                                   |
+|                                          [BLANK TEMPLATE — NO PARTICIPANT DATA]                                                     |
 +----+----------------------------+---------------+---------------+----------+-------------+---------------------+--------------------+
 | #  | Operational Dimension      | Baseline (B)  | LiveLift (A)  | Paired   | % Imp       | Preregistered       | Evaluation Status  |
 |    |                            | Median (IQR)  | Median (IQR)  | Diff (Δ) | Median      | Threshold Target    | [PASS / MARG / FAIL|
 +----+----------------------------+---------------+---------------+----------+-------------+---------------------+--------------------+
-| 01 | Setup Time (T_setup)       | _____m (___)  | _____m (___)  | _____m   | _____%      | <=10m; <=2m slower  | [ ] PASS  [ ] FAIL |
-| 02 | Schedule-Risk Awareness    | _____s (___)  | _____s (___)  | _____s   | _____%      | >=80% in <=10s      | [ ] PASS  [ ] FAIL |
-| 03 | Recovery Decision Latency  | _____s (___)  | _____s (___)  | _____s   | _____%      | >=30% faster;       | [ ] PASS  [ ] FAIL |
-|    | Recovery Validity (R_valid)| _____ %       | _____ %       | _____%   | _____       | >=90% valid choices | [ ] PASS  [ ] FAIL |
-| 04 | Anchor Variance (V_anchor) | _____s (___)  | _____s (___)  | _____s   | _____%      | Median <=15s;       | [ ] PASS  [ ] FAIL |
+| 01 | Setup Time (M1, T_setup)   | _____m (___)  | _____m (___)  | _____m   | _____%      | <=10m; <=2m slower  | [ ] PASS  [ ] FAIL |
+| 02 | Schedule-Risk Awareness(M2)| _____s (___)  | _____s (___)  | _____s   | _____%      | >=80% in <=10s (ID) | [ ] PASS  [ ] FAIL |
+| 03 | Recovery Decision Lat (M3) | _____s (___)  | _____s (___)  | _____s   | _____%      | >=30% faster;       | [ ] PASS  [ ] FAIL |
+|    | Recovery Validity (M4)     | _____ %       | _____ %       | _____%   | _____       | >=90% valid choices | [ ] PASS  [ ] FAIL |
+| 04 | Anchor Variance (M5)       | _____s (___)  | _____s (___)  | _____s   | _____%      | Median <=15s;       | [ ] PASS  [ ] FAIL |
 |    | Critical Miss Count        | _____ misses  | _____ misses  | _____    | _____       | Exactly 0 misses    | [ ] PASS  [ ] FAIL |
-| 05 | Capture Burden (Clicks)    | _____ clicks  | _____ clicks  | _____    | _____%      | <=1 command/trans   | [ ] PASS  [ ] FAIL |
+| 05 | Capture Burden (Clicks, M7)| _____ clicks  | _____ clicks  | _____    | _____%      | <=1 command/trans   | [ ] PASS  [ ] FAIL |
 |    | Capture Latency (T_capture)| _____s (___)  | _____s (___)  | _____s   | _____%      | Median <=3.0s       | [ ] PASS  [ ] FAIL |
-|    | PVA Error Rate (E_PVA)     | _____ %       | _____ %       | _____%   | _____%      | <=10.0% boundary err| [ ] PASS  [ ] FAIL |
-| 06 | Cognitive Workload (TLX)   | _____ / 100   | _____ / 100   | _____ pts| _____%      | >=20% reduction     | [ ] PASS  [ ] FAIL |
-| 07 | Host Coordination Messages | _____ msgs    | _____ msgs    | _____    | _____%      | >=30% fewer msgs    | [ ] PASS  [ ] FAIL |
+|    | PVA Error Rate (M6, E_PVA) | _____ %       | _____ %       | _____%   | _____%      | <=10.0% boundary err| [ ] PASS  [ ] FAIL |
+| 06 | Cognitive Workload (M9)    | _____ / 100   | _____ / 100   | _____ pts| _____%      | >=20% red. or +/-5pt| [ ] PASS  [ ] FAIL |
+| 07 | Avoidable Host Msgs (M8)   | _____ msgs    | _____ msgs    | _____    | _____%      | >=30% red (or <=2)  | [ ] PASS  [ ] FAIL |
 |    | Comprehension Latency      | _____s (___)  | _____s (___)  | _____s   | _____%      | >=80% in <=5s       | [ ] PASS  [ ] FAIL |
 |    | Speech Stumbles / Glaze    | _____ events  | _____ events  | _____    | _____       | 0 delivery regress  | [ ] PASS  [ ] FAIL |
-| 08 | PVA Reconstruction Time    | _____m (___)  | _____m (___)  | _____m   | _____%      | <=5m; >=30% faster  | [ ] PASS  [ ] FAIL |
+| 08 | PVA Reconstruction (M10)   | _____m (___)  | _____m (___)  | _____m   | _____%      | <=5m; >=30% faster  | [ ] PASS  [ ] FAIL |
 |    | Review Fact Accuracy       | _____ %       | _____ %       | _____%   | _____%      | >=90% facts correct | [ ] PASS  [ ] FAIL |
-| 09 | Subjective Adoption Choice | _____ %       | _____ %       | _____%   | _____       | >=70% choose desk   | [ ] PASS  [ ] FAIL |
-| 10 | Voluntary Repeat Use (G1)  | [ Field Gate: N/A in Phase 0 Laboratory Trials — Evaluated at G1 ] | >=3 teams, >=3 runs | [ ] PENDING G1     |
+| 09 | Next LIVE Adaptation (M11) | _____m (___)  | _____m (___)  | _____m   | _____%      | <=5m; >=30% faster  | [ ] PASS  [ ] FAIL |
+|    | Next Plan Feasibility Rate | _____ %       | _____ %       | _____%   | _____%      | >=90% feasible plans| [ ] PASS  [ ] FAIL |
+|    | Combined Post-Show Envelope| _____m (___)  | _____m (___)  | _____m   | _____%      | Total <=10m (<=5m A)| [ ] PASS  [ ] FAIL |
+| 10 | Subjective Adoption Choice | _____ %       | _____ %       | _____%   | _____       | >=70% choose desk   | [ ] PASS  [ ] FAIL |
+| -- | Voluntary Repeat Use (G1)  | [ Field Gate: N/A in Phase 0 Laboratory Trials — Evaluated at G1 ] | >=3 teams, >=3 runs | [ ] PENDING G1     |
 +----+----------------------------+---------------+---------------+----------+-------------+---------------------+--------------------+
 ```
 
@@ -144,11 +150,13 @@ Aggregates empirical results across all participant trials against the 10 prereg
 
 ## 5. Participant Pair Raw Telemetry & Paired Differences Matrix
 
-Records per-pair raw measurements for both experimental arms.
+> [!IMPORTANT]
+> **BLANK INSTRUMENT TEMPLATE — NOT PARTICIPANT DATA**
+> The tables below are blank logging templates for recording paired experimental trials. No participant trials have been conducted.
 
 ```
 +-----+----------------------------------+----------------------------------+----------------------------------+
-|     | Metric 2: Detection Latency (s)  | Metric 3: Decision Latency (s)   | Metric 4: Anchor Variance (s)    |
+|     | Metric 2: Detection Latency (s)  | Metric 3: Decision Latency (s)   | Metric 5: Anchor Variance (s)    |
 |Pair | Base (B)  | LiveLift (A)| Diff (Δ)| Base (B)  | LiveLift (A)| Diff (Δ)| Base (B)  | LiveLift (A)| Diff (Δ)|
 +-----+-----------+-------------+---------+-----------+-------------+---------+-----------+-------------+---------+
 | P01 |           |             |         |           |             |         |           |             |         |
@@ -167,7 +175,26 @@ Records per-pair raw measurements for both experimental arms.
 
 ```
 +-----+----------------------------------+----------------------------------+----------------------------------+
-|     | Metric 6: NASA-TLX Raw Score     | Metric 7: Host Message Count     | Metric 8: PVA Recon Time (min)   |
+|     | Metric 9: NASA-TLX Raw Score     | Metric 8: Avoidable Host Msgs    | Metric 10: PVA Recon Time (min)  |
+|Pair | Base (B)  | LiveLift (A)| Diff (Δ)| Base (B)  | LiveLift (A)| Diff (Δ)| Base (B)  | LiveLift (A)| Diff (Δ)|
++-----+-----------+-------------+---------+-----------+-------------+---------+-----------+-------------+---------+
+| P01 |           |             |         |           |             |         |           |             |         |
+| P02 |           |             |         |           |             |         |           |             |         |
+| P03 |           |             |         |           |             |         |           |             |         |
+| P04 |           |             |         |           |             |         |           |             |         |
+| P05 |           |             |         |           |             |         |           |             |         |
+| P06 |           |             |         |           |             |         |           |             |         |
+| P07 |           |             |         |           |             |         |           |             |         |
+| P08 |           |             |         |           |             |         |           |             |         |
++-----+-----------+-------------+---------+-----------+-------------+---------+-----------+-------------+---------+
+| MED |           |             |         |           |             |         |           |             |         |
+| IQR |           |             |         |           |             |         |           |             |         |
++-----+-----------+-------------+---------+-----------+-------------+---------+-----------+-------------+---------+
+```
+
+```
++-----+----------------------------------+----------------------------------+----------------------------------+
+|     | Metric 4: Recovery Validity (%)  | Metric 7: Capture Latency (s)    | Metric 11: Next Plan Time (min)  |
 |Pair | Base (B)  | LiveLift (A)| Diff (Δ)| Base (B)  | LiveLift (A)| Diff (Δ)| Base (B)  | LiveLift (A)| Diff (Δ)|
 +-----+-----------+-------------+---------+-----------+-------------+---------+-----------+-------------+---------+
 | P01 |           |             |         |           |             |         |           |             |         |
@@ -214,13 +241,17 @@ To account for potential non-normality and bounded distributions in small sample
 | ID | Operational Metric         | N_r   | W+    | W-    | z-score | p-value | Hodges-Leh | Effect Size |
 |    |                            | Pairs | Sum   | Sum   | Approx  | (2-tail)| Median (Δ) | (r = z/√N)  |
 +----+----------------------------+-------+-------+-------+---------+---------+------------+-------------+
-| M2 | Detection Latency (T_det)  |       |       |       |         |         |            |             |
-| M3 | Decision Latency (T_dec)   |       |       |       |         |         |            |             |
-| M4 | Anchor Variance (V_anchor) |       |       |       |         |         |            |             |
-| M5 | Capture Latency (T_cap)    |       |       |       |         |         |            |             |
-| M6 | Cognitive Workload (TLX)   |       |       |       |         |         |            |             |
-| M7 | Host Messages (N_msgs)     |       |       |       |         |         |            |             |
-| M8 | PVA Review Time (T_recon)  |       |       |       |         |         |            |             |
+| M1 | Setup Time (T_setup)       |       |       |       |         |         |            |             |
+| M2 | Detection Latency (T_detect|       |       |       |         |         |            |             |
+| M3 | Decision Latency (T_decis) |       |       |       |         |         |            |             |
+| M4 | Recovery Validity (R_valid)|       |       |       |         |         |            |             |
+| M5 | Anchor Variance (V_anchor) |       |       |       |         |         |            |             |
+| M6 | Boundary Error Rate (E_PVA)|       |       |       |         |         |            |             |
+| M7 | Capture Latency (T_capture)|       |       |       |         |         |            |             |
+| M8 | Avoidable Host Msgs (N_av) |       |       |       |         |         |            |             |
+| M9 | Cognitive Workload (TLX)   |       |       |       |         |         |            |             |
+| M10| PVA Review Time (T_recon)  |       |       |       |         |         |            |             |
+| M11| Next LIVE Time (T_plan)    |       |       |       |         |         |            |             |
 +----+----------------------------+-------+-------+-------+---------+---------+------------+-------------+
 ```
 
@@ -228,11 +259,16 @@ To account for potential non-normality and bounded distributions in small sample
 
 ## 7. Qualitative Synthesis & Thematic Interview Ledger
 
+> [!IMPORTANT]
+> **BLANK INSTRUMENT TEMPLATE — NOT PARTICIPANT DATA**
+> The entries below are blank templates for qualitative thematic synthesis. No real participant interview has been conducted.
+
 Synthesizes responses from `docs/validation/v3/10_POST_TEST_INTERVIEW.md` across the five core qualitative themes:
 
 ```
 +----------------------------------------------------------------------------------------------------+
 |                                    QUALITATIVE THEME CODING MATRIX                                 |
+|                                [BLANK TEMPLATE — NO PARTICIPANT DATA]                              |
 +----+-------------------------------+---------------+-----------------------+-----------------------+
 | ID | Qualitative Theme             | Freq (Mentions| Dominant Perception   | Illustrative Verbatim |
 |    |                               | / Total N)    | (Positive / Negative) | Quote (VN / EN)       |

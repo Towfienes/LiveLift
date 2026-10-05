@@ -124,13 +124,14 @@ All formulas utilize standard Google Sheets / Microsoft Excel syntax, maintainin
 #### 1. Planned Start (`Col K`)
 * **Row 2 (First Segment):**
   ```excel
-  =Config!$B$1
+  ='00_Config'!$B$1
   ```
+  *(References the official broadcast start time in sheet `'00_Config'`. For full date-time models spanning calendar boundaries, references Base Start DateTime: `='00_Config'!$B$2 + '00_Config'!$B$1`)*.
 * **Row $i \ge 3$ (Subsequent Segments):**
   ```excel
-  =K2 + TIME(0, INT(G2), ROUND((G2 - INT(G2)) * 60, 0))
+  =K2 + (G2 / 1440)
   ```
-  *(Equivalently simplified for decimal minutes: `=K2 + (G2 / 1440)`)*
+  *(Equivalently expressed via time functions: `=K2 + TIME(0, INT(G2), ROUND((G2 - INT(G2)) * 60, 0))`)*
 
 #### 2. Planned End (`Col L`)
 * **All Rows ($i \ge 2$):**
@@ -143,40 +144,70 @@ All formulas utilize standard Google Sheets / Microsoft Excel syntax, maintainin
 ### 4.2 Dynamic Live Rolling Forecast Formulas
 
 #### 3. Actual Duration (`Col O`)
-Calculates realized duration in decimal minutes, suppressing output until both timestamps are logged:
+Calculates realized duration in decimal minutes, cleanly suppressing calculation until both start and end timestamps are present, and handling cross-midnight rollover seamlessly:
 ```excel
-=IF(OR(ISBLANK(M2), ISBLANK(N2)), "", ROUND((N2 - M2) * 1440, 2))
+=IF(OR(ISBLANK(M2), ISBLANK(N2), M2="", N2=""), "", ROUND(MOD(N2 - M2 + 1, 1) * 1440, 2))
 ```
+* **Date/Time & Cross-Midnight Arithmetic:** In spreadsheet time serials, `MOD(N2 - M2 + 1, 1)` ensures that if a segment starts at `23:58:00` and finishes at `00:03:00`, the calculation evaluates to exactly `5.00` minutes without negative duration errors. If timestamps are full datetime serials, `ROUND((N2 - M2) * 1440, 2)` produces identical results.
+* **Missing Value Cleanliness:** When either boundary is missing or not yet captured, returns formula blank string `""`.
 
 #### 4. Duration Variance (`Col P`)
-Surfaces timing drift against the planned budget:
+Surfaces timing drift against the planned budget, with explicit blank handling to prevent `#VALUE!` errors:
 ```excel
-=IF(ISBLANK(O2), "", ROUND(O2 - G2, 2))
+=IF(OR(ISBLANK(O2), O2=""), "", ROUND(O2 - G2, 2))
 ```
+* **Missing Actual Handling:** Unlike naive `ISBLANK(O2)` which evaluates to `FALSE` when `O2` contains a formula blank string `""`, `OR(ISBLANK(O2), O2="")` cleanly preserves a blank cell without evaluating `"" - G2`, preventing formula calculation errors on unexecuted rows.
 
 #### 5. Dynamic Rolling Projected Start (`Col Q`)
-The rolling engine computes the projected start of every segment by evaluating the status of preceding rows. If a preceding segment is `ACTIVE`, the engine projects from the greater of its scheduled end or current elapsed wall-clock time (`NOW()`):
+The rolling engine computes the projected start of every segment by evaluating the status of preceding rows and holding at hard promotional anchors:
 * **Row 2 (First Segment):**
   ```excel
-  =IF(NOT(ISBLANK(M2)), M2, Config!$B$1)
+  =IF(AND(NOT(ISBLANK(M2)), M2<>""), M2, '00_Config'!$B$1)
   ```
-* **Row $i \ge 3$ (Subsequent Segments):**
+* **Row $i \ge 3$ (Subsequent Segments — Standard Nested IF Formulation):**
   ```excel
-  =IF(S3="DONE", M3,
-    IF(S3="ACTIVE", M3,
+  =IF(OR(S3="DONE", S3="ACTIVE"), M3,
+    IF(I3=TRUE,
+      MAX(
+        IF(S2="DONE", N2,
+          IF(S2="SKIPPED", Q2,
+            IF(S2="ACTIVE", MAX(MOD(NOW(), 1), M2 + (G2 / 1440)),
+              Q2 + (G2 / 1440)
+            )
+          )
+        ),
+        J3
+      ),
       IF(S2="DONE", N2,
-        IF(S2="ACTIVE", MAX(NOW(), M2 + (G2 / 1440)),
-          Q2 + (G2 / 1440)
+        IF(S2="SKIPPED", Q2,
+          IF(S2="ACTIVE", MAX(MOD(NOW(), 1), M2 + (G2 / 1440)),
+            Q2 + (G2 / 1440)
+          )
         )
       )
     )
   )
   ```
-* **Rolling Projected End (`Col Q_End` / Internal Projection):**
-  For any segment $i$, the projected finish instant is:
+* **Equivalent Modern LET Formulation (Google Sheets / Excel 365):**
   ```excel
-  =Q2 + (IF(S2="ACTIVE", MAX(0, G2 - ((NOW() - M2) * 1440)), G2) / 1440)
+  =LET(
+    prior_cursor, IF(S2="DONE", N2,
+                    IF(S2="SKIPPED", Q2,
+                      IF(S2="ACTIVE", MAX(MOD(NOW(), 1), M2 + (G2 / 1440)),
+                        Q2 + (G2 / 1440)
+                      )
+                    )
+                  ),
+    IF(OR(S3="DONE", S3="ACTIVE"), M3,
+      IF(I3=TRUE, MAX(prior_cursor, J3), prior_cursor)
+    )
+  )
   ```
+* **Mathematical Invariants of Projected Start:**
+  1. **Hard-Anchor Holding / Wait:** If row $i$ has a hard anchor (`I_i = TRUE`) scheduled at `J_i`, and prior segments conclude early (`prior_cursor < J_i`), the projected start evaluates to `MAX(prior_cursor, J_i) = J_i`. The sheet explicitly models waiting for the scheduled anchor window rather than advancing prematurely.
+  2. **Overrun Propagation:** If prior segments run late (`prior_cursor > J_i`), `MAX(prior_cursor, J_i) = prior_cursor`, accurately reflecting downstream delay and surfacing the anchor deficit.
+  3. **Skipped Row Exclusion:** If preceding row $i-1$ is marked `SKIPPED`, its duration consumption is zero (`prior_cursor` remains `Q_{i-1}`), immediately returning the planned minutes to downstream segments.
+  4. **Active Segment Projection:** If preceding row $i-1$ is currently `ACTIVE`, the engine projects finish from the greater of its scheduled duration end (`M_{i-1} + G_{i-1}/1440`) or current wall-clock elapsed time (`MOD(NOW(), 1)`), providing real-time drift telemetry.
 
 ---
 
@@ -186,33 +217,49 @@ The anchor deficit formula detects upcoming timing collisions before they breach
 
 #### Primary Formula (21-Column Rundown, Row 2):
 ```excel
-=IF(I2=TRUE, IF(ISBLANK(J2), 0, MAX(0, ROUND((Q2 - J2) * 1440, 1))), 0)
+=IF(AND(I2=TRUE, NOT(ISBLANK(J2)), J2<>""), IF(Q2 > J2, ROUND((Q2 - J2) * 1440, 1), 0), 0)
 ```
-* **Logic:** If `Is_Hard_Anchor` is `TRUE`, it compares `Projected_Start` (`Col Q`) against `Anchor_Time` (`Col J`). If `Projected_Start > Anchor_Time`, the difference is converted to minutes and rounded to 1 decimal place. Otherwise, returns `0.0`.
-
-#### Standardized 16-Column Operational Mapping:
-In streamlined operator layouts where auxiliary pricing, SKU, and cue text columns are collapsed to create a dedicated 16-column console (Columns A through P):
-* Let `Col G` represent `Projected_Start` and `Col N` represent `Anchor_Time`. The equivalent formula is:
-```excel
-=IF(ISBLANK(N3), 0, MAX(0, ROUND((G3 - N3) * 1440, 1)))
-```
-* Both formulations compute identical mathematical deficit telemetry: converting fractional day difference to positive slip minutes.
+* **Logic:** If `Is_Hard_Anchor` is `TRUE`, it compares `Projected_Start` (`Col Q`) against `Anchor_Time` (`Col J`). If `Projected_Start > Anchor_Time`, the difference is converted to minutes and rounded to 1 decimal place. If the projection is on time or held at anchor (`Q2 <= J2`), returns `0.0`.
 
 ---
 
 ### 4.4 Global KPI Formulas (`02_Summary_KPI`)
 
-The summary sheet provides aggregate telemetry across the entire broadcast:
+The summary sheet provides aggregate telemetry across the entire broadcast, strictly honoring compressibility semantics:
 
 | Cell | Metric Name | Exact Formula | Description |
 |:---:|---|---|---|
-| `B2` | `Total_Planned_Dur` | `=SUM('01_Live_Rundown'!G2:G50)` | Total scheduled duration in minutes. |
-| `B3` | `Total_Floor_Dur` | `=SUM('01_Live_Rundown'!F2:F50)` | Contractual minimum duration across all segments. |
-| `B4` | `Total_Buffer_Pool` | `=B2 - B3` | Total reclaimable buffer across the entire show ($5.0\text{m}$). |
+| `B2` | `Total_Planned_Dur` | `=SUM('01_Live_Rundown'!G2:G50)` | Total scheduled duration in minutes ($15.0\text{m}$). |
+| `B3` | `Total_Floor_Dur` | `=SUM('01_Live_Rundown'!F2:F50)` | Contractual minimum duration across all segments ($8.0\text{m}$ in S1, $10.0\text{m}$ in S2). |
+| `B4` | `Total_Buffer_Pool` | `=SUMIFS('01_Live_Rundown'!G2:G50, '01_Live_Rundown'!H2:H50, TRUE) - SUMIFS('01_Live_Rundown'!F2:F50, '01_Live_Rundown'!H2:H50, TRUE)` | Total reclaimable buffer across compressible segments (`H=TRUE`) only (exactly $5.0\text{m}$ in both S1 and S2; non-compressible rows excluded). |
 | `B5` | `Pending_Buffer_Available` | `=SUMIFS('01_Live_Rundown'!G2:G50, '01_Live_Rundown'!H2:H50, TRUE, '01_Live_Rundown'!S2:S50, "PENDING") - SUMIFS('01_Live_Rundown'!F2:F50, '01_Live_Rundown'!H2:H50, TRUE, '01_Live_Rundown'!S2:S50, "PENDING")` | Reclaimable minutes remaining in unexecuted compressible segments. |
 | `B6` | `Cumulative_Slip_Min` | `=SUMIF('01_Live_Rundown'!S2:S50, "DONE", '01_Live_Rundown'!P2:P50)` | Net minutes drifted from plan across completed segments. |
 | `B7` | `Active_Anchor_Deficit` | `=MAX('01_Live_Rundown'!R2:R50)` | Peak deficit facing any upcoming hard anchor. |
 | `B8` | `Anchor_Protection_Status`| `=IF(B7=0, "SECURE (ON TIME)", IF(B7<=B5, "RECOVERABLE VIA BUFFER", "CRITICAL BREACH UNRECOVERABLE"))` | High-level operational alert banner. |
+
+---
+
+### 4.5 Mathematical Dry-Run Matrix & Proof of Parity
+
+To verify the spreadsheet baseline under all operational conditions, the formula engine was dry-run across six canonical edge cases:
+
+| Test Case | Scenario Condition | Input States | Formula Execution & Behavior | Verified Output | Status |
+|---|---|---|---|---|:---:|
+| **TC-01** | **Normal Pacing** | S1 on time ($2.0\text{m}$), S2 on time ($4.0\text{m}$). | `MOD(NOW(),1) <= K_i`; `Q_i = K_i`. | Deficit in `Col R` = $0.0\text{m}$. Status = `SECURE`. | **PASS** |
+| **TC-02** | **Late Pacing (Overrun)** | S2 overruns by $+1.0\text{m}$ ($5.0\text{m}$ actual). | $N_2 = 20:07:00$; S3 planned $3.0\text{m}$. Prior cursor = $20:10:00$. Anchor 1 scheduled $20:09:00$. | `Q4 = 20:10:00`; `R4 = (20:10 - 20:09)*1440 = 1.0m`. CF-02 fires crimson red. | **PASS** |
+| **TC-03** | **Early Finish (Wait at Anchor)** | S2 finishes early ($3.0\text{m}$ vs $4.0\text{m}$). | $N_2 = 20:05:00$; S3 runs floor $1.0\text{m}$ to $20:06:00$. Prior cursor = $20:06:00$. Anchor 1 at $20:09:00$. | `Q4 = MAX(20:06, 20:09) = 20:09:00`. Rundown holds at anchor time; does not advance early. Deficit = $0.0\text{m}$. | **PASS** |
+| **TC-04** | **Skipped Segment** | S3 dropped (`Status = "SKIPPED"`). | S3 marked `SKIPPED`. Preceding cursor = $20:07:00$. S3 planned $3.0\text{m}$. | `IF(S2="SKIPPED", Q2, ...)` passes $20:07:00$ directly to S4. S3 consumes $0.0\text{m}$. | **PASS** |
+| **TC-05** | **Missing Actuals** | S5 unexecuted / blank. | `M5 = ""`, `N5 = ""`. | `O5` returns `""`; `P5` evaluates `OR(ISBLANK, "")` -> returns `""`. Zero `#VALUE!` errors. | **PASS** |
+| **TC-06** | **Cross-Midnight Broadcast** | Late-night show $23:55:00$ to $00:10:00$. | $M_2 = 23:55:00$, $N_2 = 00:10:00$. | `MOD(N2 - M2 + 1, 1)*1440 = MOD(-0.98958 + 1, 1)*1440 = 15.00m`. Variance and durations fully preserved. | **PASS** |
+
+---
+
+### 4.6 Compressibility & Floor Duration Semantics
+
+1. **Contractual Floor Invariant:** Each segment possesses a contractual minimum duration `Floor_Min` (`Col F`), agreed with commercial brand sponsors.
+2. **Buffer Availability Constraint:** Buffer time can ONLY be harvested from segments marked `Is_Compressible = TRUE` (`Col H`), calculated strictly as $\text{Buffer}_i = G_i - F_i$. Segments with `Is_Compressible = FALSE` (such as fixed-duration opening pitches or contractual flash drops) yield **zero** buffer time ($0.0\text{m}$), even if $G_i > F_i$.
+3. **Invalid Compression Penalty:** Any manual schedule recovery that cuts a segment below `Floor_Min` without an authorized external disturbance exception (e.g., sudden SKU stockout) violates sponsor contracts and is scored as an **INVALID RECOVERY DECISION** (Metric M4).
+4. **Authorized Exception (Stockout):** If an inventory stockout occurs (Disturbance D3), terminating the pitch immediately below `Floor_Min` is recognized as an authorized operational exception.
 
 ---
 
@@ -363,9 +410,9 @@ If a sudden live event requires skipping an unscheduled product or inserting an 
 - Troubleshooting a broken formula during an active broadcast causes severe operator panic, resulting in complete abandonment of rundown tracking.
 
 ### 8.4 Failure Mode 4: Reconstruction Overhead & Historical Data Loss
-Because operators overwrite projected values with actual numbers in the same cells:
-- The spreadsheet destroys the original pre-show baseline plan.
-- Post-show commission audits and brand proof-of-performance require cross-referencing messy chat timestamps with TikTok Seller Center exports and video recordings, consuming **30 to 60 minutes of tedious administrative effort**.
+Because operators enter actual execution numbers into the working sheet:
+- The rolling projection state at the time of each disturbance is recalculated, altering the view of dynamic projections that existed before the recovery.
+- Reconciling post-show execution facts across multiple decoupled applications (spreadsheet cells, chat logs, and Seller Center console logs) introduces measurable cognitive overhead and timing burden compared to an integrated operational desk. Actual reconstruction duration is empirical evidence to be measured during testing rather than prescribed as a predetermined fact.
 
 ---
 
@@ -376,18 +423,20 @@ Before any validation trial begins, the research proctor must verify the baselin
 ```
 [ ] 1. WORKBOOK INITIALIZATION
     - Duplicate template to 'LiveLift_Val_Baseline_[SubjectID]'.
-    - Confirm Config parameters: Start time, Date, Planned duration.
+    - Confirm Config parameters in '00_Config': Start time (B1), Date (B2), Planned duration (B7).
 
 [ ] 2. FORMULA AUDIT
-    - Verify Col K Planned_Start cascade: =K2 + (G2 / 1440).
-    - Verify Col Q Projected_Start rolling logic: =IF(S3="DONE", ...).
-    - Verify Col R Anchor_Deficit_Min: =IF(I2=TRUE, MAX(0, ROUND((Q2-J2)*1440, 1)), 0).
-    - Verify Summary_KPI buffer formulas.
+    - Verify Col K Planned_Start cascade: ='00_Config'!$B$1 for row 2; =K2 + (G2 / 1440) for row >= 3.
+    - Verify Col O Actual_Dur_Min: =IF(OR(ISBLANK(M2), ISBLANK(N2), M2="", N2=""), "", ROUND(MOD(N2 - M2 + 1, 1) * 1440, 2)).
+    - Verify Col P Variance_Min: =IF(OR(ISBLANK(O2), O2=""), "", ROUND(O2 - G2, 2)).
+    - Verify Col Q Projected_Start rolling logic: Evaluates previous status (DONE/SKIPPED/ACTIVE) and holds at hard anchors via MAX(prior_cursor, J3).
+    - Verify Col R Anchor_Deficit_Min: =IF(AND(I2=TRUE, NOT(ISBLANK(J2)), J2<>""), IF(Q2 > J2, ROUND((Q2 - J2) * 1440, 1), 0), 0).
+    - Verify Summary_KPI buffer formulas: Cell B4 uses SUMIFS on compressible rows (H=TRUE) yielding exactly 5.0m buffer.
 
 [ ] 3. CONDITIONAL FORMATTING VERIFICATION
-    - Test active status: Enter "ACTIVE" in S2 -> Confirm light blue fill.
-    - Test overrun: Enter Actual_End = Actual_Start + 5m -> Confirm pink variance fill.
-    - Test deficit: Advance Projected_Start past Anchor_Time -> Confirm dark red fill on Col R.
+    - Test active status: Enter "ACTIVE" in S2 -> Confirm light blue fill (#CFE2F3).
+    - Test overrun: Enter Actual_End = Actual_Start + 5m -> Confirm pink variance fill (#F4CCCC).
+    - Test deficit: Advance Projected_Start past Anchor_Time -> Confirm dark crimson fill (#990000) on Col R.
 
 [ ] 4. SECURITY & RANGE PROTECTION LOCK
     - Confirm formula ranges (Cols K, L, O, P, Q, R) are VIEW-ONLY for participant account.

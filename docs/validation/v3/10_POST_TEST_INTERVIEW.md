@@ -123,42 +123,42 @@ The debriefing interview is administered immediately following the completion of
 
 ### Phase 2: Operator In-Depth Probes (6–7 minutes)
 
-#### Probe Q2.1: Cognitive Load & Split Attention (Theme 1)
-* **Vietnamese (VN):** *"Khi xảy ra tình huống Serum bị kéo dài thời gian (overrun) ở phút thứ 6, trong phiên dùng Bảng tính, bạn đã phải làm những bước tính toán nào trong đầu để biết có kịp giờ Flash Deal lúc 09:00 không? Bạn cảm thấy việc vừa nhìn Seller Center vừa tính toán trong Sheet gây căng thẳng như thế nào so với khi nhìn màn hình LiveLift?"*
-* **English (EN):** *"When the Serum overrun occurred at minute 6, in the Google Sheets session, what mental calculations did you have to perform to determine if you would still hit the 09:00 Flash Deal? How stressful was juggling Seller Center alongside spreadsheet math compared to looking at the LiveLift desk?"*
-* **Laddering Follow-up:** *"Bạn có bao giờ sợ rằng nếu mình sửa nhầm một ô thì toàn bộ công thức tính giờ bên dưới sẽ bị hỏng không?"* (*"Were you worried that editing a cell by accident would break downstream formulas?"*)
+#### Probe Q2.1: Cognitive Load & Schedule Evaluation (Theme 1)
+* **Vietnamese (VN):** *"Khi xảy ra tình huống Serum bị kéo dài thời gian ở phút thứ 6, trong phiên dùng Bảng tính, bạn đã thực hiện các bước nào để đánh giá khả năng kịp giờ Flash Deal lúc 09:00? Quy trình đó so với việc quan sát tiến độ trên LiveLift diễn ra như thế nào?"*
+* **English (EN):** *"When the Serum overrun occurred at minute 6, in the Google Sheets session, what steps did you take to evaluate whether the 09:00 Flash Deal was still protected? How did that process compare to assessing the schedule in LiveLift?"*
+* **Laddering Follow-up:** *"Bạn cảm thấy mức độ thuận tiện hoặc rủi ro khi thao tác cập nhật thời gian trên bảng tính so với các thao tác trên LiveLift ra sao?"* (*"How convenient or risky did you find time updates in the spreadsheet compared to interactions in LiveLift?"*)
 
 #### Probe Q2.2: Schedule Awareness & Alarm Perception (Theme 2)
-* **Vietnamese (VN):** *"Khi phiên live bị trễ tiến độ, việc nhìn ô màu đỏ ở Cột R trên Google Sheets và việc nhìn thẻ cảnh báo thâm hụt (deficit alert) trên LiveLift mang lại cảm giác khác nhau ra sao? Bạn phát hiện ra nguy cơ trễ giờ ở công cụ nào nhanh hơn và tự tin hơn?"*
-* **English (EN):** *"When the broadcast fell behind schedule, how did noticing the red cell in Column R on Google Sheets compare to seeing the deficit alert card on LiveLift? Which tool allowed you to detect the schedule risk faster and with more confidence?"*
-* **Laddering Follow-up:** *"Lúc nhìn ô màu đỏ trên Sheet, bạn có biết ngay lập tức mình phải làm gì không, hay phải mất thời gian nhìn lại các dòng sản phẩm tiếp theo?"* (*"When you saw the red cell in Sheets, did you immediately know what action to take, or did you have to inspect upcoming rows?"*)
+* **Vietnamese (VN):** *"Khi phiên live bị trễ tiến độ, bạn nhận biết và xử lý tín hiệu cảnh báo trên từng công cụ (ô đổi màu trên Bảng tính và thẻ cảnh báo thâm hụt trên LiveLift) như thế nào? Mức độ rõ ràng và thời gian nhận biết ở mỗi công cụ ra sao?"*
+* **English (EN):** *"When the broadcast fell behind schedule, how did you perceive and respond to the alert indicators in each tool (the color change in Sheets vs the deficit alert card in LiveLift)? How did the clarity and detection timing compare across both tools?"*
+* **Laddering Follow-up:** *"Khi nhận thấy cảnh báo trễ tiến độ, bạn xác định phương án xử lý tiếp theo trên từng công cụ như thế nào?"* (*"When you noticed a schedule deficit alert, how did you determine your next action in each tool?"*)
 
 #### Probe Q2.3: Recovery Feasibility & Perceived Control (Theme 3)
-* **Vietnamese (VN):** *"Khi phải xử lý sự cố cháy hàng (stockout) hoặc trễ tiến độ, các lựa chọn điều chỉnh (như rút ngắn Toner, bỏ qua sản phẩm, hoặc bù thời gian) trên LiveLift có thực tế và dễ thực hiện không? Bạn cảm thấy mình vẫn là người kiểm soát quyết định hay hệ thống đang áp đặt bạn?"*
-* **English (EN):** *"When dealing with the stockout or pacing deficit, how realistic and actionable were the adjustment options (compressing Toner, skipping, or extending) in LiveLift? Did you feel you retained operational control, or did the system feel prescriptive?"*
-* **Laddering Follow-up:** *"Nếu LiveLift đề xuất một phương án mà bạn không đồng ý, nút bấm chọn thủ công ('Choose next') có đủ linh hoạt để bạn xử lý theo ý mình không?"* (*"If LiveLift suggested an option you disagreed with, was the manual override ('Choose next') flexible enough for your needs?"*)
+* **Vietnamese (VN):** *"Khi phải xử lý sự cố cháy hàng hoặc trễ tiến độ, các phương án điều chỉnh thời lượng và thứ tự sản phẩm trên mỗi công cụ có đáp ứng được thực tế điều phối không? Bạn cảm nhận mức độ chủ động kiểm soát của mình ở mỗi công cụ ra sao?"*
+* **English (EN):** *"When responding to a stockout or pacing deficit, how well did the duration and sequence adjustment workflows in each tool support your operational decisions? To what extent did you feel in control of the broadcast pacing in each condition?"*
+* **Laddering Follow-up:** *"Nếu bạn muốn can thiệp thủ công theo ý riêng thay vì phương án mặc định, mức độ linh hoạt của mỗi công cụ như thế nào?"* (*"If you wanted to take a manual recovery action differing from default pacing, how flexible was each tool?"*)
 
 ---
 
 ### Phase 3: Host In-Depth Probes (4–5 minutes)
 
 #### Probe Q3.1: Host Glance Budget & Information Ergonomics (Theme 4)
-* **Vietnamese (VN):** *"Khi bạn đang say sưa thuyết trình và demo sản phẩm trên sóng, việc nhìn vào màn hình tablet hiển thị tín hiệu LiveLift (đồng hồ đếm ngược, tên mã hàng, lệnh ngắn $\le 5$ chữ) so với việc đọc tin nhắn trong nhóm Zalo ảnh hưởng đến sự tập trung của bạn như thế nào?"*
-* **English (EN):** *"While pitching and demonstrating products on camera, how did glancing at the LiveLift cue tablet (countdown timer, SKU name, brief instruction $\le 5$ words) compare to reading messages in the Zalo chat group in terms of visual and cognitive distraction?"*
-* **Laddering Follow-up:** *"Đã có lần nào bạn bị vấp lời, ngập ngừng hoặc bị đơ mắt nhìn vào màn hình khi cố đọc tin nhắn Zalo chưa?"* (*"Did you experience any speech stumbles, hesitations, or frozen stares while trying to read Zalo messages?"*)
+* **Vietnamese (VN):** *"Trong quá trình dẫn dắt và giới thiệu sản phẩm trên sóng, việc tiếp nhận thông tin điều phối từ màn hình tablet LiveLift so với việc nhận tin nhắn qua kênh chat (như Zalo) tác động đến nhịp dẫn và sự tập trung của bạn như thế nào?"*
+* **English (EN):** *"While pitching and presenting products on camera, how did receiving coordination cues via the LiveLift tablet display compare to reading messages via the chat channel (e.g., Zalo) in terms of delivery pacing and focus?"*
+* **Laddering Follow-up:** *"Có sự khác biệt nào về mức độ dễ đọc hay mức độ phân tâm giữa hai phương thức truyền đạt tín hiệu không?"* (*"Were there differences in legibility or visual distraction between the two communication methods?"*)
 
 #### Probe Q3.2: Cue Actionability & Confidence (Theme 4)
-* **Vietnamese (VN):** *"Khi có sự cố bất ngờ như mã Kem Dưỡng bị hết hàng đột ngột hoặc Seller Center bị lag mạng, bạn cảm thấy nhận tín hiệu nào giúp bạn ứng biến tự tin hơn trên sóng: một dòng tin nhắn Zalo dài hay một chỉ dẫn trực quan rõ ràng trên LiveLift?"*
-* **English (EN):** *"During unexpected incidents like the sudden Retinol stockout or Seller Center pin lag, which signal allowed you to pivot more confidently on stream: a detailed Zalo text message or a clear visual cue on LiveLift?"*
-* **Laddering Follow-up:** *"Bạn có cảm giác an tâm hơn khi biết chính xác còn bao nhiêu giây trước khi phiên Flash Deal mở bán không?"* (*"Did you feel more secure knowing exactly how many seconds remained before the Flash Deal unlocked?"*)
+* **Vietnamese (VN):** *"Khi xảy ra tình huống đột xuất như mã hàng hết tồn kho hoặc giỏ hàng bị trễ ghim, bạn tiếp nhận và phản hồi các tín hiệu điều phối trong từng điều kiện (qua tin nhắn chat so với qua màn hình LiveLift) ra sao? Mức độ tự tin khi ứng biến ở mỗi bên như thế nào?"*
+* **English (EN):** *"During unexpected incidents like an inventory stockout or Seller Center pin delay, how did you receive and act upon coordination signals in each condition (chat messages vs LiveLift cue display)? How confident did you feel pivoting in each case?"*
+* **Laddering Follow-up:** *"Việc biết rõ thời gian còn lại trước mốc khuyến mãi ảnh hưởng như thế nào đến cách bạn dẫn dắt phần mở deal?"* (*"How did knowing the exact countdown to promotional anchors affect how you paced the promotion announcement?"*)
 
 ---
 
 ### Phase 4: Joint Synthesis & Commercial Choice (4–5 minutes)
 
 #### Probe Q4.1: Post-Show Plan-vs-Actual Trust (Theme 5)
-* **Vietnamese (VN):** *"Sau khi phiên live kết thúc, khi nhìn vào màn hình Tổng kết (Review / Replay) của LiveLift so với việc nhìn vào bảng Google Sheets đã bị ghi đè dữ liệu thực tế, bạn cảm thấy bên nào giúp bạn giải trình chính xác những gì đã diễn ra trên sóng (mã nào bị trễ, mã nào bị cắt) dễ dàng hơn?"*
-* **English (EN):** *"After the broadcast concluded, comparing LiveLift's Review / Replay workspace against the Google Sheet with overwritten actuals, which tool gave you higher confidence in reconstructing what actually happened on air for post-show debriefs and brand audits?"*
+* **Vietnamese (VN):** *"Sau khi phiên live kết thúc, khi thực hiện đối soát lại diễn biến thực tế (mã nào bị trễ, mã nào được nén hoặc bỏ qua), bạn thấy quy trình tái hiện sự kiện trên Bảng tính so với màn hình Review của LiveLift như thế nào? Mức độ tự tin của bạn vào kết quả báo cáo ở mỗi bên ra sao?"*
+* **English (EN):** *"After the broadcast concluded, when reviewing what actually occurred on air (which SKUs ran over, were compressed, or skipped), how did the event reconstruction process in Google Sheets compare to the Review workspace in LiveLift? How confident were you in the resulting report in each tool?"*
 
 #### Probe Q4.2: The Forced-Choice Commercial Adoption Probe (Theme 5)
 * **Vietnamese (VN):** > **"Nếu ngày mai studio của hai bạn có một phiên Mega Live thật sự kéo dài 2 tiếng với doanh số cam kết hàng trăm triệu đồng, và bạn chỉ được chọn DUY NHẤT một hệ thống vận hành để điều phối phiên live: bạn sẽ chọn Bảng tính Google Sheets + Zalo hiện tại hay Bàn điều hành LiveLift? Vì sao?"**
@@ -178,34 +178,39 @@ The debriefing interview is administered immediately following the completion of
 
 ## 5. Qualitative Response Capture & Thematic Matrix
 
+> [!IMPORTANT]
+> **SYNTHETIC EXAMPLE — NOT PARTICIPANT DATA — ILLUSTRATIVE CODING MATRIX ONLY**
+> The entries below are fictional synthetic examples illustrating the coding schema and rater extraction format. They do **not** represent real human participant quotes, completed trial results, or empirical research findings.
+
 Interviewers record participant statements directly into the standardized thematic matrix below:
 
 ```
 +----------------------------------------------------------------------------------------------------+
 |                               QUALITATIVE RESPONSE CODING MATRIX                                   |
+|                        [SYNTHETIC EXAMPLE — NOT PARTICIPANT DATA]                                  |
 +-------------+-------+-----------------------------+-----------+----------+-------------------------+
 | Subject ID  | Trial | Verbatim Evidence Quote     | Thematic  | Polarity | Grounded Behavioral Ref |
-|             | Order | (Vietnamese or English)     | Dimension | (+ / - ) | (Observer Event Link)   |
+| (Synthetic) | Order | (Vietnamese or English)     | Dimension | (+ / - ) | (Observer Event Link)   |
 +-------------+-------+-----------------------------+-----------+----------+-------------------------+
-| P01-OP      | A->B  | "Trên Sheet nhìn ô đỏ sợ bể | Theme 1   | Negative | Corresponds to B-04     |
-|             |       | công thức nên không dám gõ  | (Mental   | Baseline | panic typing during D1  |
-|             |       | lung tung, mất cả phút..."  | Math)     |          | at T = 06:45.           |
+| P01-OP      | A->B  | [SYNTHETIC EXAMPLE]         | Theme 1   | Negative | Corresponds to B-04     |
+|             |       | "Mất thời gian tính nhẩm khi| (Mental   | Baseline | observation during D1   |
+|             |       | mã Serum bị lố giờ..."      | Math)     |          | at T = 06:45.           |
 +-------------+-------+-----------------------------+-----------+----------+-------------------------+
-| P01-HOST    | A->B  | "Bên LiveLift em chỉ liếc   | Theme 4   | Positive | Glance duration: 1.8s   |
-|             |       | số đếm ngược là biết nói gì,| (Glance   | LiveLift | vs 5.2s in Zalo trial.   |
-|             |       | không bị khựng lại một chữ."| Budget)   |          | Zero speech stumbles.   |
+| P01-HOST    | A->B  | [SYNTHETIC EXAMPLE]         | Theme 4   | Positive | Glance duration: 1.8s   |
+|             |       | "Nhìn số đếm ngược trên     | (Glance   | LiveLift | vs 5.2s in Zalo trial.   |
+|             |       | tablet dễ canh nhịp hơn."   | Budget)   |          | Zero speech stumbles.   |
 +-------------+-------+-----------------------------+-----------+----------+-------------------------+
-| P02-OP      | B->A  | "Nút 'Choose next' cứu một  | Theme 3   | Positive | Rapid early transition  |
-|             |       | bàn thua khi cháy hàng mã   | (Autonomy | LiveLift | executed in 6.2s post-  |
-|             |       | Serum, nhảy thẳng qua Toner"| Recovery) |          | D3 alert.               |
+| P02-OP      | B->A  | [SYNTHETIC EXAMPLE]         | Theme 3   | Positive | Rapid early transition  |
+|             |       | "Thao tác chuyển mã nhanh   | (Autonomy | LiveLift | executed post-D3 alert. |
+|             |       | khi có sự cố cháy hàng."    | Recovery) |          |                         |
 +-------------+-------+-----------------------------+-----------+----------+-------------------------+
-| P02-HOST    | B->A  | "Đọc Zalo trên điện thoại   | Theme 4   | Negative | Gaze shifted 45 deg away|
-|             |       | chữ nhỏ quá, vừa nói vừa    | (Reading  | Baseline | from lens; audible vocal|
-|             |       | nheo mắt nhìn rất thiếu pro"| Strain)   |          | stutter at T = 10:20.   |
+| P02-HOST    | B->A  | [SYNTHETIC EXAMPLE]         | Theme 4   | Negative | Gaze shifted away from  |
+|             |       | "Đọc tin nhắn trên điện     | (Reading  | Baseline | camera; vocal stutter   |
+|             |       | thoại dễ làm phân tâm."     | Strain)   |          | at T = 10:20.           |
 +-------------+-------+-----------------------------+-----------+----------+-------------------------+
-| P03-OP      | A->B  | "Tôi chắc chắn chọn LiveLift| Theme 5   | Positive | Forced-Choice: LiveLift |
-|             |       | cho show ngày mai. Bảng tính| (Commer-  | LiveLift | adopted unconditionally |
-|             |       | quá rủi ro khi chạy nhanh." | cial)     |          | for live commercial use.|
+| P03-OP      | A->B  | [SYNTHETIC EXAMPLE]         | Theme 5   | Positive | Illustrative forced     |
+|             |       | "Theo dõi tiến độ trực quan | (Commer-  | LiveLift | choice preference       |
+|             |       | hơn bảng tính."             | cial)     |          | example.                |
 +-------------+-------+-----------------------------+-----------+----------+-------------------------+
 ```
 
