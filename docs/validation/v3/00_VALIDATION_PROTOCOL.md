@@ -126,7 +126,7 @@ In strict compliance with the **Integrity Mandate** and the rule that *"Never pr
 
 | Feature / Subsystem | Certified Classification | Codebase Reality & Repository Reference | Validation Protocol Implementation |
 |---|:---:|---|---|
-| **Session Creation & Navigation** | `IMPLEMENTED` | Form in `next/src/app/live/new/page.tsx`; routes to `/prepare`, `/operate`, and `/review`. | Participant creates or clones show session; validated through local transactional store. |
+| **Session Creation & Navigation** | `IMPLEMENTED` | Form in `next/src/app/live/new/page.tsx`; routes to `/prepare`, `/operate`, and `/review`. | Participant creates or clones show session; validated through guarded local SessionStore. |
 | **Product Pack Configuration & Import** | `IMPLEMENTED` | Component `PrepareRos.tsx`; TSV/CSV import in `next/src/lib/domain/products.ts`. | Pre-loaded prior to session; participant verifies product status and imports rows. |
 | **Run of Show Ordering & Readiness** | `IMPLEMENTED` | Segment creation, reordering, and anchor conflict detection in `PrepareRos.tsx` and `plan.ts`. | Participant reviews segment sequence; invalid anchor states block Start until resolved. |
 | **Active Segment Tracking (NOW)** | `IMPLEMENTED` | Rendered in `NowPanel.tsx`. Real-time countdown and active target telemetry. | Displayed live during test. Driven by system clock with discontinuity detection. |
@@ -135,7 +135,7 @@ In strict compliance with the **Integrity Mandate** and the rule that *"Never pr
 | **Operator Note Capture** | `IMPLEMENTED` | Dialog in `OperateDialogs.tsx`; command `record_note` in `engine.ts`. | Operator logs runtime context; persisted immutably in session history. |
 | **Dynamic Rolling Forecast Engine** | `IMPLEMENTED` | Engine in `next/src/lib/domain/forecast.ts` (`forecastSession`). | Recalculates projected starts/ends from actual boundaries and explicit remaining estimates; holds at hard anchors. |
 | **Constraint-Aware Recovery Drawer** | `IMPLEMENTED` | Algorithm in `next/src/lib/domain/recovery.ts` (`analyzeRecovery`); UI in `OperateDialogs.tsx`. | Evaluates candidate clean recovery plans (shorten, skip, end-by, reanchor); surfaces status and protects anchors. |
-| **Durable Local Storage Authority** | `IMPLEMENTED` | Module `next/src/lib/store/sessionStore.ts` backed by `localStorage`. | Transactional commit with revision checking; rehydration preserves complete state on browser reload. |
+| **Durable Local Storage Authority** | `IMPLEMENTED` | Module `next/src/lib/store/sessionStore.ts` backed by browser `localStorage` with revision checks. | Revision-checked guarded persistence; rehydration preserves complete state on browser reload. |
 | **Plan-vs-Actual Review Workspace** | `IMPLEMENTED` | View in `/live/[sessionId]/review`; table in `ReviewTable.tsx`; domain logic in `review.ts`. | Automatically compiles actual durations, variances, anchor drift, and execution outcomes upon ending tracking. |
 | **Next LIVE Adaptation Generator** | `IMPLEMENTED` | Panel in `NextLivePanel.tsx`; domain logic in `nextLive.ts` (`createNextLivePlan`). | Operator selects reviewed trade-offs; generates new draft session shell with anchor feasibility validation. |
 | **Deterministic Rehearsal Scenarios** | `SIMULATED` | Scenarios `sim-1`, `sim-2`, `sim-3` in `next/src/lib/domain/scenarios.ts`; view in `/simulator`. | Repeatable rehearsal scripts executed on the shared domain engine with explicit virtual clock stepping. |
@@ -176,7 +176,7 @@ Capabilities that require cross-device teleprompter networking or direct native 
 
 ### 5.3 Technical Exception & Crash Recovery Runbook
 
-The LiveLift prototype utilizes a durable local transactional store (`SessionStore`), while the baseline utilizes Google Sheets:
+The LiveLift prototype utilizes browser `localStorage` with revision-checked guarded persistence (`SessionStore`), while the baseline utilizes Google Sheets:
 
 #### 1. Preventative Browser Lock & Kiosk Protocol
 * **Fullscreen Kiosk Mode:** The operator desktop browser must run in dedicated fullscreen presentation / kiosk mode (`F11`) with bookmarked shortcuts and navigation bars hidden.
@@ -188,7 +188,7 @@ The LiveLift prototype utilizes a durable local transactional store (`SessionSto
   - *Validity:* Permitted because the operator has not yet encountered any disturbance stimuli, preserving naive reaction latency.
 * **Case B: Post-Disturbance Crash ($T_{\text{show}} \ge 04:00$, Active Disturbances):**
   - If a disruption occurs after D1 has been injected ($T \ge 04:00$), **the live trial must NOT be restarted**.
-  - **Durable Local Recovery:** The operator refreshes the page (`F5`). `SessionStore` rehydrates the session from `localStorage`, preserving all recorded actual timestamps, notes, and receipts.
+  - **Durable Local Recovery:** The operator refreshes the page (`F5`). `SessionStore` rehydrates the session from browser `localStorage` with revision checks, preserving all recorded actual timestamps, notes, and receipts.
   - If hardware completely fails, research staff salvage the trial using synchronized OBS multi-track recording:
     - *Track 1:* Operator desktop screen recording at 60 fps (1080p).
     - *Track 2:* On-camera host video stream.
@@ -297,17 +297,17 @@ The LiveLift validation roadmap proceeds across two distinct validation gates:
 +---------------------------------------------------------------------------------------------------+
 |                                  VALIDATION LIFECYCLE ROADMAP                                     |
 +---------------------------------------------------------------------------------------------------+
-|  [ PHASE 0: Disclosed Concept Comparison ]                     [ PHASE 1: Functional Re-Test ]    |
-|  - In-memory Next.js prototype + WoZ Engine                     - Durable local IndexedDB product  |
-|  - Tests foundational workflow hypothesis                       - Tests single-device durability   |
-|  - N = 5 to 10 participants across >=3 teams                    - N = 3 to 5 recurring teams       |
-|  - AUTHORIZES: Phase 1 Single-Device Engineering                - AUTHORIZES: Phase 2 Pilot Beta   |
+|  [ PHASE 0: Current Build (SHA 71807ed) ]                   [ PHASE 1: Future Target Milestone ]  |
+|  - Browser localStorage (guarded) + WoZ Engine              - Durable local IndexedDB product     |
+|  - Tests foundational workflow hypothesis                   - Tests single-device durability      |
+|  - N = 5 to 10 participants across >=3 teams                - N = 3 to 5 recurring teams          |
+|  - AUTHORIZES: Phase 1 Single-Device Engineering            - AUTHORIZES: Phase 2 Pilot Beta      |
 +---------------------------------------------------------------------------------------------------+
 ```
 
 ### 8.1 Phase 0: Disclosed Concept Comparison (Current Protocol)
 * **Objective:** Establish whether the core LiveLift mental model and workflow primitives materially outperform a competent spreadsheet baseline when downstream deficits and recovery choices are made explicit.
-* **Harness:** In-memory Next.js fixture UI (`next/`) paired with the Wizard-of-Oz facilitator protocol.
+* **Harness:** Next.js fixture UI (`next/` with browser `localStorage` guarded persistence) paired with the Wizard-of-Oz facilitator protocol.
 * **Authorization Authority:** Successfully passing Phase 0 clears the **G0 Gate**, authorizing engineering resources to build the **Phase 1 Single-Device Functional Product**. It does **not** authorize production backend development or platform API integration.
 
 ### 8.2 Phase 1: Functional Re-Test (Subsequent Milestone)

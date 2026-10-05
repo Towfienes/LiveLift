@@ -85,28 +85,28 @@ AUDITOR SIGN-OFF:           [ TEAMWORK_PREVIEW_AUDITOR ]  SIGNATURE DATE:  [ YYY
 In compliance with the requirement that *"Never pretend unfinished functionality exists"*, the research team certifies that every capability evaluated during testing strictly conformed to its pre-authorized state against UI SHA `71807ed`:
 
 ```
-+----------------------------------------------------------------------------------------------------+
-|                                CERTIFIED FEATURE STATE AUDIT LEDGER                                |
-+----+--------------------------------+-----------------+---------------------+----------------------+
-| #  | Feature / Subsystem            | Certified State | Implementation Path | Researcher Audit Log |
-+----+--------------------------------+-----------------+---------------------+----------------------+
-| 01 | Session Lifecycle (Start/End)  | IMPLEMENTED     | Native Code in UI   | [ ] Verified Genuine |
-| 02 | Run of Show Manual Controls    | IMPLEMENTED     | Native Code in UI   | [ ] Verified Genuine |
-| 03 | Catalog SKU Snapshot Cards     | IMPLEMENTED     | Pre-loaded Fixture  | [ ] Verified Genuine |
-| 04 | Manual Cue Action Reporting    | IMPLEMENTED     | Operator Checkbox   | [ ] Verified Genuine |
-| 05 | Dynamic Rolling Forecast Engine| IMPLEMENTED     | forecastSession()   | [ ] Verified Genuine |
-| 06 | Constraint-Aware Recovery Engine| IMPLEMENTED    | analyzeRecovery()   | [ ] Verified Genuine |
-| 07 | Durable Local Storage Authority| IMPLEMENTED     | SessionStore (disk) | [ ] Verified Genuine |
-| 08 | Plan-vs-Actual Review Table    | IMPLEMENTED     | buildReview() / UI  | [ ] Verified Genuine |
-| 09 | Next LIVE Plan Adaptation Gen  | IMPLEMENTED     | createNextLivePlan()| [ ] Verified Genuine |
-| 10 | Deterministic Rehearsals       | SIMULATED       | scenarios.ts        | [ ] Verified Genuine |
-| 11 | Sample Product Catalogs        | SIMULATED       | library.ts fixtures | [ ] Verified Genuine |
-| 12 | Dedicated Host View Screen Sync| WIZARD-OF-OZ    | Facilitator Tablet  | [ ] Verified Genuine |
-| 13 | Native TikTok Console Latency  | WIZARD-OF-OZ    | 40s Mock Spinner    | [ ] Verified Genuine |
-| 14 | Direct TikTok Seller APIs      | NOT AVAILABLE   | Completely Excluded | [ ] Verified Absent  |
-| 15 | Autonomous Native Auto-Pinning | NOT AVAILABLE   | Completely Excluded | [ ] Verified Absent  |
-| 16 | Autonomous AI Pacing Engine    | NOT AVAILABLE   | Completely Excluded | [ ] Verified Absent  |
-+----+--------------------------------+-----------------+---------------------+----------------------+
++--------------------------------------------------------------------------------------------------------------------+
+|                                        CERTIFIED FEATURE STATE AUDIT LEDGER                                        |
++----+--------------------------------+-----------------+-------------------------------------+----------------------+
+| #  | Feature / Subsystem            | Certified State | Implementation Path                 | Researcher Audit Log |
++----+--------------------------------+-----------------+-------------------------------------+----------------------+
+| 01 | Session Lifecycle (Start/End)  | IMPLEMENTED     | Native Code in UI                   | [ ] Verified Genuine |
+| 02 | Run of Show Manual Controls    | IMPLEMENTED     | Native Code in UI                   | [ ] Verified Genuine |
+| 03 | Catalog SKU Snapshot Cards     | IMPLEMENTED     | Pre-loaded Fixture                  | [ ] Verified Genuine |
+| 04 | Manual Cue Action Reporting    | IMPLEMENTED     | Operator Checkbox                   | [ ] Verified Genuine |
+| 05 | Dynamic Rolling Forecast Engine| IMPLEMENTED     | forecastSession()                   | [ ] Verified Genuine |
+| 06 | Constraint-Aware Recovery Engine| IMPLEMENTED    | analyzeRecovery()                   | [ ] Verified Genuine |
+| 07 | Durable Local Storage Authority| IMPLEMENTED     | SessionStore (browser localStorage) | [ ] Verified Genuine |
+| 08 | Plan-vs-Actual Review Table    | IMPLEMENTED     | buildReview() / UI                  | [ ] Verified Genuine |
+| 09 | Next LIVE Plan Adaptation Gen  | IMPLEMENTED     | createNextLivePlan()                | [ ] Verified Genuine |
+| 10 | Deterministic Rehearsals       | SIMULATED       | scenarios.ts                        | [ ] Verified Genuine |
+| 11 | Sample Product Catalogs        | SIMULATED       | library.ts fixtures                 | [ ] Verified Genuine |
+| 12 | Dedicated Host View Screen Sync| WIZARD-OF-OZ    | Facilitator Tablet                  | [ ] Verified Genuine |
+| 13 | Native TikTok Console Latency  | WIZARD-OF-OZ    | 40s Mock Spinner                    | [ ] Verified Genuine |
+| 14 | Direct TikTok Seller APIs      | NOT AVAILABLE   | Completely Excluded                 | [ ] Verified Absent  |
+| 15 | Autonomous Native Auto-Pinning | NOT AVAILABLE   | Completely Excluded                 | [ ] Verified Absent  |
+| 16 | Autonomous AI Pacing Engine    | NOT AVAILABLE   | Completely Excluded                 | [ ] Verified Absent  |
++----+--------------------------------+-----------------+-------------------------------------+----------------------+
 ```
 
 ---

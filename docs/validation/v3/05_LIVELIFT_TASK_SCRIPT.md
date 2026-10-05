@@ -24,7 +24,7 @@ In TikTok Shop live commerce broadcasts across Vietnam and Southeast Asia, the b
 
 ### 1.2 Certified Feature Reality & Wizard-of-Oz Boundaries (UI SHA `71807ed`)
 In strict compliance with the **Integrity Mandate** and the rule that *"Never pretend unfinished functionality exists"*, the operator interacts with the system strictly across certified operational boundaries:
-- **`IMPLEMENTED` (Functional Domain Engine & Durable Local Store):** Session creation (`/live/new`), rundown configuration (`/prepare`), live desk tracking (`/operate`), segment commands (`start_live`, `advance_segment`, `extend_segment`, `commit_end_by`, `reanchor_segment`, `end_live`), manual cue action reporting (`report_cue_action`), operator note capture (`record_note`), dynamic rolling forecast engine (`next/src/lib/domain/forecast.ts`), constraint-aware recovery analysis (`next/src/lib/domain/recovery.ts`), durable local transactional persistence (`next/src/lib/store/sessionStore.ts`), plan-vs-actual review table (`/review`), and Next LIVE rundown adaptation generator (`next/src/lib/domain/nextLive.ts`).
+- **`IMPLEMENTED` (Functional Domain Engine & Durable Local Store):** Session creation (`/live/new`), rundown configuration (`/prepare`), live desk tracking (`/operate`), segment commands (`start_live`, `advance_segment`, `extend_segment`, `commit_end_by`, `reanchor_segment`, `end_live`), manual cue action reporting (`report_cue_action`), operator note capture (`record_note`), dynamic rolling forecast engine (`next/src/lib/domain/forecast.ts`), constraint-aware recovery analysis (`next/src/lib/domain/recovery.ts`), revision-checked guarded local persistence (`next/src/lib/store/sessionStore.ts`), plan-vs-actual review table (`/review`), and Next LIVE rundown adaptation generator (`next/src/lib/domain/nextLive.ts`).
 - **`SIMULATED` (Test Environment & Fixtures):** Deterministic rehearsal scenarios (`sim-1`, `sim-2`, `sim-3` in `/simulator`) driven by explicit virtual clocks, and sample product catalogs (`next/src/fixtures/library.ts`).
 - **`WIZARD-OF-OZ` (Facilitator-Delivered Links):** Host prompt tablet mirror display (relayed by facilitator because no native multi-device WebSocket synchronization exists), and TikTok Shop Seller Center console responses (simulated inventory depletion and network pin spinners).
 - **`NOT AVAILABLE` (Platform / Autonomous Exclusions):** Automated native TikTok Shop pinning, automated voucher distribution, autonomous AI pacing engines, and private TikTok streaming APIs are strictly excluded. All platform actions remain manual in TikTok Shop Seller Center.
@@ -66,8 +66,8 @@ Prior to broadcast kickoff, the operator must execute the pre-flight verificatio
    - Navigate to the designated trial session URL: `http://localhost:3000/live/[SessionId]/operate`.
    - Press **`F11`** to enter fullscreen kiosk mode. Address bar, bookmarks bar, and system tray must be completely hidden.
 2. **Durable Local Storage Authority (`SessionStore`):**
-   - The LiveLift desk persists session state, executed boundaries, and receipts into browser `localStorage` under transactionally isolated envelopes (`livelift.v3.REAL` or `livelift.v3.SIMULATED`).
-   - If an accidental browser refresh occurs during a live trial, `SessionStore` automatically rehydrates the complete active session state, restoring recorded timestamps, active segment index, and event history.
+   - The LiveLift desk persists session state, executed boundaries, and receipts into browser `localStorage` with guarded local persistence under isolated REAL/SIMULATED envelopes (`livelift.v3.REAL` or `livelift.v3.SIMULATED`).
+   - If an accidental browser refresh occurs during a live trial, `SessionStore` automatically rehydrates the complete active session state from browser `localStorage` with revision checks, restoring recorded timestamps, active segment index, and event history.
 3. **Macro & Extension Audit:**
    - Confirm that no third-party automation tools, macro keypads (Stream Deck automations), AutoHotkey scripts, or countdown extensions are running.
 
@@ -132,7 +132,7 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 
 #### The NEXT Panel (`NextPanel.tsx`)
 - **Target Item & Strategic Rationale:** Outlines the upcoming product code and algorithmic basis (e.g., *"Scheduled hero pitch to drive morning campaign momentum"*).
-- **Button: `Start [Next] segment` (`advance_segment`):** **The Authoritative Runtime Transition.** Clicking this button wraps the active segment, records actual completion timestamps in the immutable event log, advances the NOW cursor to the next item, and commits the state transactionally to `SessionStore`.
+- **Button: `Start [Next] segment` (`advance_segment`):** **The Authoritative Runtime Transition.** Clicking this button wraps the active segment, records actual completion timestamps in the immutable event log, advances the NOW cursor to the next item, and persists the state with revision-checked commits to `SessionStore`.
 - **Button: `Review Recovery Options` / Deficit Card (`analyzeRecovery`):** When downstream schedule drift threatens a hard anchor, an alert surfaces on the desk. Clicking opens the Recovery Options drawer displaying candidate clean recovery plans (shorten segment, skip segment, commit end-by, re-anchor) that mathematically protect the anchor while respecting contractual floor limits.
 
 ### 3.2 Operator Quick Capture & Toolbar Actions
@@ -381,7 +381,7 @@ Once the broadcast ends, the operator completes the post-show workflow directly 
 | Operational Anomaly | Immediate Root Cause | Operator Corrective Action | System Failsafe |
 |---|---|---|---|
 | **Accidental Segment Advance** | Operator double-clicked `Start Next segment`. | Check NOW panel. If advanced prematurely, use `Set Target End-By` to pace segment, or proceed with current item. | Immutable event log records all transitions with exact timestamps; no history is lost. |
-| **Accidental Browser Reload** | Operator brushed trackpad back-swipe or pressed `Ctrl + R`. | Allow reload to complete. `SessionStore` automatically rehydrates the session from `localStorage`. | Transactional local persistence preserves complete runtime actuals and timestamps. |
+| **Accidental Browser Reload** | Operator brushed trackpad back-swipe or pressed `Ctrl + R`. | Allow reload to complete. `SessionStore` automatically rehydrates the session from browser `localStorage` with revision checks. | Guarded local persistence preserves complete runtime actuals and timestamps. |
 | **Host Fails to See Cue Tablet** | Host distracted by camera or ring light reflections. | 1. Operator delivers brief backup hand signal (e.g. 5-finger countdown).<br>2. Verify tablet brightness is set to 100% and angle is $< 15^\circ$ from camera. | Observer 2 logs cue transmission latency and delivery channel. |
 
 ---
