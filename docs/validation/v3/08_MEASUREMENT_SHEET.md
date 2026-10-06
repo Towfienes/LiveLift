@@ -58,7 +58,7 @@ The validation program operationalizes the core operational dimensions into elev
 | M7 | Routine Capture Burden     | Clicks & Seconds      | Clicks per transition; t_log - t_pitch   |
 | M8 | Avoidable Host Messages    | Count & Ratio (%)     | N_avoidable_msgs; (N_avoid/N_msgs) * 100 |
 | M9 | Cognitive Workload (TLX)   | Scale (0 - 100)       | Sum(Subscales) / 6 (Raw NASA-TLX)        |
-| M10| PVA Review & Reconstruction| Minutes & Accuracy %  | T_recon; (N_correct / 10) * 100          |
+| M10| PVA Review & Reconstruction| Minutes & Accuracy %  | T_recon; (N_correct / 5) * 100           |
 | M11| Next LIVE Adaptation       | Minutes & Feasibility | T_plan; Binary Constraint Check          |
 +----+----------------------------+-----------------------+------------------------------------------+
 ```
@@ -83,17 +83,17 @@ The validation program operationalizes the core operational dimensions into elev
   * $t_{\text{stimulus}}$: Authoritative ground-truth timestamp when the disturbance condition mathematically emerges:
     - *Disturbance D1 (Overrun Deficit):* The exact second when active elapsed time plus remaining floating durations causes the projected cursor to exceed the hard anchor commitment ($T_{\text{projected}} > T_{\text{anchor}}$).
       - In **Scenario 1**, this occurs at $T = 06:30$ ($T_{\text{start}}(S2) + 4\text{m}30\text{s}$), where active elapsed 4m30s plus remaining estimated 1m00s on Serum plus 3m00s floating Toner projects Flash Sale at 10:30 (+90s deficit vs 09:00:00 anchor).
-      - In **Scenario 2**, this occurs at $T = 09:30$ ($T_{\text{start}}(S3) + 6\text{m}00\text{s}$), where active elapsed 6m00s plus remaining estimated 0m45s on Earbuds plus 1m00s floating MagSafe projects Flash Sale at 11:15 (+45s deficit vs 10:30:00 anchor).
+      - In **Scenario 2**, this occurs at $T = 09:30$ ($T_{\text{start}}(S3) + 6\text{m}00\text{s}$), where active elapsed 6m00s plus remaining estimated 1m45s (1.75m) on Earbuds projects Earbuds completion at 11:15 (+45s deficit vs 10:30:00 anchor).
     - *Disturbance D3 (Stockout):* The exact second the mock Seller Center console displays `Tồn kho = 0` ($T = 10:15$ in Scenario 1; $T = 03:15$ in Scenario 2).
-    - *Disturbance D4 (Console Lag):* The exact second the operator initiates product pin and encounters the 40s spinner ($T = 10:35$ in Scenario 1; $T = 10:30$ in Scenario 2).
-    - *Disturbance D5 (Under-run):* The exact second the host speaks the unscripted pacing wrap phrase ($T = 12:15$ in Scenario 1; $T = 13:15$ in Scenario 2).
+    - *Disturbance D4 (Console Lag):* The exact second the operator initiates product pin and encounters the 40s spinner ($T = 10:30$ in Scenario 1; $T = 10:30$ in Scenario 2).
+    - *Disturbance D5 (Under-run):* The exact second the host speaks the unscripted pacing wrap phrase ($T = 12:00$ in Scenario 1; $T = 13:15$ in Scenario 2).
   * $t_{\text{detect}}$: Authoritative timestamp of operator's **correct identification** of the at-risk anchor or deficit condition:
     - *Identification Criterion:* The operator must correctly identify the threatened anchor or disturbance. Physical gaze shifts or cursor jitter alone do **not** qualify as detection without verified recognition.
     - *Observable Behavioral Markers:*
       - *Verbal Marker:* Spoken acknowledgment naming the specific threatened anchor or issue (*"Lệch giờ Flash Deal rồi"*, *"Trễ mốc 09:00"*, *"Hết hàng mã Serum"*).
       - *Software Marker:* Opening the recovery drawer for that anchor, selecting the at-risk row, or initiating a constraint-valid recovery action.
 * **Unit of Measure:** Seconds (decimal format, rounded to 1 decimal place).
-* **Target:** $\ge 80\%$ of scored trials recognized within $T_{\text{detect}} \le 10.0\text{ seconds}$.
+* **Target:** $\ge 80.0\%$ of eligible schedule deficit opportunities ($N_{\text{opp}}$) recognized within $T_{\text{detect}} \le 10.0\text{ seconds}$ with correct anchor identification.
 
 ---
 
@@ -118,6 +118,7 @@ The validation program operationalizes the core operational dimensions into elev
   1. $\text{Duration}(S_k) \ge \text{Floor\_Duration}(S_k)$ for all affected segments $S_k$ (unless explicit authorized emergency stockout exception applies).
   2. $\text{Projected\_Start}(\text{Anchor}_j) \le \text{Committed\_Time}(\text{Anchor}_j)$ (Hard anchor is protected).
   3. No downstream segment occurring *after* an anchor is shortened to solve a deficit occurring *before* that anchor.
+* **Zero-Denominator Rule:** If no recovery decisions were attempted during an overrun trial ($N_{\text{decisions}} = 0$), $R_{\text{valid}} = 0.0\%$ (FAIL). An unhandled overrun cannot pass validity with an empty denominator.
 * **Unit of Measure:** Percentage ($0.0\%\text{--}100.0\%$).
 * **Target:** $R_{\text{valid}} \ge 90.0\%$ constraint-valid recovery choices across all trials.
 
@@ -183,8 +184,9 @@ The validation program operationalizes the core operational dimensions into elev
      $$T_{\text{comprehend}} = t_{\text{host\_pivot}} - t_{\text{cue\_dispatched}}$$
   4. **Behavioral Speech Stumble Rate ($N_{\text{stumble}}$):** Count of verbal stutters or halts ($>2$s) occurring within 5 seconds of cue reception.
   5. **Teleprompter Glaze Incidents ($N_{\text{glaze}}$):** Count of occurrences where host gaze freezes on the cue screen for $>4.0$ continuous seconds.
-* **Zero-Baseline Handling:**
-  If baseline avoidable messages $N_{\text{avoidable, baseline}} = 0$, percentage reduction is undefined ($0/0$). In this condition, LiveLift passes if $N_{\text{avoidable, LiveLift}} \le 2$ messages (maintaining near-zero disruption). If baseline is 0 and LiveLift produces $> 2$ avoidable messages, it is scored as a coordination regression.
+* **Zero-Baseline & Zero-Denominator Rules:**
+  - *Avoidable Messages:* If baseline avoidable messages $N_{\text{avoidable, baseline}} = 0$, percentage reduction is undefined ($0/0$). In this condition, LiveLift passes if $N_{\text{avoidable, LiveLift}} \le 2$ messages (maintaining near-zero disruption). If baseline is 0 and LiveLift produces $> 2$ avoidable messages, it is scored as a coordination regression.
+  - *Cue Comprehension:* If zero cues are dispatched due to system or operator failure ($N_{\text{cues}} = 0$), cue comprehension is scored as $0.0\%$ (FAIL); in a control run where no cues were planned, comprehension is recorded as N/A.
 * **Target:** $\ge 30.0\%$ reduction in avoidable message volume (or $\le 2$ messages if baseline is 0); $\ge 80.0\%$ of cues comprehended within $T_{\text{comprehend}} \le 5.0\text{ seconds}$; zero speech stumbles or delivery degradation caused by cues.
 
 ---
@@ -194,29 +196,24 @@ The validation program operationalizes the core operational dimensions into elev
 * **Mathematical Formula (Raw NASA-TLX Score):**
   $$\text{NASA-TLX}_{\text{Raw}} = \frac{\text{MD} + \text{PD} + \text{TD} + \text{OP} + \text{EF} + \text{FR}}{6}$$
   where each subscale is scored on a $0\text{--}100$ scale in 5-point increments.
-* **Target:** Median $\text{NASA-TLX}_{\text{Raw}}$ score in LiveLift is at least **$20.0\%$ lower** than Baseline median ($p < 0.05$), **OR** no worse than baseline ($\pm 5.0$ points) provided recovery speed ($T_{\text{decision}}$) and validity ($R_{\text{valid}}$) demonstrate statistically significant improvement ($p < 0.05$).
+* **Target:** Median $\text{NASA-TLX}_{\text{Raw}}$ score in LiveLift is at least **$20.0\%$ lower** than Baseline median ($p < 0.05$), **OR** non-inferior ($\text{Median}(\text{TLX}_{\text{LiveLift}}) \le \text{Median}(\text{TLX}_{\text{Base}})$, $\Delta\text{TLX} \le 0.0$, zero workload increase) provided recovery decision latency ($T_{\text{decision}}$) demonstrates statistically significant improvement ($p < 0.05$) AND recovery validity $R_{\text{valid}} \ge 90.0\%$. Standalone workload increases ($\Delta\text{TLX} > 0.0$, including $+3$ or $+5$ points) strictly FAIL Dimension 06 and activate Trigger K3.
 
 ---
 
 ### 2.10 Metric 10 (M10): Post-Show PVA Review & Fact Reconciliation ($T_{\text{recon}}$ & $A_{\text{facts}}$)
 * **Definition:** 
   1. *Reconstruction Duration ($T_{\text{recon}}$):* Clock time in minutes from show conclusion to operator producing a reconciled actual report.
-  2. *Fact Accuracy Rate ($A_{\text{facts}}$):* Accuracy on a 10-item standardized factual quiz evaluating actual show occurrences without video review.
+  2. *Fact Accuracy Rate ($A_{\text{facts}}$):* Accuracy on a 5-item standardized factual quiz evaluating actual show occurrences without video review.
 * **Mathematical Formulas:**
   $$T_{\text{recon}} = \frac{t_{\text{review\_complete}} - t_{\text{show\_end}}}{60}$$
-  $$A_{\text{facts}} = \left( \frac{\sum_{k=1}^{10} \mathbf{1}_{\text{correct}}(k)}{10} \right) \times 100\%$$
-* **Standardized 10-Item Post-Show Fact Battery:**
-  1. Which product experienced the largest timing overrun?
-  2. What was the exact duration overrun (within $\pm 30$s) of that product?
-  3. Was Segment 3 (Toner / Earbuds) compressed, and by approximately how much?
-  4. Did Hard Anchor 1 start on time, early, or late (within $\pm 15$s)?
-  5. How much buffer was remaining immediately prior to Hard Anchor 1?
-  6. At what timecode did the stockout occur?
-  7. Which product was pulled forward or substituted to handle the stockout?
-  8. How long was the platform pinning delay on Segment 5 / Segment 4?
-  9. Did the final closing outro start within 15 seconds of the scheduled commitment?
-  10. What was the total broadcast variance at show end (within $\pm 30$s)?
-* **Target:** $T_{\text{recon}} \le 5.0\text{ minutes}$ (and median $\ge 30\%$ faster than baseline); $A_{\text{facts}} \ge 90.0\%$.
+  $$A_{\text{facts}} = \left( \frac{\sum_{k=1}^{5} \mathbf{1}_{\text{correct}}(k)}{5} \right) \times 100\%$$
+* **Standardized 5-Item Post-Show Fact Battery (Matching Task Scripts):**
+  1. *Probe 1:* What was the actual executed duration of Hero SKU 1?
+  2. *Probe 2:* What was the exact wall-clock start time of Flash Sale Anchor 1?
+  3. *Probe 3:* What was the realized timing variance on Anchor 1 ($V_{\text{anchor}}$)?
+  4. *Probe 4:* At what exact elapsed time was the stockout/overrun detected?
+  5. *Probe 5:* What was the net duration drift across the entire stream?
+* **Target:** $T_{\text{recon}} \le 5.0\text{ minutes}$ (and median $\ge 30.0\%$ faster than baseline); $A_{\text{facts}} \ge 80.0\%$ ($\ge 4$ out of 5 probes correct per trial; $\ge 90.0\%$ pooled across trial battery).
 
 ---
 
@@ -231,7 +228,7 @@ The validation program operationalizes the core operational dimensions into elev
   1 \text{ (PASS)}, & \text{if } \forall S_i: \text{Planned}(S_i) \ge \text{Floor}(S_i) \text{ and } \forall A_j: \text{Projected}(A_j) \le \text{Anchor}(A_j) \\
   0 \text{ (FAIL)}, & \text{otherwise}
   \end{cases}$$
-* **Target:** $T_{\text{plan}}$ median $\ge 30\%$ faster than baseline; $\text{Feas} = 1$ in $\ge 90\%$ of trials; combined post-show duration $T_{\text{recon}} + T_{\text{plan}} \le 10.0\text{ minutes}$ (target $\le 5.0\text{ minutes}$ in LiveLift).
+* **Target:** $T_{\text{plan}}$ median $\ge 30\%$ faster than baseline; $\text{Feas} = 1$ in $\ge 90\%$ of trials; combined post-show duration $T_{\text{recon}} + T_{\text{plan}} \le 5.0\text{ minutes total}$.
 
 ---
 
@@ -302,17 +299,17 @@ All captured observations must conform to the following tabular schema. Variable
 | obs2_rater_id      | String     | No            | `RATER-[0-9]{2}`     | Observer 2 identifier     |
 | t_setup_min        | Float      | No            | `0.00 .. 30.00`      | Setup duration (minutes)  |
 | d1_t_stimulus      | Timestamp  | No            | `HH:MM:SS.mmm`       | D1 injection timecode     |
-| d1_t_detect        | Timestamp  | No            | `HH:MM:SS.mmm`       | D1 detection timecode     |
-| d1_t_action        | Timestamp  | No            | `HH:MM:SS.mmm`       | D1 action timecode        |
-| d1_t_detect_lat_s  | Float      | No            | `0.0 .. 120.0`       | D1 detection latency (s)  |
-| d1_t_dec_lat_s     | Float      | No            | `0.0 .. 120.0`       | D1 decision latency (s)   |
-| d1_t_total_lat_s   | Float      | No            | `0.0 .. 120.0`       | D1 total recovery lat (s) |
-| d1_decision_valid  | Boolean    | No            | `TRUE`, `FALSE`      | D1 constraint compliance  |
+| d1_t_detect        | Timestamp  | Yes           | `HH:MM:SS.mmm`, NULL | D1 detect time (null if unobserved/censored) |
+| d1_t_action        | Timestamp  | Yes           | `HH:MM:SS.mmm`, NULL | D1 action time (null if no recovery taken)   |
+| d1_t_detect_lat_s  | Float      | Yes           | `0.0 .. 120.0`, NULL | D1 detect latency (censored 120s if null)   |
+| d1_t_dec_lat_s     | Float      | Yes           | `0.0 .. 120.0`, NULL | D1 decision latency (null if no action)     |
+| d1_t_total_lat_s   | Float      | Yes           | `0.0 .. 120.0`, NULL | D1 total recovery lat (null if no action)   |
+| d1_decision_valid  | Boolean    | No            | `TRUE`, `FALSE`      | D1 valid (FALSE if no action or violated)   |
 | d2_v_anchor1_s     | Float      | No            | `0.0 .. 300.0`       | Anchor 1 verbal deviat (s)|
 | d2_anchor1_status  | Enum       | No            | `PASS`, `MARG`, `FAIL`| Anchor 1 categorical grade|
 | d2_platform_lag_s  | Float      | No            | `0.0 .. 120.0`       | Anchor 1 console lag (s)  |
-| d3_t_detect_lat_s  | Float      | No            | `0.0 .. 120.0`       | D3 stockout detect lat (s)|
-| d3_t_dec_lat_s     | Float      | No            | `0.0 .. 120.0`       | D3 stockout recovery lat  |
+| d3_t_detect_lat_s  | Float      | Yes           | `0.0 .. 120.0`, NULL | D3 stockout detect lat (null if unobserved) |
+| d3_t_dec_lat_s     | Float      | Yes           | `0.0 .. 120.0`, NULL | D3 stockout recovery lat (null if no action)|
 | d4_hold_action     | Boolean    | No            | `TRUE`, `FALSE`      | D4 holding cue dispatched |
 | d5_hold_close      | Boolean    | No            | `TRUE`, `FALSE`      | D5 anchor 2 protected     |
 | v_anchor2_s        | Float      | No            | `0.0 .. 300.0`       | Anchor 2 variance (s)     |
@@ -384,11 +381,11 @@ OBSERVER 1 (TIMING):[ RATER-______ ]            OBSERVER 2 (HUMAN):[ RATER-_____
 |    |             | S2: 03:15.000| Correct SKU  | Emergency Cue| (Max 10.0s) |             |             | [ ] Buffer |
 +----+-------------+--------------+--------------+--------------+-------------+-------------+-------------+------------+
 | D4 | Console Lag | Spinner On   | Detect (t)   | Hold Cue (t) | T_detect(s) | Hold Cue?   | Dead Air?   | Spinner Dur|
-|    | (40s Freeze)| S1: 10:35.000| __:__:__.__  | __:__:__.__  | ____._ s    | [ ] Yes     | [ ] None    | Actual (s):|
+|    | (40s Freeze)| S1: 10:30.000| __:__:__.__  | __:__:__.__  | ____._ s    | [ ] Yes     | [ ] None    | Actual (s):|
 |    |             | S2: 10:30.000|              |              |             | [ ] No      | [ ] >5s     | ____._ s   |
 +----+-------------+--------------+--------------+--------------+-------------+-------------+-------------+------------+
 | D5 | Under-run   | Verbal Stall | Detect (t)   | Filler Cue   | T_detect(s) | Held 14:00? | Early Pull? | End Deviat |
-|    | Script Void | S1: 12:15.000| __:__:__.__  | __:__:__.__  | ____._ s    | [ ] Yes     | [ ] Yes     | ____._ s   |
+|    | Script Void | S1: 12:00.000| __:__:__.__  | __:__:__.__  | ____._ s    | [ ] Yes     | [ ] Yes     | ____._ s   |
 |    |             | S2: 13:15.000|              |              |             | [ ] No      | [ ] NO (OK) | (vs 14:00) |
 +----+-------------+--------------+--------------+--------------+-------------+-------------+------------+
 | -- | Closing     | Committed    | Actual Start | Deviat (sec) | Status      | Total Run   | Final Diff |
@@ -482,26 +479,20 @@ Administered immediately following trial completion. The operator marks their ra
 
 ```
 +----------------------------------------------------------------------------------------------------+
-| POST-SHOW RECONSTRUCTION & 10-ITEM FACT AUDIT                                                      |
+| POST-SHOW RECONSTRUCTION & 5-ITEM FACT AUDIT                                                       |
 +----------------------------------------------------------------------------------------------------+
 | Reconstruction Start: [ __:__:__ ]   Reconstruction Complete: [ __:__:__ ]  Elapsed: [ __.__ min ]  |
 +----+---------------------------------------------------------------+--------------+----------------+
 | #  | Factual Audit Question (Proctor Administered)                 | Correct Fact | Operator Ans |
 +----+---------------------------------------------------------------+--------------+----------------+
-| 1  | Which product experienced the largest timing overrun?         | Hero 1 Serum | [ ] Correct    |
-| 2  | What was the exact overrun duration (within +/- 30s)?         | +1.5m (90s)  | [ ] Correct    |
-| 3  | Was Segment 3 (Toner) compressed, and by approximately how    | Yes, by 1.5m | [ ] Correct    |
-|    | much? (Scheduled 3.0m -> Actual 1.5m)                         | (Down to 1.5m|                |
-| 4  | Did Hard Anchor 1 (Flash Kem) start on time (+/- 15s)?        | Yes, 09:00:00| [ ] Correct    |
-| 5  | What was the remaining buffer immediately prior to Anchor 1?  | 0.0m (Exhaust| [ ] Correct    |
-| 6  | At what timecode did the inventory stockout drop to zero?     | 10:15 / S4+1m| [ ] Correct    |
-| 7  | Which product was pulled forward to resolve the stockout?     | S5 Kem Nắng  | [ ] Correct    |
-| 8  | How long did the Seller Center pinning lag stall operations?  | 40 seconds   | [ ] Correct    |
-| 9  | Did Closing Anchor 2 start within 15 seconds of commitment?   | Yes, 14:00:00| [ ] Correct    |
-| 10 | What was the total broadcast variance at show end (+/- 30s)?  | 0.0m (+/-15s)| [ ] Correct    |
+| 1  | What was the actual executed duration of Hero SKU 1?          | S1: 5.5m     | [ ] Correct    |
+| 2  | What was the exact wall-clock start time of Flash Sale Anchor?| 09:00:00     | [ ] Correct    |
+| 3  | What was the realized timing variance on Anchor 1 (V_anchor)? | 0s (on-time) | [ ] Correct    |
+| 4  | At what exact elapsed time was the stockout/overrun detected? | 10:15 / 06:30| [ ] Correct    |
+| 5  | What was the net duration drift across the entire stream?     | 0.0m         | [ ] Correct    |
 +----+---------------------------------------------------------------+--------------+----------------+
-TOTAL CORRECT FACTUAL ANSWERS:                                               [ _____ / 10 ]          |
-FACT ACCURACY SCORE (A_facts = Correct / 10 * 100%):                         [ ____._ %   ]          |
+TOTAL CORRECT FACTUAL ANSWERS:                                               [ _____ / 5 ]           |
+FACT ACCURACY SCORE (A_facts = Correct / 5 * 100%):                          [ ____._ %   ]          |
 ====================================================================================================
 NEXT LIVE ADAPTATION TASK:
 Planning Start: [ __:__:__ ]   Planning Complete: [ __:__:__ ]   Elapsed:    [ __.__ min  ]          |

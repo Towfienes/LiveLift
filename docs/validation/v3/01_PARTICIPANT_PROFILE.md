@@ -185,9 +185,11 @@ The participant sample is anchored by standard merchant teams while deliberately
    - *Classification:* **Mandatory Comparator Benchmark.** Prerequisite requirement for Gate G0 clearance.
    - *Requirement:* At least 2 operators who routinely operate configured professional broadcast rundown tools (**Ontime, Shoflo, or Rundown Studio**) or dedicated broadcast automation setups.
    - *Purpose:* Rigorously tests LiveLift against dedicated professional timing tools to establish whether LiveLift provides unique commerce-specific value (dynamic anchor deficit calculations, inventory stockout cuts, Next LIVE cloning) beyond general-purpose event timer software.
-6. **Native Vietnam Account Walkthrough & Telemetry Boundary:**
+6. **Native Vietnam Account Walkthrough, Opsique Comparator & Telemetry Record:**
    - *Prerequisite:* Prior to laboratory trials, researchers must conduct a detailed walkthrough of an authentic native Vietnamese TikTok Shop Seller Center console (verifying product showcase pinning flows, voucher setup, and real console latencies).
-   - *Telemetry Uncertainty Disclosure:* Any inaccessible real-time Seller Center or Opsique internal telemetry must be formally documented as an explicit empirical uncertainty rather than assumed to be accessible via private APIs.
+   - *Opsique Product Comparator & Native Telemetry Record:*
+     * *Opsique Product Comparator:* Researchers must evaluate Opsique as a commercial workflow comparator if accessible, recording comparative benchmark findings in the Gate G0 ledger. If Opsique is inaccessible as a commercial workflow comparator, its inaccessibility must be formally documented as an explicit comparator uncertainty in the Gate G0 ledger (cannot be satisfied merely by citing missing API telemetry).
+     * *Native Platform Telemetry:* Inaccessible real-time Seller Center or Opsique internal telemetry/APIs must be formally documented as an explicit technical uncertainty rather than assumed to be accessible via private APIs.
 
 ---
 

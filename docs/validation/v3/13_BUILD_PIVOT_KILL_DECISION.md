@@ -91,14 +91,14 @@ To guarantee that the exact same empirical evidence never produces conflicting v
 Advancement to the BUILD pathway requires meeting **100% of the following criteria**:
 1. **Zero Disqualification Triggers:** Zero occurrences of Silent Anchor Shifts (T1), False Confirmed Actions (T2), Lost Acknowledged Commands (T3), or unhandled Prototype Crashes (T4).
 2. **Primary Desk Thresholds Met (Dimensions 01–06, 08, 09):**
-   - *Dimension 01 (Setup & Configuration):* Initial configuration duration $T_{\text{setup}} \le 180$ seconds, with $\le 3$ configuration errors.
-   - *Dimension 02 (Schedule-Risk Awareness):* $\ge 80.0\%$ of injected schedule conflicts correctly recognized (identifying the threatened anchor) within $\le 10$ seconds of stimulus.
+   - *Dimension 01 (Setup & Configuration):* Initial configuration duration $T_{\text{setup}} \le 10.0$ minutes, $\Delta T_{\text{setup}} \le 2.0$ minutes compared to baseline, with $\le 2$ configuration errors.
+   - *Dimension 02 (Schedule-Risk Awareness):* $\ge 80.0\%$ of eligible schedule deficit opportunities correctly recognized (identifying the threatened anchor) within $\le 10$ seconds of stimulus.
    - *Dimension 03 (Overrun Recovery Speed & Constraint Validity):* Median recovery decision latency $T_{\text{decision}} \ge 30.0\%$ faster than baseline, with $\ge 90.0\%$ of recovery actions mathematically respecting minimum segment durations and downstream anchor commitments.
    - *Dimension 04 (Hard Promotion Anchor Protection):* Exactly 0 unintended critical anchor misses; median verbal anchor variance $|V_{\text{anchor, verbal}}| \le 15$ seconds (native platform delay recorded separately as external latency).
    - *Dimension 05 (Routine Capture Burden & PVA Accuracy):* $\le 1$ command per transition, median capture latency $t_{\text{capture}} \le 3$ seconds, boundary error rate $E_{\text{PVA}} \le 10.0\%$.
-   - *Dimension 06 (Operator Cognitive Workload):* Median raw NASA-TLX score $\ge 20.0\%$ lower than baseline ($p < 0.05$); OR within $\pm 5.0$ points of baseline with statistically significant ($p < 0.05$) recovery latency improvement.
-   - *Dimension 08 (Post-Show Fact Accuracy & Review Reconciliation):* Total review reconciliation duration $T_{\text{recon}} \le 5.0$ minutes (median $\ge 30.0\%$ faster than baseline) with $\ge 90.0\%$ fact accuracy.
-   - *Dimension 09 (Feasible Next LIVE Adaptation):* Next-plan authoring duration $T_{\text{plan}} \le 5.0$ minutes (median $\ge 30.0\%$ faster than baseline), with $\ge 90.0\%$ plan constraint feasibility, and combined post-show duration $T_{\text{recon}} + T_{\text{plan}} \le 10.0$ minutes.
+   - *Dimension 06 (Operator Cognitive Workload):* Median raw NASA-TLX score $\ge 20.0\%$ lower than baseline ($p < 0.05$); OR non-inferior ($\text{Median}(\text{TLX}_{\text{LiveLift}}) \le \text{Median}(\text{TLX}_{\text{Base}})$, $\Delta\text{TLX} \le 0.0$) with statistically significant ($p < 0.05$) recovery latency improvement ($T_{\text{decision}}$) and $\ge 90.0\%$ recovery validity ($R_{\text{valid}}$). Standalone workload increases ($\Delta\text{TLX} > 0$) fail.
+   - *Dimension 08 (Post-Show Fact Accuracy & Review Reconciliation):* Total review reconciliation duration $T_{\text{recon}} \le 5.0$ minutes (median $\ge 30.0\%$ faster than baseline) with $\ge 80.0\%$ fact accuracy per trial ($\ge 90.0\%$ pooled across trial battery).
+   - *Dimension 09 (Feasible Next LIVE Adaptation):* Next-plan authoring duration $T_{\text{plan}} \le 5.0$ minutes (median $\ge 30.0\%$ faster than baseline), with $\ge 90.0\%$ plan constraint feasibility, and combined post-show duration $T_{\text{recon}} + T_{\text{plan}} \le 5.0$ minutes.
 3. **Subjective Operator Preference (Dimension 10):**
    - $\ge 70.0\%$ of participating operators voluntarily choose LiveLift for tomorrow's real live sales broadcast.
    *(Note: Voluntary Repeat Use across $\ge 3$ merchant teams $\times \ge 3$ consecutive live shows is Gate G1 field acceptance, evaluated in production pilots following Phase 1 completion).*
@@ -207,7 +207,8 @@ Product leadership must **immediately terminate LiveLift V3 development** and bl
 |    | (Unintended Anchor Misses) | live broadcast failure due to interface ambiguity or distraction.|
 +----+----------------------------+------------------------------------------------------------------+
 | K3 | Cognitive Workload Increase| Operators experience higher subjective cognitive workload        |
-|    | (NASA-TLX Regression)      | (NASA-TLX) using LiveLift than using Google Sheets (TLX_A>TLX_B).|
+|    | (NASA-TLX Regression)      | using LiveLift than using Google Sheets (TLX_A > TLX_B,          |
+|    |                            | Delta TLX > 0.0). Workload increases activate K3 and block BUILD.|
 +----+----------------------------+------------------------------------------------------------------+
 | K4 | Routine Capture Chore      | Operators abandon live transition logging in >= 30% of trials,   |
 |    | Rejection                  | citing screen overload and Seller Center multi-tasking conflict. |
@@ -238,37 +239,41 @@ Upon triggering a KILL decision:
 To prevent cognitive dissonance, confirmation bias, or polite participant flattery from contaminating the decision, research evaluations must follow the **Triangulation Conflict Resolution Matrix**:
 
 ```
-+----------------------------------------------------------------------------------------------------+
-|                                    TRIANGULATION CONFLICT RESOLUTION                               |
-+------------------------+------------------------+--------------------------------------------------+
-| Behavioral Telemetry   | Subjective Interview   | Authoritative Strategic Interpretation           |
-+------------------------+------------------------+--------------------------------------------------+
-| **PASS**               | **POSITIVE**           | **UNAMBIGUOUS BUILD:**                           |
-| Latency improved >=30%;| >= 70.0% of operators  | Behavioral efficiency validated by user sentiment.|
-| Zero critical misses;  | voluntarily choose     | Clear mandate for Phase 1 single-device build.   |
-| Workload lower >=20%.  | LiveLift for live show.|                                                  |
-+------------------------+------------------------+--------------------------------------------------+
-| **PASS**               | **MODERATE**           | **PIVOT / UX REVISION GATE:**                    |
-| Latency improved >=30%;| 50.0% - 69.9% choose   | Behavioral advantage confirmed, but operator     |
-| Zero critical misses;  | LiveLift; hesitation   | willingness is insufficient for immediate BUILD. |
-| Workload lower >=20%.  | regarding UI friction. | Evaluate Pivot A/B/C or conduct targeted UX      |
-|                        |                        | redesign and re-test. Blocks BUILD until resolved|
-+------------------------+------------------------+--------------------------------------------------+
-| **PASS**               | **NEGATIVE**           | **KILL / DO NOT ADVANCE TO PHASE 1 (Trigger K6):**|
-| Latency improved >=30%;| < 50.0% choose         | Commercial unwillingness overrides raw telemetry.|
-| Zero critical misses;  | LiveLift; operators    | If operators reject the tool in favor of sheets  |
-| Workload lower >=20%.  | prefer spreadsheets.   | despite speed, the product cannot achieve organic|
-|                        |                        | adoption in the wild. Project terminated.        |
-+------------------------+------------------------+--------------------------------------------------+
-| **FAIL**               | **POSITIVE**           | **HARD REJECTION / COURTESY BIAS (FALSE CHARM):**|
-| Latencies lag baseline;| Operator claims tool   | Participant is exhibiting courtesy bias or       |
-| Missed anchors > 0;    | is "great" and "saves  | novelty attraction. Telemetry proves operational |
-| Workload higher.       | time".                 | breakdown. Subjective praise is DISCARDED. FAIL. |
-+------------------------+------------------------+--------------------------------------------------+
-| **FAIL**               | **NEGATIVE**           | **UNAMBIGUOUS KILL / DO NOT ADVANCE TO PHASE 1:**|
-| Latencies lag baseline;| Operator rejects tool; | Total alignment between operational breakdown    |
-| Cognitive overload.    | states sheet is better.| and user rejection. Immediate project kill.      |
-+------------------------+------------------------+--------------------------------------------------+
++--------------------------------------------------------------------------------------------------------------------+
+|                                         TRIANGULATION CONFLICT RESOLUTION                                          |
++------------------------+------------------------+------------------------------------------------------------------+
+| Behavioral Telemetry   | Subjective Interview   | Authoritative Strategic Interpretation                           |
++------------------------+------------------------+------------------------------------------------------------------+
+| **PASS**               | **POSITIVE**           | **UNAMBIGUOUS BUILD:**                                           |
+| Latency improved >=30%;| >= 70.0% of operators  | Behavioral efficiency validated by user sentiment.               |
+| Zero critical misses;  | voluntarily choose     | Clear mandate for Phase 1 single-device build.                   |
+| Workload lower >=20%.  | LiveLift for live show.|                                                                  |
++------------------------+------------------------+------------------------------------------------------------------+
+| **PASS**               | **MODERATE**           | **DETERMINISTIC FALLBACK (50.0% - 69.9% PREFERENCE):**           |
+| Latency improved >=30%;| 50.0% - 69.9% choose   | Primary behavioral efficiency validated, but operator            |
+| Zero critical misses;  | LiveLift; hesitation   | adoption is below the 70.0% BUILD threshold. Apply hierarchical  |
+| Workload lower >=20%   | regarding UI friction. | deterministic fallback tree:                                     |
+| (or non-inferior).     |                        | 1. If >= 50% of non-choosers cite Host distraction -> PIVOT A    |
+|                        |                        | 2. Else if >= 50% cite spreadsheet formula desire -> PIVOT B     |
+|                        |                        | 3. Else if >= 50% cite window juggling / OBS demand -> PIVOT C    |
+|                        |                        | 4. Otherwise (default) -> UX REPAIR & RETEST (blocks BUILD;      |
+|                        |                        |    if retest < 70%, routes to KILL K6).                          |
++------------------------+------------------------+------------------------------------------------------------------+
+| **PASS**               | **NEGATIVE**           | **KILL / DO NOT ADVANCE TO PHASE 1 (Trigger K6):**               |
+| Latency improved >=30%;| < 50.0% choose         | Commercial unwillingness overrides raw telemetry.                |
+| Zero critical misses;  | LiveLift; operators    | If operators reject the tool in favor of sheets                  |
+| Workload lower >=20%.  | prefer spreadsheets.   | despite speed, the product cannot achieve organic                |
+|                        |                        | adoption in the wild. Project terminated.                        |
++------------------------+------------------------+------------------------------------------------------------------+
+| **FAIL**               | **POSITIVE**           | **HARD REJECTION / COURTESY BIAS (FALSE CHARM):**                |
+| Latencies lag baseline;| Operator claims tool   | Participant is exhibiting courtesy bias or                       |
+| Missed anchors > 0;    | is "great" and "saves  | novelty attraction. Telemetry proves operational                 |
+| Workload higher.       | time".                 | breakdown. Subjective praise is DISCARDED. FAIL.                 |
++------------------------+------------------------+------------------------------------------------------------------+
+| **FAIL**               | **NEGATIVE**           | **UNAMBIGUOUS KILL / DO NOT ADVANCE TO PHASE 1:**                |
+| Latencies lag baseline;| Operator rejects tool; | Total alignment between operational breakdown                    |
+| Cognitive overload.    | states sheet is better.| and user rejection. Immediate project kill.                      |
++------------------------+------------------------+------------------------------------------------------------------+
 ```
 
 ---

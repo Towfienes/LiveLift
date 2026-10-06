@@ -61,21 +61,25 @@ Before engineering may write a single line of production code for Phase 1, the f
 |    | Benchmark (Ontime / Shoflo / vMix) | rundown software by pro  | operators     |               |
 |    |                                    | operators completed      | evaluated     |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
-| 04 | Seller Center / Opsique Telemetry  | Inaccessible native API  | Documented as | [ ] CERTIFIED |
-|    | Uncertainty Formally Recorded      | telemetry documented as  | explicit      |               |
-|    |                                    | an external uncertainty  | uncertainty   |               |
+| 04 | Opsique Comparator & Native        | Opsique evaluated if     | Opsique access| [ ] CERTIFIED |
+|    | Telemetry Recorded in G0 Ledger    | accessible (result       | result or     |               |
+|    |                                    | recorded) OR inaccessible| uncertainty in|               |
+|    |                                    | recorded as comparator   | G0 ledger; API|               |
+|    |                                    | uncertainty; native API  | uncertainty   |               |
+|    |                                    | documented as uncertainty| documented    |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
-| 05 | Preregistered Desk Thresholds      | Dimensions 01–06, 08, 09 | All Primary   | [ ] CERTIFIED |
-|    | Clearance (Including Next LIVE)    | met: T_plan <= 5m, >=30% | Gates PASS    |               |
-|    |                                    | faster, Feas >= 90%, TLX | (or workload  |               |
-|    |                                    | workload alt. satisfied  | alternative)  |               |
+| 05 | Preregistered Desk Thresholds      | Dimensions 01–06, 08–10  | All G0 Gates  | [ ] CERTIFIED |
+|    | Clearance (Including Next LIVE     | met: T_plan <= 5m, >=30% | PASS (or non- |               |
+|    | and Preference >= 70%)             | faster, T_post <= 5m,    | inferior TLX  |               |
+|    |                                    | Feas >= 90%, Pref >= 70% | alternative)  |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
 | 06 | Zero-Tolerance Triggers Audit      | Zero Silent Shifts (T1), | Zero Triggers | [ ] CERTIFIED |
 |    |                                    | False (T2), Lost (T3),   | Activated     |               |
 |    |                                    | or unhandled Crash (T4)  |               |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
 | 07 | Nonparametric Statistical Defense  | Wilcoxon Signed-Rank Test| p < 0.05 on   | [ ] CERTIFIED |
-|    |                                    | on recovery and workload | primary delta |               |
+|    |                                    | on recovery latency (and | primary delta |               |
+|    |                                    | workload delta/non-inf)  | or non-inf alt|               |
 +----+------------------------------------+--------------------------+---------------+---------------+
 | 08 | Host View Decoupled Sub-Study      | Host View passed OR      | Gate Cleared  | [ ] CERTIFIED |
 |    | Evaluation                         | Pivot A formally adopted | or Pivoted    |               |

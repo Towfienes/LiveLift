@@ -24,8 +24,8 @@ In TikTok Shop live commerce broadcasts across Vietnam and Southeast Asia, the b
 
 ### 1.2 Certified Feature Reality & Wizard-of-Oz Boundaries (UI SHA `71807ed`)
 In strict compliance with the **Integrity Mandate** and the rule that *"Never pretend unfinished functionality exists"*, the operator interacts with the system strictly across certified operational boundaries:
-- **`IMPLEMENTED` (Functional Domain Engine & Durable Local Store):** Session creation (`/live/new`), rundown configuration (`/prepare`), live desk tracking (`/operate`), segment commands (`start_live`, `advance_segment`, `extend_segment`, `commit_end_by`, `reanchor_segment`, `end_live`), manual cue action reporting (`report_cue_action`), operator note capture (`record_note`), dynamic rolling forecast engine (`next/src/lib/domain/forecast.ts`), constraint-aware recovery analysis (`next/src/lib/domain/recovery.ts`), revision-checked guarded local persistence (`next/src/lib/store/sessionStore.ts`), plan-vs-actual review table (`/review`), and Next LIVE rundown adaptation generator (`next/src/lib/domain/nextLive.ts`).
-- **`SIMULATED` (Test Environment & Fixtures):** Deterministic rehearsal scenarios (`sim-1`, `sim-2`, `sim-3` in `/simulator`) driven by explicit virtual clocks, and sample product catalogs (`next/src/fixtures/library.ts`).
+- **`IMPLEMENTED` (Functional Domain Engine & Durable Local Store):** Session creation (`/live/new`), rundown configuration (`/prepare`), live desk tracking (`/operate`), segment commands (`start_live`, `advance_segment`, `extend_segment`, `commit_end_by`, `reanchor_segment`, `end_live`), manual cue action reporting (`report_cue`), operator note capture (`add_note`), dynamic rolling forecast engine (`next/src/lib/domain/forecast.ts`), constraint-aware recovery analysis (`next/src/lib/domain/recovery.ts`), revision-checked guarded local persistence (`next/src/lib/store/sessionStore.ts`), plan-vs-actual review table (`/review`), and Next LIVE rundown adaptation generator (`next/src/lib/domain/nextLive.ts`, `createNextSession`).
+- **`SIMULATED` (Test Environment & Fixtures):** Deterministic rehearsal scenarios (`buffered`, `missed`, `minimum` — sessions `sim-buffered`, etc. in `/simulator`) driven by explicit virtual clocks, and sample product catalogs (`next/src/fixtures/library.ts`).
 - **`WIZARD-OF-OZ` (Facilitator-Delivered Links):** Host prompt tablet mirror display (relayed by facilitator because no native multi-device WebSocket synchronization exists), and TikTok Shop Seller Center console responses (simulated inventory depletion and network pin spinners).
 - **`NOT AVAILABLE` (Platform / Autonomous Exclusions):** Automated native TikTok Shop pinning, automated voucher distribution, autonomous AI pacing engines, and private TikTok streaming APIs are strictly excluded. All platform actions remain manual in TikTok Shop Seller Center.
 
@@ -72,7 +72,9 @@ Prior to broadcast kickoff, the operator must execute the pre-flight verificatio
    - Confirm that no third-party automation tools, macro keypads (Stream Deck automations), AutoHotkey scripts, or countdown extensions are running.
 
 ### 2.2 System Configuration & Rundown Review
-1. **Catalog & Rundown Audit (`/prepare`):**
+1. **Catalog Preload, Import & Rundown Audit (`/prepare`):**
+   - *Catalog Source Boundary:* Built-in sample fixtures (`next/src/fixtures/library.ts`) provide fashion products. For experimental trials, the research proctor pre-loads or authors the study packs into `/prepare` prior to participant seating:
+     * In `/live/[sessionId]/prepare`, use the **Import** dialog (`data-testid="import-btn"`) to import the scenario TSV/CSV rows (`parseProductRows`), or initialize the session shell using the study catalog fixture.
    - Confirm pre-loaded product catalog:
      * **Scenario 1:** `CAT-COSMETICS-01` (AuraSkin: `SYS-INTRO`, `SKU-SERUM`, `SKU-TONER`, `SKU-KEMD`, `SKU-NANG`, `SYS-CLOSE`).
      * **Scenario 2:** `CAT-TECHFASH-02` (UrbanPulse: `SYS-INTRO2`, `SKU-TECH1`, `SKU-TECH2`, `SKU-FASH1`, `SKU-FASH2`, `SYS-CLOSE2`).
@@ -132,15 +134,15 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 
 #### The NEXT Panel (`NextPanel.tsx`)
 - **Target Item & Strategic Rationale:** Outlines the upcoming product code and algorithmic basis (e.g., *"Scheduled hero pitch to drive morning campaign momentum"*).
-- **Button: `Start [Next] segment` (`advance_segment`):** **The Authoritative Runtime Transition.** Clicking this button wraps the active segment, records actual completion timestamps in the immutable event log, advances the NOW cursor to the next item, and persists the state with revision-checked commits to `SessionStore`.
-- **Button: `Review Recovery Options` / Deficit Card (`analyzeRecovery`):** When downstream schedule drift threatens a hard anchor, an alert surfaces on the desk. Clicking opens the Recovery Options drawer displaying candidate clean recovery plans (shorten segment, skip segment, commit end-by, re-anchor) that mathematically protect the anchor while respecting contractual floor limits.
+- **Button: `Next segment` (`advance_segment`, `data-testid="advance-btn"`):** **The Authoritative Runtime Transition.** Clicking this button wraps the active segment, records actual completion timestamps in the immutable event log, advances the NOW cursor to the next item, and persists the state with revision-checked commits to `SessionStore`.
+- **Button: Recovery Apply Candidates (`analyzeRecovery`, `data-testid={`apply-${o.kind}`}`):** When downstream schedule drift threatens a hard anchor, an alert surfaces on the desk. Clicking candidate apply buttons (`data-testid="apply-shorten"`, `apply-skip`, `apply-end_by`, `apply-close_now`) executes clean recovery plans that mathematically protect the anchor while respecting contractual floor limits.
 
 ### 3.2 Operator Quick Capture & Toolbar Actions
 - **Button: `Extend +1m` (`extend_segment`):** Increments `targetDurationMinutes` by $+1.0$ minute for the active segment without altering the underlying pre-show baseline plan.
 - **Button: `Set Target End-By` (`commit_end_by`):** Commits a hard ceiling end-time for the active segment to protect an upcoming anchor.
 - **Button: `Re-anchor` (`reanchor_segment`):** Explicitly updates a promotional anchor commitment when commercial conditions dictate a schedule change.
-- **Button: `Report Cue Action` (`report_cue_action`):** Logs manual external platform operations (pinning, unpinning, voucher drop) with verified timestamps and target SKU IDs.
-- **Button: `Record Note` (`record_note`):** Opens text capture modal. Allows operator to record unstructured runtime observations (e.g., *"Host answering chat question on skin compatibility"*).
+- **Button: `Report Cue Action` (`report_cue`, `data-testid="cue-report-btn"` / `data-testid="cue-performed-btn"`):** Logs manual external platform operations (pinning, unpinning, voucher drop) with verified timestamps and target SKU IDs.
+- **Button: `Add Note` (`add_note`, `data-testid="quick-add-note-btn"`):** Opens text capture modal. Allows operator to record unstructured runtime observations (e.g., *"Host answering chat question on skin compatibility"*).
 
 ---
 
@@ -157,7 +159,7 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
                     ^               ^              ^                 ^            ^
                  04:30:          06:30:         09:00:00:         S4+1m15s:    14:00:00:
                  [CHAT STIMULUS] [EVAL D1]      [EVAL D2]         [INJECT D3]  [EVAL CLOSE]
-                 Host stimulated 30s deficit    Did Flash start   Stockout!    End adherence
+                 Host stimulated 90s deficit    Did Flash start   Stockout!    End adherence
                  to pitch deep   vs Anchor 1    at 09:00:00?      Pull S5?     at 14:00:00
 ```
 
@@ -172,15 +174,14 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 
 #### $T = 01:45:00$ — Pre-Cue for Segment 2
 1. LiveLift timer indicates `01:45` elapsed (15 seconds to target).
-2. Inspect NEXT panel: Target shows `SKU-SERUM` (Hero 1: Serum Niacinamide).
-3. Operator clicks `Accept recommendation` (`accept-recommendation-btn`).
-4. Stage `SKU-SERUM` in TikTok Shop Seller Center showcase list.
+2. Inspect NEXT panel: Target shows `SKU-SERUM` (Hero 1: Serum Niacinamide) and upcoming `Next segment` transition.
+3. Stage `SKU-SERUM` in TikTok Shop Seller Center showcase list.
 
 #### $T = 02:00:00$ — Transition to Segment 2 (`SKU-SERUM`)
-1. At exactly `02:00`, click **`Start Next segment`** (`start-segment-btn`).
+1. At exactly `02:00`, click **`Next segment`** (`data-testid="advance-btn"`).
 2. NOW panel updates to `SKU-SERUM` (Hero 1). Timer resets to `00:00`. Target duration displays `4m`.
 3. In Seller Center: Immediately click **Pin Product** for `SKU-SERUM`.
-4. Return to LiveLift: Click `Log Platform Action` (`quick-platform-report-btn`). Select `SKU-SERUM`, action `pin_product`, click **Save**.
+4. Return to LiveLift: In Cue Bar, click **Report Action** (`data-testid="cue-report-btn"`). Select `SKU-SERUM`, action `pin_product`, click **Save**.
 5. Host begins core product demonstration on camera.
 
 #### $T = 04:30:00$ — Disturbance D1 Stimulus Injected
@@ -193,26 +194,26 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 2. Host continues detailed demonstration, answering audience inquiries.
 3. Operator clicks **`Extend +1m`** (`extend-plus-one-btn`) to reflect operational reality without panicking. Target updates to `5m`.
 
-#### $T = 06:30:00$ — Disturbance D1 Deficit Evaluation & WoZ Alert
-1. Show clock reaches `06:30`. Active Serum elapsed time = `04:30`.
-2. **WoZ Deficit Stimulus Delivered:** The facilitator triggers the simulated deficit card on the operator monitor:
+#### $T = 06:30:00$ — Disturbance D1 Deficit Evaluation & Native Forecast Alert
+1. Show clock reaches `06:30`. Active Serum elapsed time = `04:30`. Host signals 1 additional minute remaining.
+2. Operator enters remaining estimate (or extends segment). LiveLift's implemented downstream forecast engine automatically evaluates the schedule: projected Serum end `07:30`, plus Toner 3.0m projects Flash Sale at `10:30`, detecting a **90-second (+1.5m) deficit** facing Hard Anchor 1 (`09:00:00`).
+3. **Implemented Deficit Banner:** The UI displays the native schedule risk alert card:
    ```
-   [CẢNH BÁO TIẾN ĐỘ: Dự phóng trễ 30s so với Flash Deal 09:00:00 (Thâm hụt: 0:30)]
+   [CẢNH BÁO TIẾN ĐỘ: Dự phóng trễ 90s so với Flash Deal 09:00:00 (Thâm hụt: 1:30)]
    ```
-3. **Recovery Options Presented in WoZ Drawer:**
-   - *Option 1 (Buffer Absorption):* Truncate Serum at `07:00`; compress Segment 3 (Toner) from planned 3.0m to 1.5m (Floor: 1.0m). Anchor protected at exactly 09:00:00.
-   - *Option 2 (Aggressive Compression):* Allow Serum to run to `07:30`; compress Toner to contractual floor of 1.0m. Anchor protected at exactly 09:00:00.
-   - *Option 3 (Skip Intermediary):* Allow Serum to run to `08:00`; skip Toner entirely (0m). Reclaims 3.0m buffer. Anchor protected at 09:00:00.
-   - *Invalid Option:* Attempting to compress Toner below its 1.0m contractual floor triggers invalid warning.
-4. **Operator Decision & Execution:**
-   - Operator selects **Option 1** or **Option 2** (valid buffer absorption).
-   - Click `Add note`: Type *"Compressing S3 Toner to protect 09:00 Flash Deal"*.
+4. **Native Recovery Candidate Generation (`recovery.ts`):**
+   - The implemented recovery engine evaluates downstream compressible segments and generates feasible recovery plans:
+     - *Compress Downstream Buffer:* Compress Segment 3 (Toner) from planned 3.0m to 1.5m (respects 1.0m contractual floor). Reclaims 1.5m, pulling Flash Deal back to exactly 09:00:00.
+     - *Aggressive Compression:* Compress Toner to floor 1.0m (reclaims 2.0m, providing 30s safety margin).
+5. **Operator Decision & Execution:**
+   - Operator reviews generated candidate, applies the candidate (`data-testid="apply-shorten"`), and confirms the recovery plan.
+   - Click `Add note` (`data-testid="quick-add-note-btn"`): Type *"Compressing S3 Toner to protect 09:00 Flash Deal"*.
    - Transmit atomic cue to Host Tablet: `[RECOVER: Rút Toner còn 1.5m | Giữ Flash Deal 09:00]`.
    - Host nods and begins wrapping Serum demo.
 
 #### $T = 07:30:00$ — Transition to Segment 3 (`SKU-TONER`)
 1. Host concludes Serum pitch: *"Dạ em qua mã Toner cân bằng ngay đây ạ!"*
-2. Operator clicks **`Start Next segment`** (`start-segment-btn`).
+2. Operator clicks **`Next segment`** (`data-testid="advance-btn"`).
 3. In Seller Center: Unpin `SKU-SERUM`, click **Pin Product** for `SKU-TONER`.
 4. LiveLift NOW panel updates to Toner. Target duration is adjusted to compressed target (1.5m).
 
@@ -224,7 +225,7 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 
 #### $T = 09:00:00$ — Hard Anchor 1 Execution (D2 Evaluation)
 1. Master digital clock strikes exactly `09:00:00`.
-2. Operator clicks **`Start Next segment`** (`start-segment-btn`) in LiveLift.
+2. Operator clicks **`Next segment`** (`data-testid="advance-btn"`) in LiveLift.
 3. In Seller Center: Click **Pin Product** for `SKU-KEMD`.
 4. Host counts down on air: *"5-4-3-2-1 mở deal! Giá sốc 295k chính thức mở bán!"*
 5. Observer records Anchor Start Variance ($V_{\text{anchor}} = |t - 09:00:00|$). Target: $\le 15$ seconds.
@@ -238,9 +239,9 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 3. **Operator Recognition ($T_{\text{detect}}$):** Operator spots inventory depletion.
 4. **Immediate Recovery Execution:**
    - In Seller Center: Click **Unpin** immediately on `SKU-KEMD`.
-   - In LiveLift desk: Advance to Segment 5 (`SKU-NANG` — Kem Chống Nắng) via `Start Next segment` (`advance_segment`). **Authorized Floor Exemption:** Stopping pitch on verified stockout is scored as a valid recovery.
-   - Transmit emergency cue to Host: `[STOP/HẾT HÀNG: Cắt Kem Dưỡng -> Chuyển Kem Nắng]`.
-   - Host smoothly pivots on stream: *"Dạ 50 suất Kem Dưỡng đã cháy hàng hoàn toàn, hệ thống vừa tự động đóng giỏ hàng! Em xin phép chuyển ngay qua siêu phẩm chống nắng..."*
+    - In LiveLift desk: Advance to Segment 5 (`SKU-NANG` — Kem Chống Nắng) via `Next segment` (`data-testid="advance-btn"`, calling `advance_segment`). **Authorized Floor Exemption:** Stopping pitch on verified stockout is scored as a valid recovery.
+    - Transmit emergency cue to Host: `[STOP/HẾT HÀNG: Cắt Kem Dưỡng -> Chuyển Kem Nắng]`.
+    - Host smoothly pivots on stream: *"Dạ 50 suất Kem Dưỡng đã cháy hàng hoàn toàn, hệ thống vừa tự động đóng giỏ hàng! Em xin phép chuyển ngay qua siêu phẩm chống nắng..."*
 
 #### $T = 10:30:00$ — Disturbance D4 Platform Console Lag Injection
 1. Dynamic transition into Segment 5 initiates.
@@ -278,7 +279,7 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 
 #### $T = 14:00:00$ — Hard Anchor 2: Closing Transition
 1. Clock strikes exactly `14:00:00`.
-2. Operator clicks **`Start Next segment`** (`advance_segment`).
+2. Operator clicks **`Next segment`** (`data-testid="advance-btn"`, calling `advance_segment`).
 3. Host begins official outro: announces last 60 seconds to complete pending carts, reviews 7-day return policy, and teases tomorrow's 20:00 session.
 
 #### $T = 15:00:00$ — Broadcast Sign-off & Review Transition
@@ -312,17 +313,17 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 | Elapsed (mm:ss) | State Anchor | Context & Stimulus | Operator Action on LiveLift Desk | Action in Seller Center / Chat | Scoring & Recovery Target |
 |:---:|---|---|---|---|---|
 | **00:00** | $T_{\text{start}}(S1)$ | Stream Kickoff (`SYS-INTRO2`). Planned: 1.5m. | Verify timer running on NOW panel. | Confirm OBS stream feed; monitor audio. | Setup verified $\pm 5$s. |
-| **01:30** | $T_{\text{start}}(S2)$ | S1 ends. Transition to S2 (`SKU-TECH1` MagSafe). Planned: 3.5m. | Click `Start Next segment`. Target = 3.5m. | Pin `SKU-TECH1` in Seller Center. Log cue action in LiveLift. | Transition within $\le 5$s. |
+| **01:30** | $T_{\text{start}}(S2)$ | S1 ends. Transition to S2 (`SKU-TECH1` MagSafe). Planned: 3.5m. | Click `Next segment` (`advance-btn`). Target = 3.5m. | Pin `SKU-TECH1` in Seller Center. Log cue action in LiveLift. | Transition within $\le 5$s. |
 | **03:15** | **$T_{\text{start}}(S2) + 1\text{m}45\text{s}$** | **INJECT D3 STOCKOUT:** Mock console alerts `SKU-TECH1` stock = 0. | Operator detects stockout ($T_{\text{detect}}$). Cues host to halt pitch. | Unpin `SKU-TECH1`. Transmit cue: `[STOP/HẾT HÀNG: Cắt Sạc MagSafe -> Chuyển Tai Nghe]`. | **$T_{\text{detect}} \le 10\text{s}$**. Host halts pitch within $\le 15$s. |
-| **03:30** | Early S3 Entry | Transition cleanly to S3 (`SKU-TECH2` Tai Nghe ANC). Actual S2 = 2.0m (meets floor). | Click `Start Next segment`. NOW updates to `SKU-TECH2`. S3 has 7.0m window before 10:30 anchor. | Pin `SKU-TECH2` in Seller Center. Log cue action in LiveLift. | Clean early transition; contractual floor respected. |
+| **03:30** | Early S3 Entry | Transition cleanly to S3 (`SKU-TECH2` Tai Nghe ANC). Actual S2 = 2.0m (meets floor). | Click `Next segment` (`advance-btn`). NOW updates to `SKU-TECH2`. S3 has 7.0m window before 10:30 anchor. | Pin `SKU-TECH2` in Seller Center. Log cue action in LiveLift. | Clean early transition; contractual floor respected. |
 | **06:00** | **$T_{\text{start}}(S3) + 2\text{m}30\text{s}$** | **INJECT D1 STIMULUS:** Proctor posts technical audio question to host. | Monitor active pitch. Host performs outdoor call test. | Observe pacing drift as pitch expands past scheduled target. | Natural overrun initiated. |
 | **09:30** | **$T_{\text{start}}(S3) + 6\text{m}00\text{s}$** | **EVALUATE D1 DEFICIT:** S3 elapsed = 6.0m. Host requests 1m45s remaining (target end 11:15). Flash Sale locked to 10:30. **Anchor Deficit = +45s.** | LiveLift surfaces Deficit Alert card: `[Dự phóng trễ 45s so với Flash Deal 10:30:00]`. Click to open recovery options ($T_{\text{detect}}$). | Select valid recovery: direct host to wrap S3 by 10:30:00. Transmit: `[RECOVER: Chốt Tai Nghe đúng 10:30 | Giữ Flash Deal Áo Acid Wash]`. | **$T_{\text{detect}} \le 10\text{s}$**. Recovery preserves 10:30:00 anchor ($7.0\text{m}$ actual $\ge 3.0\text{m}$ floor). |
 | **10:00** | Pre-Anchor Sync | 30s before Flash Sale. | Check countdown to 10:30:00. | Transmit cue: `[ANCHOR: 30s đếm ngược FLASH DEAL Áo Acid Wash]`. | Pre-cue sent $\ge 20$s before 10:30:00. |
-| **10:30** | **Absolute Wall-Clock** | **EVALUATE D2 ANCHOR 1:** Flash Deal unlocks. **INJECT D4 CONSOLE LAG:** 40s spinner on pinning `SKU-FASH1`. | Click `Start Next segment` in LiveLift. Dispatches Seller Center pin on time; recognizes pin lag ($T_{\text{detect}}$). | Cues host: `[HOLD: Minigame chọn size 40s trong lúc ghim]`. Host verbal countdown on time. | **Announcement Variance = 0s**. 40s console spinner recorded as unavoidable platform lag. |
+| **10:30** | **Absolute Wall-Clock** | **EVALUATE D2 ANCHOR 1:** Flash Deal unlocks. **INJECT D4 CONSOLE LAG:** 40s spinner on pinning `SKU-FASH1`. | Click `Next segment` (`advance-btn`) in LiveLift. Dispatches Seller Center pin on time; recognizes pin lag ($T_{\text{detect}}$). | Cues host: `[HOLD: Minigame chọn size 40s trong lúc ghim]`. Host verbal countdown on time. | **Announcement Variance = 0s**. 40s console spinner recorded as unavoidable platform lag. |
 | **11:10** | D4 Cleared | Network spinner resolves. Product pins. | Update cue action in LiveLift to `Performed`. | Cues host: `[NOW: Đã ghim Áo Acid Wash 180k]`. Host pitches deal. | Pin verified on stream. Dead air avoided. |
-| **12:30** | S4 End | Transition to S5 (`SKU-FASH2` Cargo Pants). Planned: 1.5m. | Click `Start Next segment`. NOW updates to `SKU-FASH2`. | Pin `SKU-FASH2` in Seller Center. Log cue action in LiveLift. | Transition within $\le 5$s. |
+| **12:30** | S4 End | Transition to S5 (`SKU-FASH2` Cargo Pants). Planned: 1.5m. | Click `Next segment` (`advance-btn`). NOW updates to `SKU-FASH2`. | Pin `SKU-FASH2` in Seller Center. Log cue action in LiveLift. | Transition within $\le 5$s. |
 | **13:15** | **$T_{\text{start}}(S5) + 45\text{s}$** | **INJECT D5 UNDER-RUN:** Host exhausts styling tips; signals early wrap. | Recognize pacing void ($T_{\text{detect}}$). Do NOT advance S6 early. | Transmit holding cue: `[HOLD: Minigame chia sẻ live giữ sóng đến 14:00]`. | **Closing Anchor held at 14:00:00**. |
-| **14:00** | **Absolute Wall-Clock** | **EVALUATE CLOSING ANCHOR:** Final closing window unlocks. | Click `Start Next segment`. NOW updates to `SYS-CLOSE2`. | Host begins outro and tomorrow teaser. | **$V_{\text{anchor}} \le 15\text{s}$**. |
+| **14:00** | **Absolute Wall-Clock** | **EVALUATE CLOSING ANCHOR:** Final closing window unlocks. | Click `Next segment` (`advance-btn`). NOW updates to `SYS-CLOSE2`. | Host begins outro and tomorrow teaser. | **$V_{\text{anchor}} \le 15\text{s}$**. |
 | **15:00** | Final Cutoff | Broadcast concludes. | Click `End LIVE` -> Confirm End. | Stream offline in OBS. Transition directly to `/review`. | Total runtime = $15\text{m}00\text{s} \pm 15\text{s}$. |
 
 ---
@@ -369,7 +370,7 @@ Once the broadcast ends, the operator completes the post-show workflow directly 
    - Evaluates proposed duration adjustments (e.g. extending hero demo duration, trimming buffer).
    - Toggles candidate change checkboxes.
    - The engine validates anchor feasibility in real time: if selected adjustments create an unavoidable conflict with committed promotional anchors, the system warns the operator and blocks starting an infeasible plan until resolved.
-3. Operator clicks **Create Next LIVE Plan** (`createNextLivePlan`).
+3. Operator clicks **Create Next LIVE Session** (`data-testid="create-next-live-cta-btn"`, calling `createNextSession`).
    - A fresh session draft is created with new logical segment and cue IDs.
    - Baseline durations reflect approved changes; execution actuals and events are cleanly initialized to empty.
 4. Proctor records $T_{\text{next\_plan}}$ upon plan completion and verifies plan feasibility ($F_{\text{next}} \in \{0, 1\}$).

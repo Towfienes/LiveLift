@@ -18,7 +18,7 @@ This specification establishes the authoritative, preregistered quantitative pas
 ### 1.1 The Preregistration Principle
 In behavioral and operational systems research, adjusting evaluation thresholds after observing experimental data (*p-hacking* or goalpost shifting) invalidates scientific and commercial claims. To ensure complete auditability:
 1. **Pre-Experimental Freeze:** All numeric criteria, percentage improvements, and disqualification triggers in this document are frozen prior to participant testing.
-2. **Deterministic Gate Mapping:** Every experimental outcome deterministically maps to one of three strategic decisions: **BUILD (Advance to Phase 1 Single-Device Build)**, **PIVOT (Scoped Operational Reframing)**, or **KILL / DO NOT ADVANCE TO PHASE 1**.
+2. **Deterministic Gate Mapping:** Every experimental outcome deterministically maps to one of four hierarchical outcomes: **REPAIR / RETEST (Engineering Defect Gate: T3 Lost Command, T4 Crash/Lockup)**, **KILL / DO NOT ADVANCE TO PHASE 1 (Substantive Falsification Gate: K1–K4, K6)**, **PIVOT (Scoped Operational Reframing: Pivot A/B/C)**, or **BUILD (Advance to Phase 1 Single-Device Build)**.
 3. **No Retrospective Exceptions:** A failure on any primary threshold or hard disqualification trigger cannot be overridden by favorable subjective opinions or secondary metrics.
 
 ```
@@ -31,17 +31,21 @@ In behavioral and operational systems research, adjusting evaluation thresholds 
 |                       ┌──────────────────────────┴──────────────────────────┐                      |
 |                       ▼                                                     ▼                      |
 |          [ ZERO-TOLERANCE AUDIT ]                                [ QUANTITATIVE METRICS ]          |
-|          4 Hard Disqualification Triggers                        10 Operational Dimensions         |
-|          (Anchor Shift, False Action,                            (Wilcoxon Signed-Rank Test)       |
-|           Command Loss, Crash)                                              │                      |
+|          4 Hard Triggers (T1..T4)                                10 Operational Dimensions         |
+|          - T1: Silent Shift / T2: False Action                   (Wilcoxon Signed-Rank Test)       |
+|          - T3: Lost Command / T4: Crash                                     │                      |
 |                       │                                                     │                      |
-|         ANY TRIGGER   │ ALL PASS                                            │                      |
-|         ACTIVATED?    │                                                     │                      |
-|           ┌───────────┴───────────┐                                         │                      |
-|           ▼                       ▼                                         │                      |
-|     [ HARD FAIL ]        [ EVALUATE THRESHOLDS ] <──────────────────────────┘                      |
-|    Automatic Disqual.    - Primary Gates (Core Desk)                                               |
-|    -> KILL / PIVOT       - Secondary Gates (Host & Prep)                                           |
+|      ┌────────────────┴────────────────┐                                    │                      |
+|      ▼ (T3/T4 Crash / Lost Command)    ▼ (T1/T2 Substantive Falsification)  │                      |
+| [ REPAIR / RETEST ]             [ HARD FAIL / KILL ]                        │                      |
+| Engineering defect gate;        Substantive falsification (K2);             │                      |
+| (Persistent unreliability       Do not advance to Phase 1.                  │                      |
+|   -> KILL K5)                                  │                            │                      |
+|                       ┌────────────────────────┘                            │                      |
+|                       ▼ (ALL ZERO-TOLERANCE TRIGGERS PASS)                  │                      |
+|             [ EVALUATE PREREGISTERED DIMENSIONS ] <─────────────────────────┘                      |
+|             - Primary Gates (Core Desk: D01..D06, D08..D10)                                        |
+|             - Decoupled Host Sub-Study (D07)                                                       |
 |                                   │                                                                |
 |                       ┌───────────┼───────────┐                                                    |
 |                       ▼           ▼           ▼                                                    |
@@ -66,7 +70,7 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 |    |                            |          |                        | <= 2.0m slower than Base | Delta_T_setup <= 2.0m            |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 02 | Schedule-Risk Awareness    | Primary  | Detection Latency (M2) | >= 80% recognized        | Count(T_detect <= 10.0s) /       |
-|    |                            |          | (Correct identification| in <= 10.0 seconds       |   N_disturbances >= 0.80         |
+|    |                            |          | (Correct identification| in <= 10.0 seconds       |   N_opp >= 0.80 (mapped opps)    |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 03 | Overrun Recovery Speed     | Primary  | Decision Latency (M3)  | Median >= 30.0% faster;  | Pct_Improve(T_decision) >= 30.0% |
 |    | & Constraint Validity      |          | & Validity Rate (M4)   | >= 90.0% valid choices   | AND R_valid >= 90.0%             |
@@ -78,8 +82,9 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 |    | & Plan-vs-Actual Accuracy  |          | & Capture Latency (M7) | Median <= 3.0s; >=90%<15s| Med(T_cap)<=3.0s & E_PVA<=10.0%  |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 06 | Operator Cognitive Burden  | Primary  | Raw NASA-TLX           | Median score >= 20.0%    | Pct_Improve(NASA_TLX) >= 20.0%   |
-|    |                            |          | Workload Scale (M9)    | lower (or within +/-5 pts| (p < 0.05) OR (|Delta|<=5 AND   |
-|    |                            |          |                        | with recovery p < 0.05)  |   recovery p < 0.05)             |
+|    |                            |          | Workload Scale (M9)    | lower (or non-inferior   | (p < 0.05) OR (Delta_TLX <= 0.0  |
+|    |                            |          |                        | Delta_TLX <= 0 with      | AND recovery p < 0.05            |
+|    |                            |          |                        | recovery p<0.05 & R>=90%)| AND R_valid >= 90.0%)            |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 07 | Host Coordination (P0.5)   | Gated    | Avoidable Cues (M8)    | >= 30.0% fewer messages; | Pct_Reduct(N_avoidable) >= 30.0% |
 |    | (Host View Sub-Study)      |          | & Comprehension        | >= 80% understood <= 5.0s| (or <=2 if Base=0) & T_comp<=5.0s|
@@ -88,7 +93,7 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 |    |                            |          | Accuracy (M10)         | faster; >= 90% facts ok  | AND A_facts >= 90.0%             |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 09 | Next LIVE Adaptation       | Primary  | Next LIVE Planning &   | <= 5.0m total, >= 30%    | T_plan <= 5.0m & Pct_Imp >= 30%  |
-|    |                            |          | Feasibility (M11)      | faster; >= 90% feasible  | AND Feas >= 90%; Total<=10.0m    |
+|    |                            |          | Feasibility (M11)      | faster; >= 90% feasible  | AND Feas >= 90%; Total<=5.0m     |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 10 | Subjective Adoption Choice | Primary  | Forced-Choice Probe    | >= 70.0% of operators    | N_choose_LiveLift / N_operators  |
 |    |                            |          | (Operator & Host Team) | voluntarily choose desk  |   >= 0.70                        |
@@ -115,10 +120,13 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 ### 3.2 Dimension 2: Schedule-Risk Detection Latency ($T_{\text{detect}}$, Metric M2)
 * **Operational Rationale:** Detecting an emerging schedule deficit early allows gentle, non-disruptive compression of upcoming buffers. Detecting it late causes catastrophic panic, emergency cutting of hero products, or missed promotions.
 * **Numeric Boundary:**
-  $$\frac{\sum_{i=1}^{N_{\text{trials}}} \mathbf{1}(T_{\text{detect}, i} \le 10.0\text{s})}{N_{\text{trials}}} \ge 80.0\%$$
-* **Evaluation Method:** Stopwatch from mathematical deficit emergence to operator *correct identification* of the specific threatened anchor or deficit condition. Physical glance or cursor movement without verified identification is not scored as detection.
+  $$\frac{\sum_{i=1}^{N_{\text{opp}}} \mathbf{1}(T_{\text{detect}, i} \le 10.0\text{s})}{N_{\text{opp}}} \ge 80.0\%$$
+  where $N_{\text{opp}}$ is the authoritative count of scored recognition opportunities ($N_{\text{opp}} = N_{\text{scored\_trials}}$ for primary D1 overrun recognition; or total eligible disturbance instances for multi-disturbance audits). Unadministered or aborted trials are excluded from the denominator.
+* **Evaluation Method & Censoring Rules:** Stopwatch from mathematical deficit emergence to operator *correct identification* of the specific threatened anchor or deficit condition. Physical glance or cursor movement without verified identification is not scored as detection.
+  - *No Detection / Unobserved:* If the operator fails to detect the deficit before segment conclusion or anchor breach, $t_{\text{detect}} = \text{null}$, recorded as `CENSORED` ($T_{\text{detect}} = 120.0\text{s}$ timeout for ranking), and scored as $0$ in $\mathbf{1}(T_{\text{detect}} \le 10.0\text{s})$. Do not fabricate artificial timestamps.
+  - *No Action:* If detected but no recovery action is taken, $t_{\text{action}} = \text{null}$, scored as invalid recovery ($R_{\text{valid}} = 0$).
 * **Scoring Rubric:**
-  - `PASS`: At least $80.0\%$ of scored trials recognized with correct anchor identification within $\le 10.0$ seconds.
+  - `PASS`: At least $80.0\%$ of eligible recognition opportunities ($N_{\text{opp}}$) recognized with correct anchor identification within $\le 10.0$ seconds.
   - `MARGINAL`: $60.0\%\text{--}79.9\%$ recognized in $\le 10.0$s; indicates visual hierarchy ambiguity.
   - `FAIL`: $< 60.0\%$ recognized; baseline conditional formatting matches or outperforms LiveLift.
 
@@ -129,7 +137,8 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 * **Numeric Boundary:**
   $$\text{Percentage Improvement in Median } T_{\text{decision}} \ge 30.0\% \quad \text{and} \quad \text{Median } T_{\text{total}} \ge 30.0\% \text{ faster}$$
   $$R_{\text{valid}} \ge 90.0\%$$
-* **Evaluation Method:** Paired Wilcoxon signed-rank test comparing $T_{\text{decision}}$ and $T_{\text{total}}$ in seconds; constraint audit on all logged choices.
+* **Evaluation Method & Zero-Denominator Rule:** Paired Wilcoxon signed-rank test comparing $T_{\text{decision}}$ and $T_{\text{total}}$ in seconds; constraint audit on all logged choices.
+  - *Zero-Denominator Rule:* If no recovery decisions are attempted during an overrun trial ($N_{\text{decisions}} = 0$), $R_{\text{valid}} = 0.0\%$ (FAIL). An unhandled overrun cannot pass validity with an empty denominator.
 * **Scoring Rubric:**
   - `PASS`: Median recovery time $\ge 30.0\%$ faster than baseline AND $\ge 90.0\%$ of choices valid under constraints.
   - `MARGINAL`: Recovery is $10.0\%\text{--}29.9\%$ faster, or validity is $75.0\%\text{--}89.9\%$.
@@ -169,23 +178,26 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 
 ### 3.6 Dimension 6: Operator Cognitive Workload (NASA-TLX, Metric M9)
 * **Operational Rationale:** Live stream operators operate at near-total cognitive saturation. LiveLift must materially unload mental arithmetic and window-switching anxiety.
-* **Numeric Boundary (Including Preregistered Workload Alternative):**
-  $$\text{Workload Improvement: } \frac{\text{Median}(\text{TLX}_{\text{Base}}) - \text{Median}(\text{TLX}_{\text{LiveLift}})}{\text{Median}(\text{TLX}_{\text{Base}})} \times 100\% \ge 20.0\% \quad (p < 0.05)$$
-  $$\mathbf{OR} \quad |\text{Median}(\text{TLX}_{\text{LiveLift}}) - \text{Median}(\text{TLX}_{\text{Base}})| \le 5.0\text{ points} \quad \text{provided } p_{\text{recovery}} < 0.05$$
+* **Numeric Boundary (Including Preregistered Workload Non-Inferiority Alternative):**
+  $$\text{Primary Workload Improvement: } \frac{\text{Median}(\text{TLX}_{\text{Base}}) - \text{Median}(\text{TLX}_{\text{LiveLift}})}{\text{Median}(\text{TLX}_{\text{Base}})} \times 100\% \ge 20.0\% \quad (p < 0.05)$$
+  $$\mathbf{OR} \quad \text{Non-Inferiority Alternative: } \text{Median}(\text{TLX}_{\text{LiveLift}}) \le \text{Median}(\text{TLX}_{\text{Base}}) \quad (\Delta\text{TLX} \le 0.0, \text{ zero workload increase})$$
+  $$\text{provided recovery decision latency } T_{\text{decision}} \text{ demonstrates statistically significant improvement } (p < 0.05) \text{ AND } R_{\text{valid}} \ge 90.0\%$$
 * **Evaluation Method:** Raw NASA-TLX 6-dimensional scale (0–100) administered immediately post-trial; paired difference evaluated via Wilcoxon signed-rank test ($\alpha = 0.05$).
 * **Scoring Rubric:**
-  - `PASS`: Statistically significant reduction in median workload of $\ge 20.0\%$ ($p < 0.05$), OR no-worse workload ($\pm 5.0$ points) with statistically significant recovery latency superiority ($p < 0.05$).
+  - `PASS`: Statistically significant reduction in median workload of $\ge 20.0\%$ ($p < 0.05$), OR non-inferior workload ($\Delta\text{TLX} \le 0.0$, zero workload increase) with statistically significant recovery decision velocity ($p < 0.05$) AND valid recovery choices $R_{\text{valid}} \ge 90.0\%$.
   - `MARGINAL`: Workload reduction of $5.0\%\text{--}19.9\%$, or non-significant trend ($p \ge 0.05$) without recovery significance.
-  - `FAIL`: Workload reduction $< 5.0\%$ without recovery superiority, or LiveLift workload is significantly higher than baseline.
+  - `FAIL`: Workload reduction $< 5.0\%$ without recovery superiority, OR any workload increase ($\Delta\text{TLX} > 0.0$, including $+3$ or $+5$ points), activating Termination Trigger K3.
 
 ---
 
 ### 3.7 Dimension 7: Host Coordination & Comprehension (Metric M8, Host View Gated Sub-Study)
 * **Operational Rationale:** Talent on camera must not be distracted by chat notifications or verbose instructions. The Host View must provide glanceable, atomic cues that reduce communication clutter without harming delivery.
-* **Numeric Boundary:**
+* **Numeric Boundary & Zero-Handling Rules:**
   $$\text{Avoidable Message Reduction Rate} \ge 30.0\% \quad (\text{or } N_{\text{avoidable, LiveLift}} \le 2 \text{ if Baseline } = 0)$$
   $$\frac{\sum \mathbf{1}(T_{\text{comprehend}} \le 5.0\text{s})}{N_{\text{cues}}} \ge 80.0\%$$
   $$N_{\text{speech\_stumbles\_caused\_by\_cue}} = 0$$
+  - *Zero-Baseline Rule for Avoidable Messages:* If baseline avoidable messages $N_{\text{avoidable, Base}} = 0$, percentage reduction is undefined ($0/0$); LiveLift passes if $N_{\text{avoidable, LiveLift}} \le 2$ messages (maintaining near-zero disruption). If $N_{\text{avoidable, LiveLift}} > 2$, it is scored as a coordination regression (FAIL).
+  - *Zero-Denominator Rule for Cue Comprehension:* If $N_{\text{cues}} = 0$ due to cue dispatch failure during a trial, cue comprehension is scored as $0.0\%$ (FAIL); if zero cues were planned in a control run, it is marked N/A.
 * **Gated Architecture:** Host View (P0.5) is evaluated as an **independent, decoupled sub-study**. If Host View fails to achieve these thresholds, it is eliminated or pivoted to Desk-Only (Pivot A), without invalidating the core Operator Desk (P0).
 * **Scoring Rubric:**
   - `PASS`: $\ge 30.0\%$ fewer avoidable messages (or $\le 2$ if baseline is 0), $\ge 80.0\%$ cues comprehended in $\le 5$s, and zero delivery degradation.
@@ -198,10 +210,10 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 * **Numeric Boundary:**
   $$\text{Total Review Duration } (T_{\text{recon}}) \le 5.0\text{ minutes}$$
   $$\text{Percentage Improvement in Median } T_{\text{recon}} \ge 30.0\%$$
-  $$A_{\text{facts}} \ge 90.0\% \quad (\ge 9 \text{ out of 10 standardized probes correct})$$
-* **Evaluation Method:** Timed 5-minute reconciliation task followed by standardized 10-question factual audit.
+  $$A_{\text{facts}} \ge 80.0\% \quad (\ge 4 \text{ out of 5 standardized probes correct per trial; } \ge 90.0\% \text{ pooled across paired trials})$$
+* **Evaluation Method:** Timed 5-minute reconciliation task followed by standardized 5-question factual audit administered per trial (matching the 5 probes in the task scripts; 10 probes pooled across the paired trial battery).
 * **Scoring Rubric:**
-  - `PASS`: Review completed $\le 5.0$m, median $\ge 30.0\%$ faster than baseline, and $A_{\text{facts}} \ge 90.0\%$.
+  - `PASS`: Review completed $\le 5.0$m, median $\ge 30.0\%$ faster than baseline, and $A_{\text{facts}} \ge 80.0\%$ per trial ($\ge 90.0\%$ pooled).
   - `MARGINAL`: Review takes $5.1\text{--}8.0$m, or accuracy is $75.0\%\text{--}89.9\%$.
   - `FAIL`: Review takes $> 8.0$m, or accuracy is $< 75.0\%$; review engine untrustworthy.
 
@@ -213,10 +225,10 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
   $$\text{Next LIVE Planning Time } (T_{\text{plan}}) \le 5.0\text{ minutes}$$
   $$\text{Percentage Improvement in Median } T_{\text{plan}} \ge 30.0\%$$
   $$\text{Plan Feasibility Rate } (\text{Feas}) \ge 90.0\% \quad (\text{Respects all floors and anchors})$$
-  $$\text{Total Post-Show Envelope: } T_{\text{recon}} + T_{\text{plan}} \le 10.0\text{ minutes} \quad (\text{Target } \le 5.0\text{m in LiveLift})$$
+  $$\text{Total Post-Show Envelope: } T_{\text{recon}} + T_{\text{plan}} \le 5.0\text{ minutes total}$$
 * **Evaluation Method:** Timed 5-minute next-plan adaptation task followed by mathematical constraint verification of the resulting draft rundown.
 * **Scoring Rubric:**
-  - `PASS`: $T_{\text{plan}} \le 5.0$m, median $\ge 30.0\%$ faster than baseline, $\text{Feas} \ge 90.0\%$, and total post-show duration $T_{\text{recon}} + T_{\text{plan}} \le 10.0$m.
+  - `PASS`: $T_{\text{plan}} \le 5.0$m, median $\ge 30.0\%$ faster than baseline, $\text{Feas} \ge 90.0\%$, and total combined post-show duration $T_{\text{recon}} + T_{\text{plan}} \le 5.0$m.
   - `MARGINAL`: Planning takes $5.1\text{--}8.0$m, or feasibility is $75.0\%\text{--}89.9\%$.
   - `FAIL`: Planning takes $> 8.0$m, or $\text{Feas} < 75.0\%$; planning engine generates broken schedules.
 
@@ -307,13 +319,15 @@ Regardless of aggregate quantitative metric performance, the activation of any o
 +-------------------+----------------------------+---------------------------------------------------+
 | Gate Level        | Scope & Timing             | Evaluation Criteria                               |
 +-------------------+----------------------------+---------------------------------------------------+
-| **Gate G0**       | Laboratory Phase 0 Trial   | Must pass Thresholds 01 through 09 AND zero       |
-| (Validation Gate) | (Fixture UI + WoZ Engine)  | triggers T1–T4.                                   |
+| **Gate G0**       | Laboratory Phase 0 Trial   | Must pass Thresholds 01 through 10 (including      |
+| (Validation Gate) | (Fixture UI + WoZ Engine)  | Threshold 10: Operator Preference >= 70.0%)        |
+|                   |                            | AND zero disqualification triggers T1–T4.          |
 |                   |                            | Authorizes Phase 1 Single-Device Engineering.     |
 +-------------------+----------------------------+---------------------------------------------------+
-| **Gate G1**       | In-Vivo Phase 1 Pilot      | Must pass Gate G0 metrics in live studio setting  |
-| (Functional Gate) | (Local SQLite/IndexedDB)   | AND pass Threshold 10 (>=3 teams, >=3 shows).     |
-|                   |                            | Authorizes Phase 2 Multi-Tenant / Server Pilot.   |
+| **Gate G1**       | In-Vivo Phase 1 Pilot      | Must maintain Gate G0 metrics in live studio      |
+| (Functional Gate) | (Local SQLite/IndexedDB)   | setting AND pass In-Vivo Repeat Use Acceptance    |
+|                   |                            | (>= 3 distinct teams, >= 3 live shows each).      |
+|                   |                            | Authorizes Phase 2 One-Room Server Architecture.  |
 +-------------------+----------------------------+---------------------------------------------------+
 ```
 

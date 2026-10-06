@@ -61,7 +61,7 @@ To enable high-fidelity evaluation without imposing the physical and mental exha
                     ^               ^              ^                 ^            ^
                  04:30:          06:30:         09:00:00:         S4+1m15s:    14:00:00:
                  [CHAT STIMULUS] [EVAL D1]      [EVAL D2]         [INJECT D3]  [EVAL CLOSE]
-                 Host stimulated 30s deficit    Did Flash start   Stockout!    End adherence
+                 Host stimulated 90s deficit    Did Flash start   Stockout!    End adherence
                  to pitch deep   vs Anchor 1    at 09:00:00?      Pull S5?     at 14:00:00
 ```
 

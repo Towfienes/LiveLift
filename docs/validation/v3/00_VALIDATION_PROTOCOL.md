@@ -115,7 +115,7 @@ To eliminate order effects, asymmetric skill transfer, and fatigue bias, partici
 | **Cohort 1** | $A \rightarrow B$ | Condition A (LiveLift) | Scenario 1 (Cosmetics) | Condition B (Baseline) | Scenario 2 (Fashion/Tech) | $n = 3\text{--}5$ pairs |
 | **Cohort 2** | $B \rightarrow A$ | Condition B (Baseline) | Scenario 1 (Cosmetics) | Condition A (LiveLift) | Scenario 2 (Fashion/Tech) | $n = 3\text{--}5$ pairs |
 
-* **Scenario Difficulty Parity & Temporal Permutation:** Scenario 1 and Scenario 2 maintain equivalent cognitive difficulty, identical segment count ($N=6$), identical total buffer allocations ($5.0\text{m}$), and two hard promotion anchors. However, to eliminate temporal anticipation and order-transfer bias, **Scenario 2 features permuted disturbance placements and injection timings** (e.g., in Scenario 2, D1 Overrun occurs on Segment 3 at $T=06:15$; Hard Anchor 1 occurs at $T=10:30$; Stockout occurs on Segment 2 at $T=03:45$; Console Lag occurs on Segment 4; Under-run occurs on Segment 5). This ensures operators in Trial 2 cannot predict disturbance onsets based on Trial 1 elapsed time.
+* **Scenario Difficulty Parity & Temporal Permutation:** Scenario 1 and Scenario 2 maintain equivalent cognitive difficulty, identical segment count ($N=6$), identical total buffer allocations ($5.0\text{m}$), and two hard promotion anchors. However, to eliminate temporal anticipation and order-transfer bias, **Scenario 2 features permuted disturbance placements and injection timings** (e.g., in Scenario 2, D1 Overrun occurs on Segment 3 stimulated at $T=06:00$ with deficit evaluated at $T=09:30$; Hard Anchor 1 occurs at $T=10:30$; Stockout occurs on Segment 2 at $T=03:15$ with transition at $03:30$; Console Lag occurs on Segment 4; Under-run occurs on Segment 5 at $T=13:15$). This ensures operators in Trial 2 cannot predict disturbance onsets based on Trial 1 elapsed time.
 * **Expanded Washout Interval & Active Distractor Task:** To eliminate cognitive carryover and temporal rehearsal between trials, the inter-trial washout is expanded to **10–15 minutes** (replacing brief 5-minute pauses). The washout includes the administration of the Trial 1 NASA-TLX survey in a separate physical/screen space followed by an active 5-minute cognitive distractor task (reviewing an unrelated catalog formatting sheet) completely disconnected from countdown timers and broadcast rundowns.
 
 ---
@@ -131,15 +131,15 @@ In strict compliance with the **Integrity Mandate** and the rule that *"Never pr
 | **Run of Show Ordering & Readiness** | `IMPLEMENTED` | Segment creation, reordering, and anchor conflict detection in `PrepareRos.tsx` and `plan.ts`. | Participant reviews segment sequence; invalid anchor states block Start until resolved. |
 | **Active Segment Tracking (NOW)** | `IMPLEMENTED` | Rendered in `NowPanel.tsx`. Real-time countdown and active target telemetry. | Displayed live during test. Driven by system clock with discontinuity detection. |
 | **Segment Transitions & Timing Commands**| `IMPLEMENTED` | Commands in `engine.ts` (`start_live`, `advance_segment`, `extend_segment`, `commit_end_by`, `reanchor_segment`, `end_live`). | Operator issues explicit runtime timing adjustments via UI desk. |
-| **Manual Cue Action Reporting** | `IMPLEMENTED` | Component `CueBar.tsx` and `OperateDialogs.tsx`; command `report_cue_action` in `engine.ts`. | Operator logs external promotional pin attempts (`attempted`, `performed`, `cancelled`). |
-| **Operator Note Capture** | `IMPLEMENTED` | Dialog in `OperateDialogs.tsx`; command `record_note` in `engine.ts`. | Operator logs runtime context; persisted immutably in session history. |
+| **Manual Cue Action Reporting** | `IMPLEMENTED` | Component `CueBar.tsx` and `OperateDialogs.tsx`; command `report_cue` in `engine.ts`. | Operator logs external promotional pin attempts (`attempted`, `performed`, `cancelled`). |
+| **Operator Note Capture** | `IMPLEMENTED` | Dialog in `OperateDialogs.tsx`; command `add_note` in `engine.ts`. | Operator logs runtime context; persisted immutably in session history. |
 | **Dynamic Rolling Forecast Engine** | `IMPLEMENTED` | Engine in `next/src/lib/domain/forecast.ts` (`forecastSession`). | Recalculates projected starts/ends from actual boundaries and explicit remaining estimates; holds at hard anchors. |
-| **Constraint-Aware Recovery Drawer** | `IMPLEMENTED` | Algorithm in `next/src/lib/domain/recovery.ts` (`analyzeRecovery`); UI in `OperateDialogs.tsx`. | Evaluates candidate clean recovery plans (shorten, skip, end-by, reanchor); surfaces status and protects anchors. |
+| **Constraint-Aware Recovery Drawer** | `IMPLEMENTED` | Algorithm in `next/src/lib/domain/recovery.ts` (`analyzeRecovery`); UI in `NextPanel.tsx` / `OperateDialogs.tsx`. | Evaluates candidate clean recovery plans (shorten, skip, end-by, reanchor); surfaces status and protects anchors. |
 | **Durable Local Storage Authority** | `IMPLEMENTED` | Module `next/src/lib/store/sessionStore.ts` backed by browser `localStorage` with revision checks. | Revision-checked guarded persistence; rehydration preserves complete state on browser reload. |
 | **Plan-vs-Actual Review Workspace** | `IMPLEMENTED` | View in `/live/[sessionId]/review`; table in `ReviewTable.tsx`; domain logic in `review.ts`. | Automatically compiles actual durations, variances, anchor drift, and execution outcomes upon ending tracking. |
-| **Next LIVE Adaptation Generator** | `IMPLEMENTED` | Panel in `NextLivePanel.tsx`; domain logic in `nextLive.ts` (`createNextLivePlan`). | Operator selects reviewed trade-offs; generates new draft session shell with anchor feasibility validation. |
-| **Deterministic Rehearsal Scenarios** | `SIMULATED` | Scenarios `sim-1`, `sim-2`, `sim-3` in `next/src/lib/domain/scenarios.ts`; view in `/simulator`. | Repeatable rehearsal scripts executed on the shared domain engine with explicit virtual clock stepping. |
-| **Sample Product Catalogs** | `SIMULATED` | Fixtures in `next/src/fixtures/library.ts`. | Provides standard cosmetics, fashion, and tech SKUs for test runs. Disclosed as sample data. |
+| **Next LIVE Adaptation Generator** | `IMPLEMENTED` | Panel in `NextLivePanel.tsx`; domain logic in `nextLive.ts` (`createNextSession`). | Operator selects reviewed trade-offs; generates new draft session shell with anchor feasibility validation. |
+| **Deterministic Rehearsal Scenarios** | `SIMULATED` | Scenarios `buffered`, `missed`, `minimum` (sessions `sim-buffered`, etc. in `scenarios.ts`); view in `/simulator`. | Repeatable rehearsal scripts executed on the shared domain engine with explicit virtual clock stepping. |
+| **Sample Product Catalogs** | `SIMULATED` | Fixtures in `next/src/fixtures/library.ts` (built-in fashion); study cosmetics/tech packs imported via `/prepare`. | Pre-loaded via Prepare import flow (`import-btn` / `parseProductRows`) for test runs. Disclosed as sample data. |
 | **Dedicated Host View Screen Sync** | `WIZARD-OF-OZ` | No network prompter sync route exists in `next/`. | Host participant displays cue tablet updated via facilitator proctor mirror. |
 | **Native TikTok Shop Pinning Action** | `WIZARD-OF-OZ` | No native TikTok Seller Center integration. | Facilitator simulates native Seller Center pin states and console network latency (40s lag). |
 | **Automated Native TikTok Pinning** | `NOT AVAILABLE` | Excluded by Master Roadmap §6, §7, §28. | Excluded from test. Native actions remain manual on phone/tablet or simulated in Seller Center. |
@@ -216,7 +216,7 @@ To evaluate live operational performance without imposing the logistical and cog
                     ^               ^              ^                 ^            ^
                  04:30:          06:30:         09:00:00:         S4+1m15s:    14:00:00:
                  [CHAT STIMULUS] [EVAL D1]      [EVAL D2]         [INJECT D3]  [EVAL CLOSE]
-                 Host stimulated 30s deficit    Did Flash start   Stockout!    End adherence
+                 Host stimulated 90s deficit    Did Flash start   Stockout!    End adherence
                  to pitch deep   vs Anchor 1    at 09:00:00?      Pull S5?     at 14:00:00
 ```
 
@@ -249,7 +249,7 @@ Every trial incorporates five realistic operational disturbances. To prevent tim
 | D2: Hard Promotion Anchor Deficit | Absolute Wall-Clock Commitment             | T = 09:00:00 | Platform Campaign Sync / Deal Start Instant|
 | D3: Abrupt Mid-Pitch Stockout     | T_start(S4) + 1m15s (Flash Deal underway)  | T = 10:15    | Inventory Depletion / Emergency Pivot     |
 | D4: Platform Console / Tech Lag   | Dynamic Transition into Segment 5 (S5 Entry)| T ≈ 10:30-12 | Operator Execution Gap / Console Pin Lag  |
-| D5: Host Under-run / Script Stall | T_start(S5) + 1m00s (S5 remaining = 1.0m)  | T ≈ 11:30-13 | Pacing Void before Closing Anchor 2       |
+| D5: Host Under-run / Script Stall | T_start(S5) + 1m30s in S1; +45s in S2      | T ≈ 12:00-13 | Pacing Void before Closing Anchor 2       |
 +-----------------------------------+--------------------+------------------------+-------------------------------------------+
 ```
 
@@ -258,7 +258,7 @@ Every trial incorporates five realistic operational disturbances. To prevent tim
 1. **D1: Upstream Pitch Overrun (Stimulus at $T = 04:30$; Deficit at $T = 06:30$):**
    - *Natural Participant Stimulus:* The on-camera host is an authentic, unblinded experimental subject. Rather than deceptive scripting or artificial actor cues, the facilitator injects an urgent mock audience inquiry into the host's studio chat feed at $T = 04:30$ (*"Shop ơi test chất kem lên da ngăm và so sánh với bản cũ giúp em với ạ!"*).
    - This naturally engages the host, causing the pitch to extend past the planned 06:00 mark.
-   - At show clock $T = 06:30$ ($T_{\text{start}}(S2) + 4\text{m}30\text{s}$), remaining floating time exceeds available downstream buffers, creating a 30-second projected deficit against Anchor 1 ($09:00:00$). The operator must recognize the deficit, evaluate buffer compression options on Segment 3 (Toner), and issue a transition cue.
+   - At show clock $T = 06:30$ ($T_{\text{start}}(S2) + 4\text{m}30\text{s}$), host signals 1m remaining, extending Serum to 07:30. With Toner at 3.0m, projected Flash Sale is 10:30, creating a **90-second ($1.5\text{m}$) projected deficit** against Anchor 1 ($09:00:00$). The operator must recognize the deficit, evaluate buffer compression options on Segment 3 (Toner), and issue a transition cue.
 2. **D2: Hard Promotion Anchor Synchronization (at committed wall-clock $T = 09:00:00$):**
    - At exactly 09:00:00, the platform flash sale unlocks in Seller Center. The observer logs whether the operator gave a pre-cue to the host at $08:30$ and whether the transition to Segment 4 occurred within $\le 15$ seconds of $09:00:00$.
 3. **D3: Abrupt Mid-Pitch Stockout (State-Relative: at $T_{\text{start}}(S4) + 1\text{m}15\text{s}$; Nominal $T = 10:15$):**
@@ -268,8 +268,8 @@ Every trial incorporates five realistic operational disturbances. To prevent tim
    - *State Anchor:* Injected dynamically at the exact second the operator initiates the transition into Segment 5 (whether pulled forward early at $T \approx 10:30$ or on schedule at $T = 12:00$).
    - A 40-second network spinner is simulated during product pinning in Seller Center. The operator must issue a holding cue to the host (`[HOLD: Minigame/Tương tác]`) to prevent dead air while waiting for the pin to resolve.
    - *Desynchronization Prevention:* Because D4 is anchored to S5 entry rather than a hardcoded wall-clock time, it is guaranteed to occur during active product pinning, preventing the fatal flaw of injecting a pin lag after the product was already pinned.
-5. **D5: Host Under-run / Script Stall (State-Relative: at $T_{\text{start}}(S5) + 1\text{m}00\text{s}$ / S5 Remaining Duration = 1.0m):**
-   - *State Anchor:* Injected dynamically when Segment 5 reaches 1.0 minute remaining duration relative to its dynamic start time.
+5. **D5: Host Under-run / Script Stall (State-Relative: at $T_{\text{start}}(S5) + 1\text{m}30\text{s}$; Nominal $T = 12:00$):**
+   - *State Anchor:* Injected dynamically when Segment 5 reaches elapsed 1.5 minutes relative to its dynamic start time (at nominal $T = 12:00$).
    - The host, having covered key talking points, indicates they are ready to wrap early. This opens a potential schedule void before the immutable $14:00:00$ closing anchor ($T_{\text{start}}(S6)$).
    - The operator must detect the impending void and cue an impromptu audience Q&A or voucher teaser to hold the airwaves until the $14:00:00$ closing anchor.
 
@@ -279,11 +279,11 @@ To prevent participants from anticipating disturbance timestamps during their se
 
 | Disturbance | Scenario 1 Placement (Cosmetics) | Scenario 2 Permuted Placement (Fashion/Tech) |
 |---|---|---|
-| **D1: Pitch Overrun** | Segment 2 (`SKU-SERUM`), stimulated at $T=04:30$, deficit at $06:30$ | Segment 3 (`SKU-TECH2`), stimulated at $T=06:15$, deficit at $07:45$ |
+| **D1: Pitch Overrun** | Segment 2 (`SKU-SERUM`), stimulated at $T=04:30$, deficit evaluated at $06:30$ | Segment 3 (`SKU-TECH2`), stimulated at $T=06:00$, deficit evaluated at $T=09:30$ (+45s deficit) |
 | **D2: Hard Anchor 1** | Segment 4 (`SKU-KEMD`), locked at $T = 09:00:00$ | Segment 4 (`SKU-FASH1`), locked at $T = 10:30:00$ |
-| **D3: Stockout Pivot** | Segment 4, triggered at $T_{\text{start}}(S4) + 1\text{m}15\text{s}$ | Segment 2, triggered at $T_{\text{start}}(S2) + 1\text{m}45\text{s}$ ($T \approx 03:45$) |
+| **D3: Stockout Pivot** | Segment 4, triggered at $T_{\text{start}}(S4) + 1\text{m}15\text{s}$ | Segment 2, triggered at $T_{\text{start}}(S2) + 1\text{m}45\text{s}$ ($T = 03:15$, transition at $03:30$) |
 | **D4: Console Pin Lag** | Injected upon entry into Segment 5 | Injected upon entry into Segment 4 (Anchor Flash Pin) |
-| **D5: Host Under-run** | Injected at $T_{\text{start}}(S5) + 1\text{m}00\text{s}$ | Injected at $T_{\text{start}}(S5) + 45\text{s}$ |
+| **D5: Host Under-run** | Injected at $T_{\text{start}}(S5) + 1\text{m}30\text{s}$ ($T = 12:00$) | Injected at $T_{\text{start}}(S5) + 45\text{s}$ ($T = 13:15$) |
 
 This temporal permutation completely eliminates order carryover and memorization bias, ensuring that detection latency and recovery decisions measured in Trial 2 reflect authentic operational agility.
 

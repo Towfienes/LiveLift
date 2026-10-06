@@ -98,7 +98,7 @@ In compliance with the requirement that *"Never pretend unfinished functionality
 | 06 | Constraint-Aware Recovery Engine| IMPLEMENTED    | analyzeRecovery()                   | [ ] Verified Genuine |
 | 07 | Durable Local Storage Authority| IMPLEMENTED     | SessionStore (browser localStorage) | [ ] Verified Genuine |
 | 08 | Plan-vs-Actual Review Table    | IMPLEMENTED     | buildReview() / UI                  | [ ] Verified Genuine |
-| 09 | Next LIVE Plan Adaptation Gen  | IMPLEMENTED     | createNextLivePlan()                | [ ] Verified Genuine |
+| 09 | Next LIVE Plan Adaptation Gen  | IMPLEMENTED     | createNextSession()                 | [ ] Verified Genuine |
 | 10 | Deterministic Rehearsals       | SIMULATED       | scenarios.ts                        | [ ] Verified Genuine |
 | 11 | Sample Product Catalogs        | SIMULATED       | library.ts fixtures                 | [ ] Verified Genuine |
 | 12 | Dedicated Host View Screen Sync| WIZARD-OF-OZ    | Facilitator Tablet                  | [ ] Verified Genuine |
@@ -137,10 +137,10 @@ Aggregates empirical results across all participant trials against the 10 prereg
 |    | Comprehension Latency      | _____s (___)  | _____s (___)  | _____s   | _____%      | >=80% in <=5s       | [ ] PASS  [ ] FAIL |
 |    | Speech Stumbles / Glaze    | _____ events  | _____ events  | _____    | _____       | 0 delivery regress  | [ ] PASS  [ ] FAIL |
 | 08 | PVA Reconstruction (M10)   | _____m (___)  | _____m (___)  | _____m   | _____%      | <=5m; >=30% faster  | [ ] PASS  [ ] FAIL |
-|    | Review Fact Accuracy       | _____ %       | _____ %       | _____%   | _____%      | >=90% facts correct | [ ] PASS  [ ] FAIL |
+|    | Review Fact Accuracy       | _____ %       | _____ %       | _____%   | _____%      | >=80% (>=90% pooled)| [ ] PASS  [ ] FAIL |
 | 09 | Next LIVE Adaptation (M11) | _____m (___)  | _____m (___)  | _____m   | _____%      | <=5m; >=30% faster  | [ ] PASS  [ ] FAIL |
 |    | Next Plan Feasibility Rate | _____ %       | _____ %       | _____%   | _____%      | >=90% feasible plans| [ ] PASS  [ ] FAIL |
-|    | Combined Post-Show Envelope| _____m (___)  | _____m (___)  | _____m   | _____%      | Total <=10m (<=5m A)| [ ] PASS  [ ] FAIL |
+|    | Combined Post-Show Envelope| _____m (___)  | _____m (___)  | _____m   | _____%      | Total <=5.0m        | [ ] PASS  [ ] FAIL |
 | 10 | Subjective Adoption Choice | _____ %       | _____ %       | _____%   | _____       | >=70% choose desk   | [ ] PASS  [ ] FAIL |
 | -- | Voluntary Repeat Use (G1)  | [ Field Gate: N/A in Phase 0 Laboratory Trials — Evaluated at G1 ] | >=3 teams, >=3 runs | [ ] PENDING G1     |
 +----+----------------------------+---------------+---------------+----------+-------------+---------------------+--------------------+
