@@ -26,6 +26,7 @@ import IntegrationsPage from "@/app/integrations/page";
 import { sessionStore } from "@/lib/store/sessionStore";
 import { remoteRoomStore } from "@/lib/store/remoteRoomStore";
 import { FakeRoom } from "./helpers/fakeRoom";
+import { resetCapabilityCache } from "@/lib/client/capability";
 import { snapshotProducts } from "@/fixtures/library";
 import type { Session } from "@/contracts";
 import { scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
@@ -97,6 +98,8 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  sessionStorage.clear();
+  resetCapabilityCache();
   localStorage.clear();
   remoteRoomStore.reset();
   sessionStore.reloadFromStorage();
@@ -715,6 +718,8 @@ describe("UI-09: a REAL clock behind recorded time is surfaced, not silently app
     room.clockBehindByMs = 10 * 60_000; // the room's clock is 10 minutes behind time it already recorded
     await renderPage(OperatePage as PageComponent, "real-1");
     expect(await screen.findByTestId("clock-discontinuity")).toHaveTextContent("The room's clock is behind recorded time by");
+    // serverNowMs is already the corrected time: the 10-minute gap is disclosed, never added to what the desk shows.
+    expect(screen.getByTestId("elapsed-runtime-clock")).toHaveTextContent(/^0:\d\d$/);
     const record = screen.getByTestId("clock-discontinuity-record-btn");
     await waitFor(() => expect(record).not.toBeDisabled());
     await act(async () => {

@@ -1,5 +1,6 @@
 import { SessionSchema, type Session } from "@/contracts";
 import type { AuthorityReceipt, CommandEnvelope, CommandResponse, RoomRead } from "@/contracts/authority";
+import { getCapability } from "./capability";
 
 /**
  * Typed HTTP client for the frozen Phase 2 authority endpoints (docs/phase2/contract.md):
@@ -11,12 +12,16 @@ import type { AuthorityReceipt, CommandEnvelope, CommandResponse, RoomRead } fro
  * Wire types come from `@/contracts/authority`; nothing is redefined here. The client never decides what
  * a failure MEANS for a command: it only reports what it saw. In particular a timeout, a dropped connection or
  * a 5xx during a POST is `unknown` — the server may or may not have committed — and is never reported as rejected.
+ *
+ * Every request carries the active room capability as `Authorization: Bearer <capability>`, attached here and
+ * nowhere else (never in a URL, body, message or log). With no capability nothing is sent: that is the
+ * `unauthenticated` state, reported as such rather than as a network failure.
  */
 
 export const ROOM_PATH = "/api/v3/room";
 export const COMMANDS_PATH = "/api/v3/room/commands";
 
-export type TransportKind = "network" | "timeout" | "http" | "malformed";
+export type TransportKind = "network" | "timeout" | "http" | "malformed" | "unauthenticated";
 
 export interface TransportFailure {
   ok: false;
@@ -47,6 +52,8 @@ export interface AuthorityClientOptions {
   /** Abort a request after this long. Must be shorter than the 3 s staleness window to keep polling honest. */
   timeoutMs?: number;
   baseUrl?: string;
+  /** Where the active capability comes from. Defaults to this tab's capability (`./capability`). */
+  getCapability?: () => string | null;
 }
 
 export interface AuthorityClient {
@@ -114,7 +121,7 @@ function codeOf(body: unknown, status: number): string | null {
     if (typeof body.code === "string") return body.code;
     if (isRecord(body.error) && typeof body.error.code === "string") return body.error.code;
   }
-  return status === 401 || status === 403 ? "forbidden" : null;
+  return status === 401 ? "unauthorized" : status === 403 ? "forbidden" : null;
 }
 
 export function createAuthorityClient(options: AuthorityClientOptions = {}): AuthorityClient {
@@ -125,6 +132,8 @@ export function createAuthorityClient(options: AuthorityClientOptions = {}): Aut
   async function send(path: string, init: RequestInit): Promise<{ ok: true; status: number; body: unknown } | TransportFailure> {
     const fetchImpl = options.fetchImpl ?? (typeof fetch === "function" ? fetch : undefined);
     if (!fetchImpl) return { ok: false, kind: "network", status: null, message: "This browser cannot make network requests." };
+    const token = (options.getCapability ?? getCapability)();
+    if (!token) return { ok: false, kind: "unauthenticated", status: null, message: "This browser holds no room capability, so nothing was sent." };
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -134,8 +143,9 @@ export function createAuthorityClient(options: AuthorityClientOptions = {}): Aut
     try {
       const res = await fetchImpl(`${base}${path}`, {
         ...init,
+        headers: { ...(init.headers as Record<string, string>), authorization: `Bearer ${token}` },
         cache: "no-store",
-        credentials: "same-origin",
+        credentials: "omit",
         signal: controller.signal,
       });
       let body: unknown = null;
@@ -175,6 +185,8 @@ export function createAuthorityClient(options: AuthorityClientOptions = {}): Aut
         headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify(envelope),
       });
+      // Never transmitted without a capability: a definite "not sent", not an unknown outcome.
+      if (!res.ok && res.kind === "unauthenticated") return { kind: "refused", status: 401, code: "unauthorized", message: res.message };
       if (!res.ok) return { kind: "unknown", reason: res.kind, status: res.status, message: res.message };
       const body = res.body;
       if (isRecord(body) && isReceipt(body.receipt)) {

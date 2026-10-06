@@ -7,7 +7,7 @@ import type { Session } from "@/contracts";
 import { StandardShell } from "@/components/shell";
 import { Button } from "@/components/ui";
 import { remoteRoomStore } from "@/lib/store/remoteRoomStore";
-import { useSession, type SessionSource } from "@/lib/store/hooks";
+import { useRemoteState, useSession, type SessionSource } from "@/lib/store/hooks";
 
 export interface GateContext {
   /** Where this show's authority lives. REAL shows are "remote"; rehearsals and the local archive are "local". */
@@ -58,6 +58,7 @@ function Gate({
   const params = useSearchParams();
   const archive = params.get("archive") === "1";
   const lookup = useSession(id, { archive });
+  const auth = useRemoteState().auth;
 
   if (lookup.status === "loading") return <GateMessage busy>Loading show…</GateMessage>;
 
@@ -68,9 +69,11 @@ function Gate({
           <span className="text-[44px] text-[#F6C875]">
             <i className="ri-wifi-off-line" aria-hidden="true" />
           </span>
-          <h1 className="text-[28px] font-medium text-[#F5F7FC] mt-4">The room cannot be reached</h1>
+          <h1 className="text-[28px] font-medium text-[#F5F7FC] mt-4">
+            {auth === "missing" ? "A room capability is needed" : auth === "rejected" ? "The room did not accept this capability" : "The room cannot be reached"}
+          </h1>
           <p className="text-[16px] text-[#B7C1CE] mt-2 max-w-[560px]">
-            REAL shows live in the shared room, and LiveLift cannot reach it right now, so it cannot tell you whether{" "}
+            REAL shows live in the shared room, and LiveLift {auth === "ok" || auth === "unknown" ? "cannot reach it right now" : "has no accepted capability for it"}, so it cannot tell you whether{" "}
             <span className="font-mono text-[#F5F7FC]">{id}</span> exists. {lookup.reason}
           </p>
           <div className="mt-6 flex items-center gap-3">

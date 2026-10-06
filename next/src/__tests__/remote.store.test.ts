@@ -3,6 +3,9 @@ import { snapshotProducts } from "@/fixtures/library";
 import { SCENARIO_BY_ID, applyCommand, createSession } from "@/lib/domain";
 import { RemoteRoomStore, STALE_AFTER_MS } from "@/lib/store/remoteRoomStore";
 import { FakeRoom } from "./helpers/fakeRoom";
+import { clearCapability, resetCapabilityCache, setCapability } from "@/lib/client/capability";
+import { authorityNowMs } from "@/lib/client/authorityTime";
+import { toRuntimeBody } from "@/lib/client/commandText";
 
 const PENDING_KEY = "livelift.v3.remote.pending";
 
@@ -41,6 +44,8 @@ function makeStore(room: FakeRoom): RemoteRoomStore {
 }
 
 beforeEach(() => {
+  sessionStorage.clear();
+  resetCapabilityCache();
   perf = 1000;
   ids = 0;
   localStorage.clear();
@@ -430,5 +435,182 @@ describe("outcome unknown", () => {
     expect(state.unresolved).toHaveLength(0);
     expect(state.resolutions[0].text).toMatch(/outcome still unknown/);
     expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+  });
+});
+
+describe("bearer capability", () => {
+  it("every authority request carries the capability as a bearer header, and nowhere else", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    const store = makeStore(room);
+    store.acquire();
+    await store.refreshNow();
+    room.loseNextResponses = 1;
+    await store.submit(note("with a token")); // POST
+    await store.reconcile(); // GET receipt
+
+    const methods = new Set(room.requests.map((r) => `${r.method} ${r.path.split("?")[0].replace(/cmd-\d+/, "{id}")}`));
+    expect(methods).toEqual(new Set(["GET /api/v3/room", "POST /api/v3/room/commands", "GET /api/v3/room/commands/{id}"]));
+    for (const r of room.requests) expect(r.authorization).toBe(`Bearer ${room.token}`);
+    // Never in a URL, a command envelope, the pending record, or any state/message the UI can show or log.
+    expect(room.requests.some((r) => r.path.includes(room.token))).toBe(false);
+    expect(JSON.stringify(room.posts())).not.toContain(room.token);
+    expect(JSON.stringify(store.getSnapshot())).not.toContain(room.token);
+    expect(localStorage.getItem(PENDING_KEY) ?? "").not.toContain(room.token);
+    expect(JSON.stringify(room.sessions)).not.toContain(room.token); // not in session/domain history either
+  });
+
+  it("with no capability nothing is sent, and the state says authentication is missing — not 'unreachable'", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    const store = makeStore(room);
+    clearCapability();
+    store.acquire();
+    await store.refreshNow();
+    const state = store.getSnapshot();
+    expect(room.requests).toHaveLength(0);
+    expect(state.auth).toBe("missing");
+    expect(state.connection).toBe("disconnected");
+    expect(state.lastError).toMatch(/capability/i);
+    expect(await store.submit(note("no token"))).toMatchObject({ status: "refused", code: "not_connected" });
+    expect(room.posts()).toHaveLength(0);
+
+    setCapability(room.token); // entering it connects without a reload
+    await vi.advanceTimersByTimeAsync(0);
+    await store.refreshNow();
+    expect(store.getSnapshot().auth).toBe("ok");
+    expect(store.getSnapshot().connection).toBe("connected");
+  });
+
+  it("a capability the room does not accept is 'rejected' (401), truthfully, and never echoed", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    const store = makeStore(room);
+    setCapability("wrong-secret-value");
+    store.acquire();
+    await store.refreshNow();
+    const state = store.getSnapshot();
+    expect(room.requests[0].authorization).toBe("Bearer wrong-secret-value");
+    expect(state.auth).toBe("rejected");
+    expect(state.snapshot).toBeNull();
+    expect(JSON.stringify(state)).not.toContain("wrong-secret-value");
+
+    setCapability(room.token);
+    await vi.advanceTimersByTimeAsync(0);
+    await store.refreshNow();
+    expect(store.getSnapshot()).toMatchObject({ auth: "ok", connection: "connected" });
+  });
+
+  it("a capability revoked mid-session turns a command into a rejection, not an unknown outcome", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    const store = makeStore(room);
+    store.acquire();
+    await store.refreshNow();
+    room.token = "rotated"; // the room no longer accepts what this browser holds
+    const outcome = await store.submit(note("too late"));
+    expect(outcome).toMatchObject({ status: "rejected", code: "unauthorized" });
+    expect(store.getSnapshot().unresolved).toHaveLength(0);
+    expect(store.getSnapshot().auth).toBe("rejected");
+  });
+
+  it("switching capability drops what the previous identity saw; a viewer capability stays read-only", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    const store = makeStore(room);
+    store.acquire();
+    await store.refreshNow();
+    expect(store.getSnapshot().access?.role).toBe("operator");
+
+    room.token = "viewer-cap";
+    room.role = "viewer";
+    setCapability("viewer-cap");
+    expect(store.getSnapshot().snapshot).toBeNull(); // nothing carried over from the other identity
+    await vi.advanceTimersByTimeAsync(0);
+    await store.refreshNow();
+    expect(store.getSnapshot().access?.role).toBe("viewer");
+    expect(await store.submit(note("viewer"))).toMatchObject({ status: "refused", code: "read_only" });
+    expect(room.posts()).toHaveLength(0);
+  });
+});
+
+describe("recovery attribution", () => {
+  it("keeps recoveryId / recoveryLabel and still strips the local-only fields", () => {
+    const body = toRuntimeBody({ type: "commit_end_by", segmentId: "s:a", endByMs: 5, recoveryId: "end_by:a", recoveryLabel: "End Zip Hoodie by 20:12", key: "k", nowMs: 1, expectedRevision: 3, actor: "x" });
+    expect(body).toEqual({ type: "commit_end_by", segmentId: "s:a", endByMs: 5, recoveryId: "end_by:a", recoveryLabel: "End Zip Hoodie by 20:12" });
+    expect(toRuntimeBody({ type: "add_note", text: "plain" })).toEqual({ type: "add_note", text: "plain" }); // nothing is invented
+    expect(toRuntimeBody({ type: "advance_clock", byMs: 1 })).toBeNull();
+  });
+
+  it("reaches the wire unchanged inside the envelope payload", async () => {
+    const room = new FakeRoom();
+    const show = runningShow(room);
+    const store = makeStore(room);
+    store.acquire();
+    await store.refreshNow();
+    const segmentId = show.runtime.currentSegmentId!;
+    const body = toRuntimeBody({ type: "commit_end_by", segmentId, endByMs: room.nowMs + 9 * 60_000, recoveryId: "end_by", recoveryLabel: "End by 20:12:00" })!;
+    const outcome = await store.submit({ body, sessionId: "real-1" });
+    expect(outcome.status).toBe("committed");
+    expect(room.posts()[0].payload).toMatchObject({ segmentId, recoveryId: "end_by", recoveryLabel: "End by 20:12:00" });
+    expect(store.getSnapshot().snapshot!.sessions[0].events.some((e) => e.type === "recovery_selected")).toBe(true);
+  });
+});
+
+describe("authority time", () => {
+  it("serverNowMs is already corrected: a nonzero clockBehindByMs is NOT added again", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    room.clockBehindByMs = 10 * 60_000;
+    const store = makeStore(room);
+    store.acquire();
+    await store.refreshNow();
+    expect(store.getSnapshot().clockBehindByMs).toBe(10 * 60_000); // still reported, as information
+    expect(store.authorityNow()).toBe(room.nowMs);
+    perf += 1500;
+    expect(store.authorityNow()).toBe(room.nowMs + 1500); // only monotonic elapsed time is added
+  });
+
+  it("interpolates between polls and takes the room's word at the next one", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    const store = makeStore(room);
+    store.acquire();
+    await store.refreshNow();
+    perf += 700;
+    expect(store.authorityNow()).toBe(room.nowMs + 700);
+    room.nowMs += 1000;
+    perf += 300;
+    await store.refreshNow();
+    expect(store.authorityNow()).toBe(room.nowMs); // re-anchored on the new server time, no jump from drift
+    perf += 250;
+    expect(store.authorityNow()).toBe(room.nowMs + 250);
+  });
+
+  it("stale freezes the projection at the last interpolated value, with or without a clock gap", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    room.clockBehindByMs = 120_000;
+    const store = makeStore(room);
+    store.acquire();
+    await store.refreshNow();
+    perf += 800;
+    room.offline = true;
+    await store.refreshNow();
+    expect(store.getSnapshot().connection).toBe("stale");
+    const frozen = store.authorityNow();
+    expect(frozen).toBe(room.nowMs + 800);
+    perf += 60_000;
+    expect(store.authorityNow()).toBe(frozen);
+    room.offline = false;
+    await store.refreshNow();
+    expect(store.authorityNow()).toBe(room.nowMs); // live again from the room's time
+  });
+
+  it("the pure function is serverNowMs + monotonic elapsed, frozen when told to", () => {
+    const sample = { serverNowMs: 1_000_000, receivedPerfMs: 50 };
+    expect(authorityNowMs(sample, 50)).toBe(1_000_000);
+    expect(authorityNowMs(sample, 2050)).toBe(1_002_000);
+    expect(authorityNowMs(sample, 9050, 1050)).toBe(1_001_000);
   });
 });

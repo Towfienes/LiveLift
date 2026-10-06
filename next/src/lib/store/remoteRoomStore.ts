@@ -2,6 +2,7 @@ import type { Session } from "@/contracts";
 import type { AuthorityCommandBody, AuthorityReceipt, CommandEnvelope, RoomRead, RoomSnapshot } from "@/contracts/authority";
 import { createAuthorityClient, type AuthorityClient } from "@/lib/client/authorityClient";
 import { authorityNowMs, type AuthorityClockSample } from "@/lib/client/authorityTime";
+import { subscribeCapability } from "@/lib/client/capability";
 import { commandLabel, describeRejection } from "@/lib/client/commandText";
 import { canPersistPending, loadPending, savePending, type PersistedPending } from "@/lib/client/pendingEnvelopes";
 
@@ -66,10 +67,13 @@ export interface RemoteState {
   /** The last committed snapshot the server returned. Retained while stale. */
   snapshot: RoomSnapshot | null;
   access: AccessInfo | null;
-  /** Gap between the server clock and the authority's effective time (0 when none). */
+  /** Informational: how far the server's raw clock trails time the authority already recorded (0 when none). Not part of display time. */
   clockBehindByMs: number;
-  /** The server answered 401/403: this browser holds no capability for the room. */
-  denied: boolean;
+  /**
+   * Authentication, as far as the room has told us. "missing": this browser holds no capability (nothing was sent).
+   * "rejected": the room answered 401/403 to the capability it holds. "unknown": not asked yet.
+   */
+  auth: "unknown" | "ok" | "missing" | "rejected";
   lastError: string | null;
   inflight: InFlightCommand | null;
   unresolved: UnresolvedCommand[];
@@ -84,7 +88,7 @@ const IDLE: RemoteState = {
   snapshot: null,
   access: null,
   clockBehindByMs: 0,
-  denied: false,
+  auth: "unknown",
   lastError: null,
   inflight: null,
   unresolved: [],
@@ -141,6 +145,7 @@ export class RemoteRoomStore {
   private staleTimer: ReturnType<typeof setInterval> | null = null;
   private stopTimer: ReturnType<typeof setTimeout> | null = null;
   private reconcileTimer: ReturnType<typeof setTimeout> | null = null;
+  private unsubscribeCapability: (() => void) | null = null;
   private pollInFlight: Promise<void> | null = null;
   private reconciling: Promise<void> | null = null;
   private lastPollStartedPerf = 0;
@@ -218,6 +223,7 @@ export class RemoteRoomStore {
       window.addEventListener("pageshow", this.onForeground);
     }
     this.staleTimer = setInterval(this.checkStale, STALE_CHECK_MS);
+    this.unsubscribeCapability = subscribeCapability(this.onCapabilityChanged);
     if (this.isHidden()) return; // polling begins when the view is foregrounded
     void this.poll();
   }
@@ -227,6 +233,8 @@ export class RemoteRoomStore {
     if (this.staleTimer) clearInterval(this.staleTimer);
     if (this.reconcileTimer) clearTimeout(this.reconcileTimer);
     this.pollTimer = this.staleTimer = this.reconcileTimer = null;
+    this.unsubscribeCapability?.();
+    this.unsubscribeCapability = null;
     if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onForeground);
     if (typeof window !== "undefined") {
       window.removeEventListener("focus", this.onForeground);
@@ -244,6 +252,20 @@ export class RemoteRoomStore {
 
   private onForeground = (): void => {
     if (!this.state.active || this.isHidden()) return;
+    void this.refreshNow();
+  };
+
+  /**
+   * A different capability may mean a different identity and role, so what was installed under the previous one is
+   * not carried over: the room is read again from scratch. Pending envelopes are kept (they carry no credential).
+   */
+  private onCapabilityChanged = (): void => {
+    if (!this.state.active) return;
+    this.clock = null;
+    this.frozenAtPerfMs = null;
+    this.lastContactPerfMs = null;
+    this.forceFull = true;
+    this.patch({ snapshot: null, access: null, clockBehindByMs: 0, connection: "connecting", auth: "unknown", lastError: null, awaitingSessionIds: [] });
     void this.refreshNow();
   };
 
@@ -269,6 +291,8 @@ export class RemoteRoomStore {
     if (this.stopTimer) clearTimeout(this.stopTimer);
     if (this.reconcileTimer) clearTimeout(this.reconcileTimer);
     this.pollTimer = this.staleTimer = this.stopTimer = this.reconcileTimer = null;
+    this.unsubscribeCapability?.();
+    this.unsubscribeCapability = null;
     if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onForeground);
     if (typeof window !== "undefined") {
       window.removeEventListener("focus", this.onForeground);
@@ -318,7 +342,7 @@ export class RemoteRoomStore {
     const res = await this.client.getRoom({ afterRevision: after });
     const ended = this.perfNow();
     if (res.ok) this.applyRead(res.read, (started + ended) / 2, ended);
-    else this.applyFailure(res.message, res.status);
+    else this.applyFailure(res.message, res.status, res.kind);
   }
 
   private scheduleNext(): void {
@@ -346,7 +370,7 @@ export class RemoteRoomStore {
       this.forceFull = true;
     }
 
-    this.clock = { serverNowMs: read.serverNowMs, clockBehindByMs: read.clockBehindByMs, receivedPerfMs: midPerfMs };
+    this.clock = { serverNowMs: read.serverNowMs, receivedPerfMs: midPerfMs };
     this.frozenAtPerfMs = null;
     this.lastContactPerfMs = endPerfMs;
     const reconnected = this.state.connection !== "connected";
@@ -357,33 +381,33 @@ export class RemoteRoomStore {
       snapshot,
       access: read.access,
       clockBehindByMs: read.clockBehindByMs,
-      denied: false,
+      auth: "ok",
       lastError: null,
       awaitingSessionIds: awaiting.length === this.state.awaitingSessionIds.length ? this.state.awaitingSessionIds : awaiting,
     });
     if (reconnected && this.state.unresolved.length > 0) this.scheduleReconcile(0);
   }
 
-  private applyFailure(message: string, status: number | null): void {
+  private applyFailure(message: string, status: number | null, kind?: string): void {
     this.freezeClock();
-    const denied = status === 401 || status === 403;
+    const auth: RemoteState["auth"] | null = kind === "unauthenticated" ? "missing" : status === 401 || status === 403 ? "rejected" : null;
     this.patch({
       connection: this.state.snapshot ? "stale" : "disconnected",
-      denied,
-      lastError: denied ? "This browser has no access to the room." : message,
+      ...(auth ? { auth } : {}),
+      lastError:
+        auth === "missing"
+          ? "Enter this room's capability to connect."
+          : auth === "rejected"
+            ? "The room did not accept the capability this browser holds."
+            : message,
     });
   }
 
   // ---- Time ---------------------------------------------------------------------------------------
 
-  /** The authority's effective "now", interpolated on the monotonic timer and frozen while not connected. */
+  /** The authority's corrected "now" (`serverNowMs` + monotonic elapsed), frozen while not connected. */
   authorityNow(): number | null {
     return this.clock ? authorityNowMs(this.clock, this.perfNow(), this.frozenAtPerfMs) : null;
-  }
-
-  /** The server's own clock (without the authority's catch-up gap), interpolated and frozen the same way. */
-  serverNow(): number | null {
-    return this.clock ? authorityNowMs({ ...this.clock, clockBehindByMs: 0 }, this.perfNow(), this.frozenAtPerfMs) : null;
   }
 
   /** Milliseconds since the last successful contact, or null if there has been none. */
@@ -459,6 +483,7 @@ export class RemoteRoomStore {
       // The server refused before executing anything: this is a definite "not recorded".
       this.forgetPending(envelope.commandId);
       const code = result.code ?? (result.status === 409 ? "stale_revision" : null);
+      if (result.status === 401) this.applyFailure("", 401);
       if (code === "stale_revision") await this.refreshNow();
       return { status: "rejected", code, message: describeRejection(code, result.message, this.state.access?.role ?? null), receipt: null };
     }

@@ -2,7 +2,7 @@ import type { CommandBase, CommandBody } from "@/lib/domain";
 import type { AuthorityCommandBody, RuntimeCommandBody } from "@/contracts/authority";
 
 /** Phase 1 command base fields that only exist for the local authority. REAL commands never carry them. */
-const LOCAL_ONLY_FIELDS = ["key", "actor", "expectedRevision", "nowMs", "recoveryId", "recoveryLabel"] as const;
+const LOCAL_ONLY_FIELDS = ["key", "actor", "expectedRevision", "nowMs"] as const;
 
 export type DeskCommandInput = CommandBody & Partial<CommandBase>;
 
@@ -11,8 +11,9 @@ export type DeskCommandInput = CommandBody & Partial<CommandBase>;
  *
  * Dropped on purpose: the idempotency key (the envelope's commandId replaces it), the expected session revision
  * (the envelope carries the ROOM revision), device time (the server assigns recording time) and the actor.
- * Recovery attribution (`recoveryId`/`recoveryLabel`) has no field in the frozen contract's payload types, so it
- * is not sent; see docs/phase2/ui.md.
+ * `recoveryId` / `recoveryLabel` are kept, unchanged: they record which operator-selected recovery contextualized
+ * the command. They say nothing about acceptance, an attempt, a performed action or platform confirmation, and the
+ * client never adds them on its own: they are present only when the operator chose that recovery.
  * Simulation clock controls are local-only and can never reach the REAL API.
  */
 export function toRuntimeBody(input: DeskCommandInput): RuntimeCommandBody | null {
@@ -57,6 +58,9 @@ export function describeRejection(code: string | null, message: string | null, r
     return role === "viewer"
       ? "You are viewing this room read-only. Only an operator can record changes."
       : "This room did not allow that action for your access. Nothing was recorded.";
+  }
+  if (code === "unauthorized") {
+    return "The room did not accept this browser's capability, so the action was not recorded. Enter a valid capability and try again.";
   }
   if (code === "stale_revision") {
     return "The room changed since you last looked. The latest state is shown now. Nothing was recorded; review it and try again.";

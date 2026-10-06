@@ -90,6 +90,12 @@ Never sent for REAL: browser time (`nowMs`), the Phase 1 idempotency `key`, the 
 simulation controls (`advance_clock` / `set_clock` cannot be expressed as a REAL command). The server assigns
 recording time and operator identity. `toRuntimeBody()` strips these from the desk's Phase 1 command shape.
 
+**Recovery attribution is sent.** `recoveryId` / `recoveryLabel` (permitted on runtime commands by the contract)
+travel unchanged in the payload when, and only when, the operator chose that recovery on the desk (Apply on a shown
+option, an exception acknowledgement of one, or the re-anchor dialog). The client never adds them itself. They record
+which recovery contextualized the command; they do not mean the command was accepted by anyone else, attempted,
+performed or confirmed by the platform. Merely showing a recommendation sends nothing.
+
 ### Pending
 
 The store allows **one command in flight**; a second is refused (`busy`), not queued. While it waits:
@@ -126,6 +132,26 @@ A receipt is **not** platform confirmation, and a failed or timed-out response i
    with `duplicate: true`, and one that no longer fits the room is rejected as stale); **Set aside** (drops the
    banner and the stored envelope; the outcome is recorded as still unknown, not as failed).
 
+## 5a. Capability (authentication)
+
+The room authenticates `Authorization: Bearer <room capability>` only. There is no login, signup or role UI.
+
+- `lib/client/capability.ts` holds the active capability for this tab (`sessionStorage`, never `localStorage`).
+  `ConnectionStatus` shows one password-type input ("Room capability" + Connect, and Forget) whenever the room
+  needs one; entering it connects without a reload.
+- `authorityClient` attaches the header to **every** request (GET room, POST command, GET receipt) in one place,
+  with `credentials: "omit"`. The token is never in a URL, a command envelope or payload, the pending-envelope record,
+  store state, an error message, or session/domain history.
+- Authentication is its own state, `RemoteState.auth`: `missing` (no capability held; **nothing is sent**),
+  `rejected` (the room answered 401/403 to the one held), `ok`, `unknown`. The chip reads "Capability needed" /
+  "Capability not accepted", the banner says which, and a REAL show page says "A room capability is needed" /
+  "did not accept this capability" instead of "cannot be reached" or "not found".
+- A 401 to a command is a definite rejection (`unauthorized`; it was not executed), not an unknown outcome.
+- Changing the capability drops the installed snapshot and role (they belonged to the previous identity) and reads
+  the room again. Pending envelopes are kept; they hold no credential.
+- A viewer capability stays read-only: the role comes from the room's `access`, and the UI and store both refuse
+  writes for it.
+
 ## 6. Roles
 
 - `operator`: room read plus writes.
@@ -159,12 +185,20 @@ A receipt is **not** platform confirmation, and a failed or timed-out response i
 - **SIMULATED**: unchanged. Pixel-identical to the pre-migration build at 1440×900, 1280×720, 1024×768, 390×844
   for the Simulator, Operate, Prepare and Review screens.
 
-### Clock behind recorded time
+### Authority time and clock discrepancy
 
-`clockBehindByMs` is read as "the server clock is behind time the authority already recorded". The desk shows the
-authority's effective time (`serverNowMs + clockBehindByMs`, interpolated) and, above 2 s, the Phase 1
-discontinuity banner worded for the server clock. "Record in history" sends
-`acknowledge_clock_discontinuity` with the server's reading and the time being kept.
+`serverNowMs` is already the authority's corrected time. The desk shows
+
+    display authority time = serverNowMs + monotonic elapsed since the snapshot
+
+and **never adds `clockBehindByMs`**. While stale or disconnected the elapsed term stops (frozen where contact was
+lost); the next successful read re-anchors on the room's time.
+
+`clockBehindByMs` is informational: how far the server's raw clock trails time it already recorded. Above 2 s it
+drives the Phase 1 discontinuity banner, worded for the server clock ("The room's clock is behind recorded time by
+…, it reads <corrected − gap>; LiveLift keeps counting from <corrected>"). "Record in history" sends
+`acknowledge_clock_discontinuity` with that raw reading and the corrected time being kept. The gap is disclosed,
+never applied.
 
 ## 8. Migration behavior
 
@@ -182,21 +216,19 @@ discontinuity banner worded for the server clock. "Record in history" sends
 These are places where the frozen contract is silent and the client made the most conservative choice. None
 required changing the contract.
 
-1. **Recovery attribution is not expressible.** Phase 1 records which recovery option an action carried out
-   (`recoveryId` / `recoveryLabel`, on `CommandBase`). `RuntimeCommandBody` is `CommandBody` and has no such
-   fields, so REAL commands do not carry them. The action itself is recorded; the "this was the recommended
-   recovery X" decision is not. If that history matters it needs a contract change.
+1. ~~Recovery attribution is not expressible.~~ Resolved: the contract now permits `recoveryId` / `recoveryLabel`
+   on runtime commands and the client sends them (§5).
 2. **Segment/cue id allocation.** `create_session` and `save_prepare` payloads carry client-allocated segment and
    cue ids (`draft:…` at creation; `<sessionId>:s<N>` / `:c<N>` from the installed `seq` while editing). The
    payload has no `seq`. The server must keep `seq.segment` / `seq.cue` at or above the highest id used, or a later
    client allocation can repeat one.
-3. **How the capability is presented.** The client sends same-origin requests with `credentials: "same-origin"`
-   and no token header. A bearer-token scheme would need one line in the client.
+3. ~~How the capability is presented.~~ Resolved: bearer header, §5a.
 4. **Refusal shape.** A refused POST is accepted either as a `rejected` receipt or as HTTP 4xx without a receipt;
    401/403 map to `forbidden`; 5xx, 408, timeouts and receipt-less 2xx are *unknown*. A missing receipt on lookup
    (404) means "absent".
-5. **`clockBehindByMs` semantics** (effective time = server time + gap) and the meaning of
-   `acknowledge_clock_discontinuity`'s `deviceNowMs` / `keptNowMs` when the clock in question is the server's.
+5. ~~`clockBehindByMs` semantics~~ Resolved: informational only, never added (§7). Still an interpretation: the
+   meaning of `acknowledge_clock_discontinuity`'s `deviceNowMs` / `keptNowMs` when the clock in question is the
+   server's (raw reading / corrected time).
 6. **Duplicating a non-ended REAL show** has no provenance field (`derivedFrom`) in `create_session`.
 7. **One writer at a time.** `expectedRevision` is room-wide, so any other operator's commit, including one from
    another desk on the same show, makes an in-flight action `stale_revision` by design. The UI says so and

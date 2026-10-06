@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import type { Session } from "@/contracts";
 import type { AuthorityReceipt, CommandEnvelope, RoomRead } from "@/contracts/authority";
+import { setCapability } from "@/lib/client/capability";
 import { applyCommand, createNextSession, createSession, type CommandBody } from "@/lib/domain";
 
 /**
@@ -39,6 +40,8 @@ function sortKeys(v: unknown): unknown {
 
 export class FakeRoom {
   roomId: string;
+  /** The one capability this room accepts, as `Authorization: Bearer <token>` (anything else is 401 `unauthorized`). */
+  token = "cap-test-token";
   role: "operator" | "viewer";
   actor: { id: string; name: string };
   revision = 0;
@@ -50,7 +53,7 @@ export class FakeRoom {
   dropNextPosts = 0;
   onPost: ((envelope: CommandEnvelope) => void) | null = null;
   /** Every request seen, in order, for assertions. */
-  requests: Array<{ method: string; path: string; body: unknown }> = [];
+  requests: Array<{ method: string; path: string; body: unknown; authorization: string | null }> = [];
   private log = new Map<string, Logged>();
 
   /** The room assigns session ids; never one that is already in use. */
@@ -70,8 +73,9 @@ export class FakeRoom {
     return this.requests.filter((r) => r.method === "POST").map((r) => r.body as CommandEnvelope);
   }
 
-  /** Install this room as the global fetch for the duration of a test. Returns a restore function. */
+  /** Install this room as the global fetch for the duration of a test, and give the browser its capability. Returns a restore function. */
   install(): () => void {
+    setCapability(this.token);
     const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => this.handle(String(input), init));
     return () => spy.mockRestore();
   }
@@ -84,8 +88,12 @@ export class FakeRoom {
     const method = (init?.method ?? "GET").toUpperCase();
     const parsed = new URL(url, "http://room.test");
     const body = init?.body ? (JSON.parse(String(init.body)) as unknown) : null;
-    this.requests.push({ method, path: parsed.pathname + parsed.search, body });
+    const authorization = new Headers(init?.headers).get("authorization");
+    this.requests.push({ method, path: parsed.pathname + parsed.search, body, authorization });
     if (this.offline) throw new TypeError("Failed to fetch");
+    if (authorization !== `Bearer ${this.token}`) {
+      return this.json({ error: { code: "unauthorized", message: "A valid room capability is required." } }, 401);
+    }
 
     if (method === "GET" && parsed.pathname === "/api/v3/room") {
       const after = parsed.searchParams.get("afterRevision");

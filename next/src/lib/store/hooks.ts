@@ -220,6 +220,8 @@ export function useAuthorityClock(tickMs = 1000): DeskClock {
     return () => window.clearInterval(timer);
   }, [tickMs, remote.connection, remote.clockBehindByMs, remote.snapshot]);
 
+  // `nowMs` is already the room's corrected time. The discontinuity is a disclosure: the server's raw clock reads
+  // `nowMs - behind`, and LiveLift keeps showing the corrected time. `behind` is never added to `nowMs`.
   const behind = remote.clockBehindByMs;
   return {
     nowMs,

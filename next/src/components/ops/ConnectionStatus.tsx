@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui";
+import { clearCapability, getCapability, setCapability } from "@/lib/client/capability";
 import { remoteRoomStore, type UnresolvedCommand } from "@/lib/store/remoteRoomStore";
 import { useRemoteState } from "@/lib/store/hooks";
 
@@ -50,7 +51,7 @@ export function ConnectionChip({ size = "md" }: { size?: "md" | "desk" }): React
   } else if (remote.connection === "disconnected") {
     tone = "text-[#F4A4A4]";
     icon = "ri-wifi-off-line";
-    label = remote.denied ? "No access to the room" : "Disconnected";
+    label = remote.auth === "missing" ? "Capability needed" : remote.auth === "rejected" ? "Capability not accepted" : "Disconnected";
   } else if (remote.inflight) {
     tone = "text-[#DFFF00]";
     icon = "ri-time-line";
@@ -73,6 +74,50 @@ export function ConnectionChip({ size = "md" }: { size?: "md" | "desk" }): React
         </span>
       )}
     </span>
+  );
+}
+
+/**
+ * The smallest way to give this browser a room capability: paste it. Not a login: no account, no role choice —
+ * the room decides what the capability allows. The value is kept in this tab's session storage only.
+ */
+function CapabilityForm({ size }: { size: "md" | "desk" }): React.ReactElement {
+  const [value, setValue] = useState("");
+  const held = getCapability() !== null;
+  return (
+    <form
+      className="flex items-center gap-2 shrink-0"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (value.trim() === "") return;
+        setCapability(value);
+        setValue("");
+      }}
+      data-testid="capability-form"
+    >
+      <label className="sr-only" htmlFor="room-capability">
+        Room capability
+      </label>
+      <input
+        id="room-capability"
+        type="password"
+        autoComplete="off"
+        spellCheck={false}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Room capability"
+        className={`h-11 w-[240px] bg-[#13161C] border border-[#39414D] rounded-[8px] px-3 text-[#F5F7FC] ${size === "desk" ? "text-[16px]" : "text-[15px]"}`}
+        data-testid="capability-input"
+      />
+      <Button type="submit" size="desk" variant="secondary" disabled={value.trim() === ""} data-testid="capability-connect-btn">
+        Connect
+      </Button>
+      {held && (
+        <Button type="button" size="desk" variant="ghost" onClick={() => clearCapability()} data-testid="capability-forget-btn">
+          Forget
+        </Button>
+      )}
+    </form>
   );
 }
 
@@ -110,6 +155,7 @@ export function RemoteBanners({ size = "md" }: { size?: "md" | "desk" }): React.
   // Lost contact is only news while a REAL view is open; unresolved commands matter until they are settled.
   const notCurrent = remote.active && (remote.connection === "stale" || remote.connection === "disconnected");
   const text = size === "desk" ? "text-[16px]" : "text-[14px]";
+  const needsCapability = notCurrent && (remote.auth === "missing" || remote.auth === "rejected");
   const show = notCurrent || remote.unresolved.length > 0 || remote.resolutions.length > 0;
   if (!show) return null;
 
@@ -125,15 +171,21 @@ export function RemoteBanners({ size = "md" }: { size?: "md" | "desk" }): React.
         >
           <span className="min-w-0">
             <i className="ri-wifi-off-line mr-1.5" aria-hidden="true" />
-            {remote.denied
-              ? "This browser has no access to the room. Nothing can be shown or recorded."
-              : remote.snapshot
-                ? "Not connected to the room. What you see is the last confirmed state; it is not being updated and changes are paused."
-                : "The room cannot be reached, so REAL shows cannot be shown or recorded. Rehearsals still work."}
+            {remote.auth === "missing"
+              ? "This browser has no room capability yet, so REAL shows cannot be shown or recorded. Enter the capability you were given. Rehearsals still work."
+              : remote.auth === "rejected"
+                ? "The room did not accept this browser's capability (it may be wrong or revoked), so REAL shows cannot be shown or recorded."
+                : remote.snapshot
+                  ? "Not connected to the room. What you see is the last confirmed state; it is not being updated and changes are paused."
+                  : "The room cannot be reached, so REAL shows cannot be shown or recorded. Rehearsals still work."}
           </span>
-          <Button size="desk" variant="secondary" onClick={() => void remoteRoomStore.refreshNow()} data-testid="reconnect-btn">
-            Try now
-          </Button>
+          {needsCapability ? (
+            <CapabilityForm size={size} />
+          ) : (
+            <Button size="desk" variant="secondary" onClick={() => void remoteRoomStore.refreshNow()} data-testid="reconnect-btn">
+              Try now
+            </Button>
+          )}
         </div>
       )}
       {remote.unresolved.map((entry) => (

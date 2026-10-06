@@ -24,6 +24,7 @@ import type { Session } from "@/contracts";
 import { sessionStore } from "@/lib/store/sessionStore";
 import { remoteRoomStore } from "@/lib/store/remoteRoomStore";
 import { FakeRoom } from "./helpers/fakeRoom";
+import { clearCapability, resetCapabilityCache } from "@/lib/client/capability";
 
 type PageComponent = (props: { params: Promise<{ sessionId: string }> }) => React.ReactElement;
 
@@ -66,6 +67,8 @@ const open = (room: FakeRoom): FakeRoom => {
 };
 
 beforeEach(() => {
+  sessionStorage.clear();
+  resetCapabilityCache();
   localStorage.clear();
   remoteRoomStore.reset();
   sessionStore.reloadFromStorage();
@@ -308,5 +311,71 @@ describe("legacy local REAL data", () => {
     nav.search = new URLSearchParams("archive=1");
     await renderPage(OperatePage as PageComponent, id);
     expect(await screen.findByTestId("archive-readonly")).toHaveTextContent("read-only");
+  });
+});
+
+describe("capability input and authentication states", () => {
+  it("with no capability the desk says so, offers the input, and connects once it is given", async () => {
+    const room = open(new FakeRoom());
+    show(room, "real-1", { start: true });
+    clearCapability();
+    await renderPage(OperatePage as PageComponent, "real-1");
+    expect(await screen.findByTestId("session-unavailable")).toHaveTextContent("A room capability is needed");
+    expect(screen.getByTestId("stale-banner")).toHaveTextContent("no room capability");
+    expect(room.requests).toHaveLength(0); // nothing is sent without one
+    expect(screen.getByTestId("capability-input")).toHaveAttribute("type", "password");
+
+    fireEvent.change(screen.getByTestId("capability-input"), { target: { value: room.token } });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("capability-connect-btn"));
+    });
+    expect(await screen.findByTestId("extend-plus-one-btn")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("connection-chip")).toHaveAttribute("data-connection", "connected"));
+    expect(room.requests.every((r) => r.authorization === `Bearer ${room.token}`)).toBe(true);
+    expect(document.body.textContent).not.toContain(room.token);
+    expect(sessionStorage.getItem("livelift.v3.capability")).toBe(room.token); // this tab only
+    expect(localStorage.getItem("livelift.v3.capability")).toBeNull();
+  });
+
+  it("a capability the room rejects is called what it is, not 'unreachable'", async () => {
+    const room = open(new FakeRoom());
+    show(room, "real-1", { start: true });
+    room.token = "something-else";
+    await renderPage(OperatePage as PageComponent, "real-1");
+    expect(await screen.findByTestId("session-unavailable")).toHaveTextContent("did not accept this capability");
+    expect(screen.getByTestId("stale-banner")).toHaveTextContent(/did not accept/);
+    expect(screen.getByTestId("connection-chip")).toHaveTextContent("Capability not accepted");
+  });
+});
+
+describe("recovery attribution on the REAL desk", () => {
+  it("applying a shown recovery sends its attribution; merely showing it sends nothing", async () => {
+    const room = open(new FakeRoom());
+    const t = room.nowMs;
+    // Same state as the rehearsal at 20:07: Zip Hoodie running, host says 6 more minutes, anchor at risk.
+    let s = show(room, "real-1");
+    room.sessions = [];
+    room.revision = 0;
+    s = applyCommand(s, { type: "start_live", nowMs: t }).session;
+    s = applyCommand(s, { type: "advance_segment", nowMs: t + 3 * 60_000 }).session;
+    s = applyCommand(s, { type: "set_remaining_estimate", segmentId: "real-1:a", remainingSec: 360, nowMs: t + 7 * 60_000 }).session;
+    room.seed(s);
+    room.nowMs = t + 7 * 60_000;
+
+    await renderPage(OperatePage as PageComponent, "real-1");
+    expect(await screen.findByTestId("recovery-option-end_by")).toHaveTextContent("End Zip Hoodie by");
+    await waitFor(() => expect(screen.getByTestId("apply-end_by")).not.toBeDisabled());
+    expect(room.posts()).toHaveLength(0); // a recommendation is not an acceptance
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("apply-end_by"));
+    });
+    await waitFor(() => expect(room.posts()).toHaveLength(1));
+    const sent = room.posts()[0];
+    expect(sent.type).toBe("commit_end_by");
+    expect(sent.payload).toMatchObject({ recoveryId: expect.any(String), recoveryLabel: expect.stringContaining("End Zip Hoodie by") });
+    await waitFor(() => expect(room.sessions[0].events.some((e) => e.type === "recovery_selected")).toBe(true));
+    // Selecting a recovery is a decision about the plan: it records no cue attempt or performance.
+    expect(room.sessions[0].events.some((e) => e.type.startsWith("cue_"))).toBe(false);
   });
 });
