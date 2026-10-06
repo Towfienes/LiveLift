@@ -22,7 +22,7 @@ In TikTok Shop live commerce broadcasts across Vietnam and Southeast Asia, the b
 3. **Talent Coordination:** Providing glanceable, low-noise cues to the on-camera host without inducing teleprompter glaze, cognitive overload, or speech stumbles.
 4. **Post-Show Accounting:** Recording execution actuals for brand proof-of-performance and commission reconciliation.
 
-### 1.2 Certified Feature Reality & Wizard-of-Oz Boundaries (UI SHA `71807ed`)
+### 1.2 Certified Feature Reality & Wizard-of-Oz Boundaries (UI SHA `9a91101`)
 In strict compliance with the **Integrity Mandate** and the rule that *"Never pretend unfinished functionality exists"*, the operator interacts with the system strictly across certified operational boundaries:
 - **`IMPLEMENTED` (Functional Domain Engine & Durable Local Store):** Session creation (`/live/new`), rundown configuration (`/prepare`), live desk tracking (`/operate`), segment commands (`start_live`, `advance_segment`, `extend_segment`, `commit_end_by`, `reanchor_segment`, `end_live`), manual cue action reporting (`report_cue`), operator note capture (`add_note`), dynamic rolling forecast engine (`next/src/lib/domain/forecast.ts`), constraint-aware recovery analysis (`next/src/lib/domain/recovery.ts`), revision-checked guarded local persistence (`next/src/lib/store/sessionStore.ts`), plan-vs-actual review table (`/review`), and Next LIVE rundown adaptation generator (`next/src/lib/domain/nextLive.ts`, `createNextSession`).
 - **`SIMULATED` (Test Environment & Fixtures):** Deterministic rehearsal scenarios (`buffered`, `missed`, `minimum` — sessions `sim-buffered`, etc. in `/simulator`) driven by explicit virtual clocks, and sample product catalogs (`next/src/fixtures/library.ts`).
@@ -135,7 +135,7 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 #### The NEXT Panel (`NextPanel.tsx`)
 - **Target Item & Strategic Rationale:** Outlines the upcoming product code and algorithmic basis (e.g., *"Scheduled hero pitch to drive morning campaign momentum"*).
 - **Button: `Next segment` (`advance_segment`, `data-testid="advance-btn"`):** **The Authoritative Runtime Transition.** Clicking this button wraps the active segment, records actual completion timestamps in the immutable event log, advances the NOW cursor to the next item, and persists the state with revision-checked commits to `SessionStore`.
-- **Button: Recovery Apply Candidates (`analyzeRecovery`, `data-testid={`apply-${o.kind}`}`):** When downstream schedule drift threatens a hard anchor, an alert surfaces on the desk. Clicking candidate apply buttons (`data-testid="apply-shorten"`, `apply-skip`, `apply-end_by`, `apply-close_now`) executes clean recovery plans that mathematically protect the anchor while respecting contractual floor limits.
+- **Button: Recovery Apply Candidates (`analyzeRecovery`, `data-testid={`apply-${o.kind}`}`):** When downstream schedule drift threatens a hard anchor, an alert surfaces on the desk. Clicking candidate apply buttons (`data-testid="apply-shorten_pending"`, `data-testid="apply-skip_optional"`, `data-testid="apply-skip_required"`, `data-testid="apply-end_by"`, `data-testid="apply-close_now"`) executes clean recovery plans that mathematically protect the anchor while respecting contractual floor limits.
 
 ### 3.2 Operator Quick Capture & Toolbar Actions
 - **Button: `Extend +1m` (`extend_segment`):** Increments `targetDurationMinutes` by $+1.0$ minute for the active segment without altering the underlying pre-show baseline plan.
@@ -192,11 +192,12 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 #### $T = 06:00:00$ — Scheduled Segment 2 Deadline Reached
 1. LiveLift NOW timer reaches `04:00` (planned target elapsed).
 2. Host continues detailed demonstration, answering audience inquiries.
-3. Operator clicks **`Extend +1m`** (`extend-plus-one-btn`) to reflect operational reality without panicking. Target updates to `5m`.
+3. Operator observes active duration drifting positive on the desk without altering the schedule prematurely.
 
 #### $T = 06:30:00$ — Disturbance D1 Deficit Evaluation & Native Forecast Alert
 1. Show clock reaches `06:30`. Active Serum elapsed time = `04:30`. Host signals 1 additional minute remaining.
-2. Operator enters remaining estimate (or extends segment). LiveLift's implemented downstream forecast engine automatically evaluates the schedule: projected Serum end `07:30`, plus Toner 3.0m projects Flash Sale at `10:30`, detecting a **90-second (+1.5m) deficit** facing Hard Anchor 1 (`09:00:00`).
+2. **Canonical Scored Path:** Operator enters the prescribed remaining estimate of 1 minute (`1.0m`). LiveLift's implemented downstream forecast engine automatically evaluates the schedule: projected Serum end `07:30`, plus Toner 3.0m projects Flash Sale at `10:30`, detecting a **90-second (+1.5m) deficit** facing Hard Anchor 1 (`09:00:00`).
+   *(Note on Operator Choice Branches: If an operator instead chooses an alternative action, such as clicking `Extend +1m` without entering a remaining estimate [yielding a 60s deficit] or clicking `Extend +1m` in addition to entering a 1m estimate [yielding a 120s deficit], that trial follows an exploratory operator-choice branch and must be scored against its actual mathematical forecast rather than the canonical 90s ground truth).*
 3. **Implemented Deficit Banner:** The UI displays the native schedule risk alert card:
    ```
    [CẢNH BÁO TIẾN ĐỘ: Dự phóng trễ 90s so với Flash Deal 09:00:00 (Thâm hụt: 1:30)]
@@ -206,7 +207,7 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
      - *Compress Downstream Buffer:* Compress Segment 3 (Toner) from planned 3.0m to 1.5m (respects 1.0m contractual floor). Reclaims 1.5m, pulling Flash Deal back to exactly 09:00:00.
      - *Aggressive Compression:* Compress Toner to floor 1.0m (reclaims 2.0m, providing 30s safety margin).
 5. **Operator Decision & Execution:**
-   - Operator reviews generated candidate, applies the candidate (`data-testid="apply-shorten"`), and confirms the recovery plan.
+   - Operator reviews generated candidate, applies the candidate (`data-testid="apply-shorten_pending"`), and confirms the recovery plan.
    - Click `Add note` (`data-testid="quick-add-note-btn"`): Type *"Compressing S3 Toner to protect 09:00 Flash Deal"*.
    - Transmit atomic cue to Host Tablet: `[RECOVER: Rút Toner còn 1.5m | Giữ Flash Deal 09:00]`.
    - Host nods and begins wrapping Serum demo.
@@ -362,7 +363,7 @@ Once the broadcast ends, the operator completes the post-show workflow directly 
    - *Probe 3:* What was the realized timing variance on Anchor 1 ($V_{\text{anchor}}$)?
    - *Probe 4:* At what exact elapsed time was the stockout/overrun detected?
    - *Probe 5:* What was the net duration drift across the entire stream?
-4. Proctor records $T_{\text{recon}}$ stop time upon Fact Sheet submission and evaluates accuracy ($\ge 90\%$ required for full validity).
+4. Proctor records $T_{\text{recon}}$ stop time upon Fact Sheet submission and evaluates accuracy ($\ge 80.0\%$ per trial [$\ge 4/5$ probes] and $\ge 90.0\%$ pooled across paired trials [$\ge 9/10$ probes] required for validity).
 
 #### Step 2: Next LIVE Rundown Adaptation (Metric M11)
 1. Immediately following Fact Sheet submission, the proctor starts the stopwatch for **Metric M11 ($T_{\text{next\_plan}}$)**.

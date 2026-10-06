@@ -57,7 +57,7 @@ This sheet stores static show-level metadata referenced by formulas across the w
 
 ## 3. Data Dictionary & Complete Column Specification (`01_Live_Rundown`)
 
-The primary execution sheet, `01_Live_Rundown`, spans columns **A through V** (22 columns). It captures pre-show constraints, dynamic real-time rolling projections, ground-truth execution timestamps, manual operator remaining duration estimates, and operator notes.
+The primary execution sheet, `01_Live_Rundown`, spans columns **A through W** (23 columns). It captures pre-show constraints, dynamic real-time rolling projections, ground-truth execution timestamps, manual operator remaining duration estimates, estimate observation timestamps, and operator notes.
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -87,6 +87,7 @@ The primary execution sheet, `01_Live_Rundown`, spans columns **A through V** (2
 | T | Host_Cue_Text     | String        | Atomic talking points and key offer constraints            |
 | U | Operator_Notes    | String        | Runtime anomaly log and recovery action audit trail        |
 | V | Remaining_Est_Min | Dec (Input)   | Operator-entered manual remaining duration (Minutes)       |
+| W | Remaining_Est_Obs | Time (Input)  | Wall-clock observation timestamp (`Ctrl+Shift+;` entry)    |
 +---+-------------------+---------------+------------------------------------------------------------+
 ```
 
@@ -108,12 +109,13 @@ The primary execution sheet, `01_Live_Rundown`, spans columns **A through V** (2
 14. **`Actual_End` (Col N, Time Input):** Captured live by the operator pressing `Ctrl+Shift+;` when the segment concludes.
 15. **`Actual_Dur_Min` (Col O, Decimal Minutes Formula):** Realized pitch length calculated from `Actual_Start` and `Actual_End`.
 16. **`Variance_Min` (Col P, Decimal Minutes Formula):** Duration difference ($O - G$). Positive indicates overrun; negative indicates under-run.
-17. **`Projected_Start` (Col Q, Dynamic DateTime Formula):** Live rolling forecast cursor. Recalculates dynamically based on completed actuals, the active segment's elapsed time and remaining estimate, and scheduled durations of pending items.
+17. **`Projected_Start` (Col Q, Dynamic DateTime Formula):** Live rolling forecast cursor. Recalculates dynamically based on completed actuals, the active segment's elapsed time and stable remaining estimate anchored to observation time, and scheduled durations of pending items.
 18. **`Anchor_Deficit_Min` (Col R, Decimal Minutes Formula):** Quantitative schedule deficit. Calculates the minutes by which `Projected_Start` exceeds normalized `Anchor_Time`.
 19. **`Status` (Col S, Enum Dropdown):** Current operational state: `PENDING`, `ACTIVE`, `DONE`, or `SKIPPED`. Drives conditional formatting.
 20. **`Host_Cue_Text` (Col T, String):** Atomic talking points ($\le 12$ words) provided for host guidance.
 21. **`Operator_Notes` (Col U, String):** Real-time log where the operator records reasons for overrides, unexpected delays, or technical errors.
-22. **`Remaining_Est_Min` (Col V, Decimal Minutes Input, Nullable):** Operator-entered manual estimate of remaining minutes for the currently active segment (e.g., entered when the host signals extra time required). Blank by default. When populated on an `ACTIVE` segment, the rolling projection engine evaluates active finish as `NOW() + Remaining_Est_Min / 1440` instead of scheduled target pacing.
+22. **`Remaining_Est_Min` (Col V, Decimal Minutes Input, Nullable):** Operator-entered manual estimate of remaining minutes for the currently active segment (e.g., entered when the host signals extra time required). Blank by default.
+23. **`Remaining_Est_Obs` (Col W, Time Input `HH:MM:SS`, Nullable, EDITABLE Live):** Ground-truth wall-clock observation timecode captured live by the operator pressing `Ctrl+Shift+;` when the remaining estimate is observed/entered. When populated alongside `Remaining_Est_Min` (`Col V`) on an `ACTIVE` segment, the rolling projection engine evaluates estimated active segment finish as $\text{ToDateTime}(W) + \text{Remaining\_Est\_Min} / 1440$. This mathematically anchors the estimated completion to the recorded observation instant, guaranteeing that subsequent spreadsheet recalculations (e.g. at 06:45, 07:00) preserve the stable deadline and do not continuously and incorrectly add unchanged remaining minutes to advancing `NOW()`.
 
 ---
 
@@ -192,7 +194,10 @@ The rolling engine computes the projected start of every segment by evaluating t
                     IF(S2="SKIPPED", Q2,
                       IF(S2="ACTIVE",
                         IF(AND(NOT(ISBLANK(V2)), V2<>""),
-                          NOW() + (V2 / 1440),
+                          IF(AND(NOT(ISBLANK(W2)), W2<>""),
+                            to_dt(W2) + (V2 / 1440),
+                            to_dt(M2) + (G2 / 1440) + (V2 / 1440)
+                          ),
                           MAX(NOW(), to_dt(M2) + (G2 / 1440))
                         ),
                         Q2 + (G2 / 1440)
@@ -214,7 +219,10 @@ The rolling engine computes the projected start of every segment by evaluating t
           IF(S2="SKIPPED", Q2,
             IF(S2="ACTIVE",
               IF(AND(NOT(ISBLANK(V2)), V2<>""),
-                NOW() + (V2 / 1440),
+                IF(AND(NOT(ISBLANK(W2)), W2<>""),
+                  '00_Config'!$B$2 + W2 + IF(W2 < '00_Config'!$B$1, 1, 0) + (V2 / 1440),
+                  '00_Config'!$B$2 + M2 + IF(M2 < '00_Config'!$B$1, 1, 0) + (G2 / 1440) + (V2 / 1440)
+                ),
                 MAX(NOW(), '00_Config'!$B$2 + M2 + IF(M2 < '00_Config'!$B$1, 1, 0) + (G2 / 1440))
               ),
               Q2 + (G2 / 1440)
@@ -227,7 +235,10 @@ The rolling engine computes the projected start of every segment by evaluating t
         IF(S2="SKIPPED", Q2,
           IF(S2="ACTIVE",
             IF(AND(NOT(ISBLANK(V2)), V2<>""),
-              NOW() + (V2 / 1440),
+              IF(AND(NOT(ISBLANK(W2)), W2<>""),
+                '00_Config'!$B$2 + W2 + IF(W2 < '00_Config'!$B$1, 1, 0) + (V2 / 1440),
+                '00_Config'!$B$2 + M2 + IF(M2 < '00_Config'!$B$1, 1, 0) + (G2 / 1440) + (V2 / 1440)
+              ),
               MAX(NOW(), '00_Config'!$B$2 + M2 + IF(M2 < '00_Config'!$B$1, 1, 0) + (G2 / 1440))
             ),
             Q2 + (G2 / 1440)
@@ -242,7 +253,7 @@ The rolling engine computes the projected start of every segment by evaluating t
   1. **Hard-Anchor Holding / Wait:** If row $i$ has a hard anchor (`I_i = TRUE`) scheduled at `J_i`, and prior segments conclude early (`prior_cursor < ToDateTime(J_i)`), the projected start evaluates to `MAX(prior_cursor, ToDateTime(J_i)) = ToDateTime(J_i)`. The sheet explicitly models waiting for the scheduled anchor window rather than advancing prematurely.
   2. **Overrun Propagation:** If prior segments run late (`prior_cursor > ToDateTime(J_i)`), `MAX(prior_cursor, ToDateTime(J_i)) = prior_cursor`, accurately reflecting downstream delay and surfacing the anchor deficit.
   3. **Skipped Row Exclusion:** If preceding row $i-1$ is marked `SKIPPED`, its duration consumption is zero (`prior_cursor` remains `Q_{i-1}`), immediately returning the planned minutes to downstream segments.
-  4. **Active Segment Projection & Remaining Estimate:** If preceding row $i-1$ is currently `ACTIVE`, the engine checks Column V (`Remaining_Est_Min`). If populated, projected completion is `NOW() + (V_{i-1} / 1440)`. If blank, it projects from `MAX(NOW(), ToDateTime(M_{i-1}) + (G_{i-1} / 1440))`, providing real-time drift telemetry.
+  4. **Active Segment Projection & Stable Remaining Estimate:** If preceding row $i-1$ is currently `ACTIVE`, the engine checks Column V (`Remaining_Est_Min`) and Column W (`Remaining_Est_Obs`). If populated with observation timestamp $W_{i-1}$, projected active completion evaluates to $\text{ToDateTime}(W_{i-1}) + (V_{i-1} / 1440)$. This mathematically preserves the observed deadline across subsequent spreadsheet recalculations without drifting forward on every `NOW()` tick. If blank, it projects from $\text{MAX}(\text{NOW}(), \text{ToDateTime}(M_{i-1}) + (G_{i-1} / 1440))$, providing real-time drift telemetry.
 
 ---
 
@@ -250,7 +261,7 @@ The rolling engine computes the projected start of every segment by evaluating t
 
 The anchor deficit formula detects upcoming timing collisions before they breach committed promotional windows.
 
-#### Primary Formula (22-Column Rundown, Row 2):
+#### Primary Formula (23-Column Rundown, Row 2):
 ```excel
 =IF(AND(I2=TRUE, NOT(ISBLANK(J2)), J2<>""),
   IF(Q2 > ('00_Config'!$B$2 + J2 + IF(J2 < '00_Config'!$B$1, 1, 0)),
@@ -291,7 +302,7 @@ To verify the spreadsheet baseline under all operational conditions, the formula
 | **TC-03** | **Skipped Segment** | S3 dropped (`Status S4 = "SKIPPED"`). Preceding cursor $N_3 = 20:07:00$. S3 planned $3.0\text{m}$. | `IF(S3="SKIPPED", Q3, ...)` passes cursor $20:07:00$ directly to S4. S3 consumes exactly $0.0\text{m}$. | `Q4 = 20:07:00`. $3.0\text{m}$ buffer immediately returned downstream. | **PASS** |
 | **TC-04** | **Missing Actual Boundaries** | Row unexecuted or blank boundary: $M_5 = \text{""}$, $N_5 = \text{""}$. | $O_5$ evaluates `OR(ISBLANK, "")` $\rightarrow$ returns formula blank `""`. $P_5$ evaluates `OR(ISBLANK(O5), O5="")` $\rightarrow$ returns `""`. | Zero `#VALUE!` errors. Blank cells cleanly preserved. | **PASS** |
 | **TC-05** | **Cross-Midnight Rolling Forecast** | Late-night show starts $23:55:00$ on $2026-10-12$. S2 starts $23:58:00$ ($M_3 = 23:58:00$, planned $5.0\text{m}$, scheduled finish next-day $00:03:00$). At wall-clock $00:06:00$ on $2026-10-13$, Hard Anchor is at next-day $00:05:00$ ($J_4 = 00:05:00$). | $M_3\text{ DT} = 2026-10-12\ 23:58:00$. Scheduled finish $= 2026-10-13\ 00:03:00$. $\text{NOW}() = 2026-10-13\ 00:06:00$. Active finish $= \text{MAX}(\text{NOW}(), \text{Sched}) = 00:06:00$. $J_4\text{ DT} = 2026-10-13\ 00:05:00$. $Q_4 = 00:06:00$. Col R evaluates $(Q_4 - J_4\text{ DT}) \times 1440 = 1.0\text{m}$. | **`R4 = 1.0m`** (True active lower-bound deficit). The $1438.0\text{m}$ wrap bug is eliminated. | **PASS** |
-| **TC-06** | **Remaining-Estimate Active Overrun** | **S1 (Cosmetics):** At $06:30$, S2 Serum active elapsed is $4.5\text{m}$. Host requests $1.0\text{m}$ remaining. Operator enters $V_3 = 1.0$. Floating Toner $= 3.0\text{m}$. Anchor 1 at $09:00:00$ ($J_5 = 20:09:00$).<br>**S2 (Fashion/Tech):** At $09:30$, S3 Earbuds active elapsed is $6.0\text{m}$ (started $03:30$). Host signals $1\text{m}45\text{s}$ ($1.75\text{m}$) remaining. Operator enters $V_4 = 1.75$. Anchor 1 at $10:30:00$ ($J_5 = 20:10:30$). | **S1:** Active finish $= 20:06:30 + 1.0\text{m} = 20:07:30$. Projected Toner finish $= 20:07:30 + 3.0\text{m} = 20:10:30$. $Q_5 = 20:10:30$. Deficit $R_5 = (20:10:30 - 20:09:00) \times 1440 = 1.5\text{m}$.<br>**S2:** Active finish $= 20:09:30 + 1.75\text{m} = 20:11:15$. $Q_5 = 20:11:15$. Deficit $R_5 = (20:11:15 - 20:10:30) \times 1440 = 0.75\text{m}$ ($\mathbf{45s}$ / $\mathbf{0.8m}$). | **S1:** **`R5 = 1.5m`** ($+90\text{s}$). Cell turns crimson.<br>**S2:** **`R5 = 0.8m`** ($+45\text{s}$). Cell turns crimson. | **PASS** |
+| **TC-06** | **Remaining-Estimate Active Overrun (Stable Observation)** | **S1 (Cosmetics):** At $06:30$ ($20:06:30$), S2 Serum active elapsed is $4.5\text{m}$. Host requests $1.0\text{m}$ remaining. Operator enters observation time $W_3 = 20:06:30$ and estimate $V_3 = 1.0$. Floating Toner $= 3.0\text{m}$. Anchor 1 at $09:00:00$ ($J_5 = 20:09:00$).<br>**S2 (Fashion/Tech):** At $09:30$ ($20:09:30$), S3 Earbuds active elapsed is $6.0\text{m}$ (started $03:30$). Host signals $1\text{m}45\text{s}$ ($1.75\text{m}$) remaining. Operator enters $W_4 = 20:09:30$ and $V_4 = 1.75$. Anchor 1 at $10:30:00$ ($J_5 = 20:10:30$). | **S1:** Active finish $= \text{ToDateTime}(W_3) + 1.0\text{m} = 20:07:30$. Projected Toner finish $= 20:07:30 + 3.0\text{m} = 20:10:30$. $Q_5 = 20:10:30$. Deficit $R_5 = (20:10:30 - 20:09:00) \times 1440 = 1.5\text{m}$ ($+90\text{s}$). Cell turns crimson.<br>*Recalculation at 06:45 ($20:06:45$):* $W_3$ and $V_3$ unchanged; Serum finish remains stable at $20:07:30$; deficit $R_5$ remains $1.5\text{m}$ ($+90\text{s}$), eliminating false recalculation drift.<br>**S2:** Active finish $= \text{ToDateTime}(W_4) + 1.75\text{m} = 20:11:15$. $Q_5 = 20:11:15$. Deficit $R_5 = (20:11:15 - 20:10:30) \times 1440 = 0.75\text{m}$ ($\mathbf{45s}$ / $\mathbf{0.8m}$). Cell turns crimson.<br>*Recalculation at 09:45:* Earbuds finish remains stable at $20:11:15$; deficit remains $0.8\text{m}$ ($+45\text{s}$). | **S1:** **`R5 = 1.5m`** ($+90\text{s}$). Stable at 06:45.<br>**S2:** **`R5 = 0.8m`** ($+45\text{s}$). Stable at 09:45. | **PASS** |
 
 ---
 
@@ -324,13 +335,13 @@ The baseline employs a **3-tier conditional formatting matrix** designed to draw
 
 | Rule ID | Target Range | Condition Formula | Hex Fill | Hex Text | Semantic Meaning |
 |:---:|---|---|:---:|:---:|---|
-| **CF-01** | `A2:V50` | `=$S2="ACTIVE"` | `#CFE2F3` | `#0B5394` | **ACTIVE ON AIR:** Segment currently presenting live on camera. |
+| **CF-01** | `A2:W50` | `=$S2="ACTIVE"` | `#CFE2F3` | `#0B5394` | **ACTIVE ON AIR:** Segment currently presenting live on camera. |
 | **CF-02** | `R2:R50` | `=$R2>0` | `#990000` | `#FFFFFF` | **CRITICAL ANCHOR DEFICIT:** Hard promotional deadline will be missed! |
 | **CF-03** | `Q2:Q50` | `=AND($I2=TRUE, $Q2 > ('00_Config'!$B$2 + $J2 + IF($J2 < '00_Config'!$B$1, 1, 0)) - TIME(0,2,0), $Q2 <= ('00_Config'!$B$2 + $J2 + IF($J2 < '00_Config'!$B$1, 1, 0)))` | `#FFD966` | `#7F6000` | **AMBER WARNING:** Projected start is within 2 minutes of hard anchor. |
 | **CF-04** | `P2:P50` | `=$P2>=1.0` | `#F4CCCC` | `#990000` | **OVERRUN SLIP:** Segment exceeded scheduled target by $\ge 1.0$ minute. |
 | **CF-05** | `P2:P50` | `=$P2<=-1.0` | `#D9EAD3` | `#274E13` | **UNDER-RUN VOID:** Segment finished $\ge 1.0$ minute ahead of target. |
-| **CF-06** | `A2:V50` | `=$S2="SKIPPED"` | `#EFEFEF` | `#999999` | **SKIPPED / DROPPED:** Segment omitted from broadcast to recover time. |
-| **CF-07** | `A2:V50` | `=$S2="DONE"` | `#F3F3F3` | `#434343` | **COMPLETED:** Segment successfully executed and wrapped. |
+| **CF-06** | `A2:W50` | `=$S2="SKIPPED"` | `#EFEFEF` | `#999999` | **SKIPPED / DROPPED:** Segment omitted from broadcast to recover time. |
+| **CF-07** | `A2:W50` | `=$S2="DONE"` | `#F3F3F3` | `#434343` | **COMPLETED:** Segment successfully executed and wrapped. |
 
 ---
 
@@ -358,6 +369,7 @@ To ensure the validity and fairness of experimental trials, the baseline workboo
 | Col S (S2:S50)      | Status Dropdown   | EDITABLE (Live)   | Operator transitions execution state |
 | Col U (U2:U50)      | Operator Notes    | EDITABLE (Live)   | Operator logs runtime remarks        |
 | Col V (V2:V50)      | Remaining Est     | EDITABLE (Live)   | Operator logs active remaining est   |
+| Col W (W2:W50)      | Remaining Obs     | EDITABLE (Live)   | Operator logs observation timestamp  |
 +---------------------+-------------------+-------------------+--------------------------------------+
 ```
 
@@ -472,7 +484,7 @@ Before any validation trial begins, the research proctor must verify the baselin
     - Verify Col K Planned_Start cascade: ='00_Config'!$B$2 + '00_Config'!$B$1 for row 2; =K2 + (G2 / 1440) for row >= 3.
     - Verify Col O Actual_Dur_Min: =IF(OR(ISBLANK(M2), ISBLANK(N2), M2="", N2=""), "", ROUND(MOD(N2 - M2 + 1, 1) * 1440, 2)).
     - Verify Col P Variance_Min: =IF(OR(ISBLANK(O2), O2=""), "", ROUND(O2 - G2, 2)).
-    - Verify Col Q Projected_Start rolling logic: Evaluates previous status (DONE/SKIPPED/ACTIVE), handles Col V remaining estimates, normalizes DateTimes via ToDateTime(), and holds at hard anchors via MAX(prior_cursor, ToDateTime(J3)).
+    - Verify Col Q Projected_Start rolling logic: Evaluates previous status (DONE/SKIPPED/ACTIVE), handles Col V remaining estimates and Col W observation timestamps, normalizes DateTimes via ToDateTime(), and holds at hard anchors via MAX(prior_cursor, ToDateTime(J3)).
     - Verify Col R Anchor_Deficit_Min: =IF(AND(I2=TRUE, NOT(ISBLANK(J2)), J2<>""), IF(Q2 > ('00_Config'!$B$2 + J2 + IF(J2 < '00_Config'!$B$1, 1, 0)), ROUND((Q2 - ('00_Config'!$B$2 + J2 + IF(J2 < '00_Config'!$B$1, 1, 0))) * 1440, 1), 0), 0).
     - Verify Summary_KPI buffer formulas: Cell B4 uses SUMIFS on compressible rows (H=TRUE) yielding exactly 5.0m buffer.
 
@@ -482,7 +494,7 @@ Before any validation trial begins, the research proctor must verify the baselin
     - Test deficit: Advance Projected_Start past Anchor_Time -> Confirm dark crimson fill (#990000) on Col R.
 
 [ ] 4. SECURITY & RANGE PROTECTION LOCK
-    - Confirm formula ranges (Cols K, L, O, P, Q, R) are VIEW-ONLY for participant account; Col V (Remaining_Est_Min) is EDITABLE.
+    - Confirm formula ranges (Cols K, L, O, P, Q, R) are VIEW-ONLY for participant account; Col V (Remaining_Est_Min) and Col W (Remaining_Est_Obs) are EDITABLE.
     - Confirm zero Google Apps Script macros or extensions are active.
     - Test timestamp shortcut: Verify Ctrl+Shift+; inserts static wall-clock time.
 

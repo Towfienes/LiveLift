@@ -120,9 +120,9 @@ To eliminate order effects, asymmetric skill transfer, and fatigue bias, partici
 
 ---
 
-## 4. Software State & Feature Classification Matrix (Aligned with UI SHA `71807ed`)
+## 4. Software State & Feature Classification Matrix (Aligned with UI SHA `9a91101`)
 
-In strict compliance with the **Integrity Mandate** and the rule that *"Never pretend unfinished functionality exists"*, every software capability utilized during validation is certified against the frozen UI implementation (`71807ed`):
+In strict compliance with the **Integrity Mandate** and the rule that *"Never pretend unfinished functionality exists"*, every software capability utilized during validation is certified against the frozen UI implementation (`9a91101`):
 
 | Feature / Subsystem | Certified Classification | Codebase Reality & Repository Reference | Validation Protocol Implementation |
 |---|:---:|---|---|
@@ -297,7 +297,7 @@ The LiveLift validation roadmap proceeds across two distinct validation gates:
 +---------------------------------------------------------------------------------------------------+
 |                                  VALIDATION LIFECYCLE ROADMAP                                     |
 +---------------------------------------------------------------------------------------------------+
-|  [ PHASE 0: Current Build (SHA 71807ed) ]                   [ PHASE 1: Future Target Milestone ]  |
+|  [ PHASE 0: Current Build (SHA 9a91101) ]                   [ PHASE 1: Future Target Milestone ]  |
 |  - Browser localStorage (guarded) + WoZ Engine              - Durable local IndexedDB product     |
 |  - Tests foundational workflow hypothesis                   - Tests single-device durability      |
 |  - N = 5 to 10 participants across >=3 teams                - N = 3 to 5 recurring teams          |

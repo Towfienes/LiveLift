@@ -80,9 +80,9 @@ AUDITOR SIGN-OFF:           [ TEAMWORK_PREVIEW_AUDITOR ]  SIGNATURE DATE:  [ YYY
 
 ---
 
-## 3. Certified Feature State Audit Ledger (Aligned with UI SHA `71807ed`)
+## 3. Certified Feature State Audit Ledger (Aligned with UI SHA `9a91101`)
 
-In compliance with the requirement that *"Never pretend unfinished functionality exists"*, the research team certifies that every capability evaluated during testing strictly conformed to its pre-authorized state against UI SHA `71807ed`:
+In compliance with the requirement that *"Never pretend unfinished functionality exists"*, the research team certifies that every capability evaluated during testing strictly conformed to its pre-authorized state against UI SHA `9a91101`:
 
 ```
 +--------------------------------------------------------------------------------------------------------------------+
@@ -123,8 +123,9 @@ Aggregates empirical results across all participant trials against the 10 prereg
 | #  | Operational Dimension      | Baseline (B)  | LiveLift (A)  | Paired   | % Imp       | Preregistered       | Evaluation Status  |
 |    |                            | Median (IQR)  | Median (IQR)  | Diff (Δ) | Median      | Threshold Target    | [PASS / MARG / FAIL|
 +----+----------------------------+---------------+---------------+----------+-------------+---------------------+--------------------+
-| 01 | Setup Time (M1, T_setup)   | _____m (___)  | _____m (___)  | _____m   | _____%      | <=10m; <=2m slower  | [ ] PASS  [ ] FAIL |
+| 01 | Setup Time & Errors (M1)   | _____m (___)  | _____m (___)  | _____m   | _____%      | <=10m;<=2m;<=2 errs | [ ] PASS  [ ] FAIL |
 | 02 | Schedule-Risk Awareness(M2)| _____s (___)  | _____s (___)  | _____s   | _____%      | >=80% in <=10s (ID) | [ ] PASS  [ ] FAIL |
+|    | (N_opp=0 -> N/A Retest)    |               |               |          |             | (or N/A Retest)     |                    |
 | 03 | Recovery Decision Lat (M3) | _____s (___)  | _____s (___)  | _____s   | _____%      | >=30% faster;       | [ ] PASS  [ ] FAIL |
 |    | Recovery Validity (M4)     | _____ %       | _____ %       | _____%   | _____       | >=90% valid choices | [ ] PASS  [ ] FAIL |
 | 04 | Anchor Variance (M5)       | _____s (___)  | _____s (___)  | _____s   | _____%      | Median <=15s;       | [ ] PASS  [ ] FAIL |
@@ -132,7 +133,8 @@ Aggregates empirical results across all participant trials against the 10 prereg
 | 05 | Capture Burden (Clicks, M7)| _____ clicks  | _____ clicks  | _____    | _____%      | <=1 command/trans   | [ ] PASS  [ ] FAIL |
 |    | Capture Latency (T_capture)| _____s (___)  | _____s (___)  | _____s   | _____%      | Median <=3.0s       | [ ] PASS  [ ] FAIL |
 |    | PVA Error Rate (M6, E_PVA) | _____ %       | _____ %       | _____%   | _____%      | <=10.0% boundary err| [ ] PASS  [ ] FAIL |
-| 06 | Cognitive Workload (M9)    | _____ / 100   | _____ / 100   | _____ pts| _____%      | >=20% red. or +/-5pt| [ ] PASS  [ ] FAIL |
+| 06 | Cognitive Workload (M9)    | _____ / 100   | _____ / 100   | _____ pts| _____%      | >=20% red (p<0.05)  | [ ] PASS  [ ] FAIL |
+|    |                            |               |               |          |             | OR ΔTLX<=0 & recov  |                    |
 | 07 | Avoidable Host Msgs (M8)   | _____ msgs    | _____ msgs    | _____    | _____%      | >=30% red (or <=2)  | [ ] PASS  [ ] FAIL |
 |    | Comprehension Latency      | _____s (___)  | _____s (___)  | _____s   | _____%      | >=80% in <=5s       | [ ] PASS  [ ] FAIL |
 |    | Speech Stumbles / Glaze    | _____ events  | _____ events  | _____    | _____       | 0 delivery regress  | [ ] PASS  [ ] FAIL |

@@ -65,14 +65,14 @@ The validation program operationalizes the core operational dimensions into elev
 
 ---
 
-### 2.1 Metric 1 (M1): Setup Time ($T_{\text{setup}}$)
-* **Definition:** Total elapsed wall-clock duration in minutes required for the operator to initialize the show environment, verify catalog SKUs, configure hard anchors, and declare readiness for live broadcast.
+### 2.1 Metric 1 (M1): Setup Time ($T_{\text{setup}}$) & Configuration Errors ($N_{\text{config\_errors}}$)
+* **Definition:** Total elapsed wall-clock duration in minutes required for the operator to initialize the show environment, verify catalog SKUs, configure hard anchors, and declare readiness for live broadcast, alongside the count of configuration/import errors committed.
 * **Mathematical Formula:**
   $$T_{\text{setup}} = \frac{t_{\text{ready}} - t_{\text{session\_init}}}{60}$$
   * $t_{\text{session\_init}}$: Timestamp when the operator opens the blank/imported rundown template.
   * $t_{\text{ready}}$: Timestamp when the operator signals complete readiness to the proctor.
-* **Unit of Measure:** Minutes (decimal format, rounded to 2 decimal places).
-* **Target:** $T_{\text{setup}} \le 10.0\text{ min}$, and $\Delta T_{\text{setup}} \le 2.0\text{ min}$ compared to baseline median.
+* **Unit of Measure:** Minutes (decimal format, rounded to 2 decimal places); Error count (integer).
+* **Target:** $T_{\text{setup}} \le 10.0\text{ min}$, $\Delta T_{\text{setup}} \le 2.0\text{ min}$ compared to baseline median, and $N_{\text{config\_errors}} \le 2$ configuration errors during show setup/catalog import.
 
 ---
 
@@ -94,6 +94,7 @@ The validation program operationalizes the core operational dimensions into elev
       - *Software Marker:* Opening the recovery drawer for that anchor, selecting the at-risk row, or initiating a constraint-valid recovery action.
 * **Unit of Measure:** Seconds (decimal format, rounded to 1 decimal place).
 * **Target:** $\ge 80.0\%$ of eligible schedule deficit opportunities ($N_{\text{opp}}$) recognized within $T_{\text{detect}} \le 10.0\text{ seconds}$ with correct anchor identification.
+* **Empty Recognition Denominator Rule ($N_{\text{opp}} = 0$):** If no eligible recognition opportunities were administered or all were aborted ($N_{\text{opp}} = 0$), recognition accuracy cannot be computed ($0/0$). Observers must NOT divide by zero and must NOT fabricate detections. The metric disposition is strictly recorded as **`N/A — INVALID FOR SCORING / RETEST REQUIRED`**; the affected trial must be re-administered.
 
 ---
 
@@ -275,6 +276,7 @@ In real-world testing, certain baseline metrics may equal zero (e.g., zero ancho
    - If $\text{Baseline} = 0$ and $\text{LiveLift} = 0$: Result is **PASS (Parity / Zero Defect Maintained)**.
    - If $\text{Baseline} = 0$ and $\text{LiveLift} > 0$: Result is **FAIL (Operational Regression)**.
    - For avoidable messages specifically, if $\text{Baseline} = 0$, LiveLift passes if $\text{Score}_{\text{LiveLift}} \le 2$ messages.
+3. **Empty Recognition Denominator Rule ($N_{\text{opp}} = 0$):** If no eligible recognition opportunities were administered or all were aborted ($N_{\text{opp}} = 0$), recognition accuracy cannot be computed ($0/0$). Observers must NOT divide by zero and must NOT fabricate detections. The metric disposition is strictly recorded as **`N/A — INVALID FOR SCORING / RETEST REQUIRED`**; the affected trial must be re-administered.
 
 ---
 
@@ -298,6 +300,7 @@ All captured observations must conform to the following tabular schema. Variable
 | obs1_rater_id      | String     | No            | `RATER-[0-9]{2}`     | Observer 1 identifier     |
 | obs2_rater_id      | String     | No            | `RATER-[0-9]{2}`     | Observer 2 identifier     |
 | t_setup_min        | Float      | No            | `0.00 .. 30.00`      | Setup duration (minutes)  |
+| n_config_errors    | Integer    | No            | `0 .. 10`            | Setup config errors (<= 2)|
 | d1_t_stimulus      | Timestamp  | No            | `HH:MM:SS.mmm`       | D1 injection timecode     |
 | d1_t_detect        | Timestamp  | Yes           | `HH:MM:SS.mmm`, NULL | D1 detect time (null if unobserved/censored) |
 | d1_t_action        | Timestamp  | Yes           | `HH:MM:SS.mmm`, NULL | D1 action time (null if no recovery taken)   |

@@ -66,11 +66,12 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | #  | Operational Dimension      | Tier     | Primary Metric (M#)    | Preregistered Threshold  | Mathematical Condition           |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
-| 01 | Setup & Configuration      | Secondary| Setup Time (M1)        | <= 10.0m total;          | T_setup <= 10.0m AND             |
-|    |                            |          |                        | <= 2.0m slower than Base | Delta_T_setup <= 2.0m            |
+| 01 | Setup & Configuration      | Secondary| Setup Time & Errors    | <= 10.0m; <= 2.0m slower;| T_setup <= 10.0m AND             |
+|    |                            |          | (M1, N_config_errors)  | <= 2 config errors       | Delta_T_setup<=2.0m & N_err<=2   |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 02 | Schedule-Risk Awareness    | Primary  | Detection Latency (M2) | >= 80% recognized        | Count(T_detect <= 10.0s) /       |
-|    |                            |          | (Correct identification| in <= 10.0 seconds       |   N_opp >= 0.80 (mapped opps)    |
+|    |                            |          | (Correct identification| in <= 10.0 seconds       |   N_opp >= 0.80 (mapped opps;    |
+|    |                            |          |  or N/A Retest Nopp=0) | (or N/A Retest if Nopp=0)|   N/A Retest if N_opp == 0)      |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 03 | Overrun Recovery Speed     | Primary  | Decision Latency (M3)  | Median >= 30.0% faster;  | Pct_Improve(T_decision) >= 30.0% |
 |    | & Constraint Validity      |          | & Validity Rate (M4)   | >= 90.0% valid choices   | AND R_valid >= 90.0%             |
@@ -90,7 +91,8 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 |    | (Host View Sub-Study)      |          | & Comprehension        | >= 80% understood <= 5.0s| (or <=2 if Base=0) & T_comp<=5.0s|
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 08 | Post-Show PVA Review       | Primary  | Review Duration & Fact | <= 5.0m total, >= 30%    | T_recon <= 5.0m & Pct_Imp >= 30% |
-|    |                            |          | Accuracy (M10)         | faster; >= 90% facts ok  | AND A_facts >= 90.0%             |
+|    |                            |          | Accuracy (M10)         | faster; >= 80% per trial | AND A_facts >= 80.0% per trial   |
+|    |                            |          |                        | (>= 90% pooled)          | (AND >= 90.0% pooled)            |
 +----+----------------------------+----------+------------------------+--------------------------+----------------------------------+
 | 09 | Next LIVE Adaptation       | Primary  | Next LIVE Planning &   | <= 5.0m total, >= 30%    | T_plan <= 5.0m & Pct_Imp >= 30%  |
 |    |                            |          | Feasibility (M11)      | faster; >= 90% feasible  | AND Feas >= 90%; Total<=5.0m     |
@@ -104,16 +106,17 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 
 ## 3. Detailed Dimension Specifications & Scoring Rubrics
 
-### 3.1 Dimension 1: Setup Time ($T_{\text{setup}}$, Metric M1)
-* **Operational Rationale:** If preparing a show in LiveLift is heavier or more cumbersome than duplicating a spreadsheet tab, solo operators and small agencies will abandon the tool before broadcast kickoff.
+### 3.1 Dimension 1: Setup Time ($T_{\text{setup}}$, Metric M1) & Configuration Errors ($N_{\text{config\_errors}}$)
+* **Operational Rationale:** If preparing a show in LiveLift is heavier, more cumbersome, or more error-prone than duplicating a spreadsheet tab, solo operators and small agencies will abandon the tool before broadcast kickoff.
 * **Numeric Boundary:**
   - Absolute Cap: $\text{Median}(T_{\text{setup}}) \le 10.0\text{ minutes}$.
   - Baseline Parity: $\text{Median}(T_{\text{setup, LiveLift}}) - \text{Median}(T_{\text{setup, Base}}) \le 2.0\text{ minutes}$.
-* **Evaluation Method:** Clock time from blank/import opening to participant declaring readiness.
+  - Configuration Accuracy: $N_{\text{config\_errors}} \le 2$ errors during show initialization/catalog import.
+* **Evaluation Method:** Clock time from blank/import opening to participant declaring readiness; count of setup errors.
 * **Scoring Rubric:**
-  - `PASS`: Setup completed $\le 10.0$m and $\le 2.0$m slower than baseline.
-  - `MARGINAL`: Setup takes $10.1\text{--}15.0$m, or $> 2.0$m slower; triggers UX onboarding refinement.
-  - `FAIL`: Setup exceeds $15.0$m; heavier than traditional tools.
+  - `PASS`: Setup completed $\le 10.0$m, $\le 2.0$m slower than baseline, and $N_{\text{config\_errors}} \le 2$.
+  - `MARGINAL`: Setup takes $10.1\text{--}15.0$m, $> 2.0$m slower, or $N_{\text{config\_errors}} \in [3, 4]$; triggers UX onboarding refinement.
+  - `FAIL`: Setup exceeds $15.0$m or $N_{\text{config\_errors}} > 4$; heavier/more error-prone than traditional tools.
 
 ---
 
@@ -125,6 +128,7 @@ The 11 quantitative metrics (M1–M11) and qualitative preferences map systemati
 * **Evaluation Method & Censoring Rules:** Stopwatch from mathematical deficit emergence to operator *correct identification* of the specific threatened anchor or deficit condition. Physical glance or cursor movement without verified identification is not scored as detection.
   - *No Detection / Unobserved:* If the operator fails to detect the deficit before segment conclusion or anchor breach, $t_{\text{detect}} = \text{null}$, recorded as `CENSORED` ($T_{\text{detect}} = 120.0\text{s}$ timeout for ranking), and scored as $0$ in $\mathbf{1}(T_{\text{detect}} \le 10.0\text{s})$. Do not fabricate artificial timestamps.
   - *No Action:* If detected but no recovery action is taken, $t_{\text{action}} = \text{null}$, scored as invalid recovery ($R_{\text{valid}} = 0$).
+  - *Empty Recognition Denominator Rule ($N_{\text{opp}} = 0$):* If no eligible recognition opportunities were administered or all were aborted ($N_{\text{opp}} = 0$), recognition accuracy cannot be computed ($0/0$). Observers and raters must NOT divide by zero and must NOT fabricate detections. The trial/metric disposition is strictly recorded as **`N/A — INVALID FOR SCORING / RETEST REQUIRED`**; the affected trial must be re-administered.
 * **Scoring Rubric:**
   - `PASS`: At least $80.0\%$ of eligible recognition opportunities ($N_{\text{opp}}$) recognized with correct anchor identification within $\le 10.0$ seconds.
   - `MARGINAL`: $60.0\%\text{--}79.9\%$ recognized in $\le 10.0$s; indicates visual hierarchy ambiguity.

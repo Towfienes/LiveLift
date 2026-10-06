@@ -187,8 +187,8 @@ Every disturbance event is scored against objective, quantitative behavioral rub
 |Code| Metric             | PASS Criteria         | MARGINAL Criteria       | FAIL Criteria          |
 +----+--------------------+-----------------------+-------------------------+------------------------+
 | D1 | T_detect           | <= 10.0 seconds       | 10.1 to 20.0 seconds    | > 20.0s or Unrecognized|
-| D1 | T_decision         | <= 15.0s (LiveLift)   | 15.1 to 30.0s (LiveLift)| > 30.0s or Violates    |
-|    |                    | <= 25.0s (Baseline)   | 25.1 to 45.0s (Baseline)| contractual floors     |
+| D1 | T_decision         | <= 15.0 seconds       | 15.1 to 30.0 seconds    | > 30.0s or Violates    |
+|    |                    | (Condition-Blind)     | (Condition-Blind)       | contractual floors     |
 | D2 | V_anchor           | <= 15.0 seconds       | 15.1 to 30.0 seconds    | > 30.0s or Silent Move |
 | D3 | Stockout Halt      | Host halts <= 15.0s   | Host halts 15.1 to 30.0s| Host pitches zero-stock|
 |    |                    | post-alert            | post-alert              | item > 30.0 seconds    |

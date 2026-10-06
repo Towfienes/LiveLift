@@ -75,11 +75,23 @@ To guarantee that the exact same empirical evidence never produces conflicting v
 |                                                ┌───────────┴───────────┐│                   [ PIVOT ]      |
 |                                               PASS                    FAIL                  Diagnostics:   |
 |                                                │                       │                    - Desk only: A |
-|                                                ▼                       ▼                    - Review: B    |
-|                                            [ BUILD ]               [ PIVOT A ]              - Template: C  |
-|                                         Phase 1 Product         Desk-Only Scope                    │       |
-|                                         (Single-Device)         (Kill Host View)                   ▼       |
-|                                                                                             [ RESTRUCTURE ]|
+|                                                │                       ▼                    - Review: B    |
+|                                                │                  [ PIVOT A ]               - Template: C  |
+|                                                │                Desk-Only Scope                    │       |
+|                                                │                (Kill Host View)                   ▼       |
+|                                                │                       │                    [ RESTRUCTURE ]|
+|                                                ▼                       ▼                                   |
+|                                    [ LEVEL 0D: PREFERENCE GATE ] ──────┘                                   |
+|                                    Operator Preference >= 70.0%?                                           |
+|                                                  │                                                         |
+|                                   YES ───────────┴─────────── NO (50.0% - 69.9%)                           |
+|                                    │                           │                                           |
+|                                    ▼                           ▼                                           |
+|                                [ BUILD ]             [ DETERMINISTIC FALLBACK ]                            |
+|                             Phase 1 Product          1. >=50% host reason -> PIVOT A                       |
+|                             (Single-Device)          2. >=50% sheet reason -> PIVOT B                      |
+|                                                      3. >=50% OBS reason  -> PIVOT C                       |
+|                                                      4. Otherwise -> UX REPAIR / RETEST                    |
 +----------------------------------------------------------------------------------------------------+
 ```
 

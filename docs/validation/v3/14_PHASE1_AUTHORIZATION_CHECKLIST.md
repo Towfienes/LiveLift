@@ -69,8 +69,8 @@ Before engineering may write a single line of production code for Phase 1, the f
 |    |                                    | documented as uncertainty| documented    |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
 | 05 | Preregistered Desk Thresholds      | Dimensions 01–06, 08–10  | All G0 Gates  | [ ] CERTIFIED |
-|    | Clearance (Including Next LIVE     | met: T_plan <= 5m, >=30% | PASS (or non- |               |
-|    | and Preference >= 70%)             | faster, T_post <= 5m,    | inferior TLX  |               |
+|    | Clearance (Including Next LIVE,    | met: Setup errs <= 2,    | PASS (or non- |               |
+|    | Errors <= 2, Preference >= 70%)    | T_plan<=5m, T_post<=5m,  | inferior TLX  |               |
 |    |                                    | Feas >= 90%, Pref >= 70% | alternative)  |               |
 +----+------------------------------------+--------------------------+---------------+---------------+
 | 06 | Zero-Tolerance Triggers Audit      | Zero Silent Shifts (T1), | Zero Triggers | [ ] CERTIFIED |
