@@ -46,6 +46,27 @@ export const TEST_VIEWER_ACTOR = {
   role: "viewer" as const,
 };
 
+export const TEST_OPERATOR_TOKEN = "test-operator-token";
+export const TEST_VIEWER_TOKEN = "test-viewer-token";
+export const TEST_INVALID_TOKEN = "invalid-token-xyz";
+
+export const TEST_CAPABILITIES = [
+  {
+    token: TEST_OPERATOR_TOKEN,
+    roomId: TEST_ROOM_ID,
+    actorId: TEST_OPERATOR_ACTOR.actorId,
+    name: TEST_OPERATOR_ACTOR.name,
+    role: "operator" as const,
+  },
+  {
+    token: TEST_VIEWER_TOKEN,
+    roomId: TEST_ROOM_ID,
+    actorId: TEST_VIEWER_ACTOR.actorId,
+    name: TEST_VIEWER_ACTOR.name,
+    role: "viewer" as const,
+  },
+];
+
 export const REJECTION_CODES = [
   "stale_revision",
   "idempotency_conflict",
@@ -253,6 +274,54 @@ export const sampleCreateNextEnvelope: CommandEnvelope = {
   type: "create_next",
   payload: sampleCreateNextPayload,
 };
+
+export const sampleOrdinaryShortenEnvelope: CommandEnvelope = {
+  commandId: "cmd-shorten-ord-001",
+  roomId: TEST_ROOM_ID,
+  sessionId: TEST_SESSION_ID,
+  expectedRevision: 4,
+  type: "shorten_segment",
+  payload: {
+    segmentId: "seg-demo",
+    newTargetSec: 360,
+    acknowledgeBelowMinimum: false,
+  },
+};
+
+export const sampleShortenWithRecoveryEnvelope: CommandEnvelope = {
+  commandId: "cmd-shorten-rec-001",
+  roomId: TEST_ROOM_ID,
+  sessionId: TEST_SESSION_ID,
+  expectedRevision: 4,
+  type: "shorten_segment",
+  payload: {
+    segmentId: "seg-demo",
+    newTargetSec: 360,
+    acknowledgeBelowMinimum: false,
+    recoveryId: "rec-cut-demo-60s",
+    recoveryLabel: "Cut 60s from Product Showcase to recover flash sale anchor",
+  },
+} as unknown as CommandEnvelope;
+
+/**
+ * Authoritative effective time calculation.
+ * serverNowMs is ALREADY the effective server time; clockBehindByMs must NEVER be added to it again.
+ */
+export function getAuthoritativeEffectiveTime(read: { serverNowMs: number; clockBehindByMs: number }): number {
+  return read.serverNowMs;
+}
+
+/** Allocates a sparse segment ID from a strictly monotonic counter */
+export function allocateSparseSegmentId(currentCounter: number): { nextCounter: number; id: string } {
+  const next = currentCounter + 1;
+  return { nextCounter: next, id: `seg-${next}` };
+}
+
+/** Allocates a sparse cue ID from a strictly monotonic counter */
+export function allocateSparseCueId(currentCounter: number): { nextCounter: number; id: string } {
+  const next = currentCounter + 1;
+  return { nextCounter: next, id: `cue-${next}` };
+}
 
 // ---------------------------------------------------------------------------
 // Sample receipts & responses

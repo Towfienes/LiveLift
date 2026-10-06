@@ -128,28 +128,66 @@ describe("Phase 2 Semantic Invariant Safeguards", () => {
     });
   });
 
-  describe("Invariant 4: Acceptance != attempt", () => {
-    it("choosing recovery records recovery_selected event without marking cues attempted", () => {
+  describe("Invariant 4: Acceptance != attempt (Recovery Metadata Invariant)", () => {
+    it("ordinary command produces no recovery_selected event", () => {
+      let session = createTestRealSession();
+      session = applyCommand(session, { type: "start_live", nowMs: T0 }).session;
+      session = applyCommand(session, { type: "start_segment", segmentId: "seg-open", nowMs: T0 }).session;
+
+      const eventCountBefore = session.events.length;
+      const res = applyCommand(session, {
+        type: "shorten_segment",
+        segmentId: "seg-open",
+        newTargetSec: min(2),
+        nowMs: T0 + 10_000,
+      });
+
+      expect(res.receipt.outcome).toBe("committed");
+      const newEvents = res.session.events.slice(eventCountBefore);
+      // Ordinary command produces plan_changed, NOT recovery_selected
+      expect(newEvents.some((e) => e.type === "recovery_selected")).toBe(false);
+      expect(newEvents.some((e) => e.type === "plan_changed")).toBe(true);
+    });
+
+    it("choosing recovery records durable recovery_selected event with preserved metadata without marking cues attempted", () => {
       const session = runScript(createScenarioSession("buffered"), 3);
       const recovery = analyzeRecovery(session, T0 + 7 * 60_000);
       const selectedOption = recovery.options[0];
+      const commandKey = "cmd-rec-meta-test";
 
-      const applied = applyCommand(session, {
+      const firstApply = applyCommand(session, {
         ...selectedOption.command,
+        key: commandKey,
         nowMs: T0 + 7 * 60_000,
         recoveryId: selectedOption.id,
         recoveryLabel: selectedOption.label,
-      }).session;
+      });
+      const applied = firstApply.session;
 
       const newEvents = applied.events.slice(session.events.length);
       expect(newEvents[0].type).toBe("recovery_selected");
+      expect(newEvents[0].data.recoveryId).toBe(selectedOption.id);
+      expect(newEvents[0].data.label).toBe(selectedOption.label);
 
       // Cues are not marked attempted merely because a recovery option was accepted
-      const allCuesPending = Object.values(applied.runtime.cues).every(
+      const allCuesPendingOrPerformed = Object.values(applied.runtime.cues).every(
         (c: CueRun) => c.state === "pending" || c.state === "performed"
       );
-      expect(allCuesPending).toBe(true);
+      expect(allCuesPendingOrPerformed).toBe(true);
       expect(Object.values(applied.runtime.cues).some((c: CueRun) => c.state === "attempted")).toBe(false);
+
+      // Duplicate delivery of same command adds nothing
+      const secondApply = applyCommand(applied, {
+        ...selectedOption.command,
+        key: commandKey,
+        nowMs: T0 + 7 * 60_000,
+        recoveryId: selectedOption.id,
+        recoveryLabel: selectedOption.label,
+      });
+
+      expect(secondApply.receipt.outcome).toBe("committed");
+      expect(secondApply.session.events.length).toBe(applied.events.length);
+      expect(secondApply.session.revision).toBe(applied.revision);
     });
   });
 

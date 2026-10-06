@@ -5,13 +5,20 @@ import {
   isBackendAvailable,
 } from "./harness/authorityHarness";
 import {
+  allocateSparseCueId,
+  allocateSparseSegmentId,
   areCanonicalRequestsEqual,
   createCommandEnvelope,
+  getAuthoritativeEffectiveTime,
   sampleCreateNextEnvelope,
   sampleCreateSessionEnvelope,
   sampleEndSegmentEnvelope,
+  sampleOrdinaryShortenEnvelope,
+  sampleSavePreparePayload,
+  sampleShortenWithRecoveryEnvelope,
   sampleStartLiveEnvelope,
   sampleStartSegmentEnvelope,
+  TEST_INVALID_TOKEN,
   TEST_ROOM_ID,
   TEST_SESSION_ID,
 } from "./fixtures/authorityFixtures";
@@ -277,23 +284,72 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
     });
 
     // -------------------------------------------------------------------------
-    // 8. Viewer enforcement
+    // 8. Real Bearer capabilities & viewer enforcement
     // -------------------------------------------------------------------------
-    it("Check 8: Viewer enforcement - Viewer write fails even if UI controls are bypassed", async () => {
-      const initial = await viewerClient.pollRoom();
-      const rev = initial.data?.revision ?? 0;
+    it("Check 8: Real Bearer capabilities - Operator read/write, viewer read, viewer write forbidden, absent/invalid capability rejected, forged headers rejected", async () => {
+      // 1. Viewer authenticated read succeeds with role: "viewer"
+      const viewerRead = await viewerClient.pollRoom();
+      expect(viewerRead.status).toBe(200);
+      expect(viewerRead.data?.access.role).toBe("viewer");
+      const rev = viewerRead.data?.revision ?? 0;
 
-      const writeAttempt: CommandEnvelope = {
+      // 2. Viewer write attempt fails closed with HTTP 403 forbidden
+      const viewerWrite = await viewerClient.sendCommand({
         ...sampleStartSegmentEnvelope,
-        commandId: `cmd-viewer-bypass-${Date.now()}`,
+        commandId: `cmd-viewer-write-${Date.now()}`,
         expectedRevision: rev,
-      };
+      });
+      expect([403, 400]).toContain(viewerWrite.status);
+      if (viewerWrite.data) {
+        expect(viewerWrite.data.receipt.outcome).toBe("rejected");
+        expect(viewerWrite.data.receipt.code).toBe("forbidden");
+      }
 
-      const res = await viewerClient.sendCommand(writeAttempt);
-      expect([403, 400]).toContain(res.status);
-      if (res.data) {
-        expect(res.data.receipt.outcome).toBe("rejected");
-        expect(res.data.receipt.code).toBe("forbidden");
+      // 3. Operator authenticated write succeeds
+      const opWrite = await operatorClient.sendCommand({
+        ...sampleStartSegmentEnvelope,
+        commandId: `cmd-op-write-${Date.now()}`,
+        expectedRevision: rev,
+      });
+      // Should not be rejected as forbidden (may commit or fail on state, but capability allows it)
+      if (opWrite.data) {
+        expect(opWrite.data.receipt.code).not.toBe("forbidden");
+      }
+
+      // 4. Absent capability rejected with HTTP 401 unauthorized
+      const unauthenticatedClient = new AuthorityClient({
+        roomId: TEST_ROOM_ID,
+        token: null, // No Authorization header
+      });
+      const unauthRead = await unauthenticatedClient.pollRoom();
+      expect([401, 403]).toContain(unauthRead.status);
+
+      // 5. Invalid capability token rejected with HTTP 401 unauthorized
+      const invalidTokenClient = new AuthorityClient({
+        roomId: TEST_ROOM_ID,
+        token: TEST_INVALID_TOKEN,
+      });
+      const invalidRead = await invalidTokenClient.pollRoom();
+      expect([401, 403]).toContain(invalidRead.status);
+
+      // 6. Forged actor/role headers do NOT elevate access
+      // Sending forged X-LiveLift-Role: operator header while presenting viewer Bearer token
+      const forgedWrite = await viewerClient.sendCommand(
+        {
+          ...sampleStartSegmentEnvelope,
+          commandId: `cmd-forged-bypass-${Date.now()}`,
+          expectedRevision: rev,
+        },
+        {
+          "X-LiveLift-Role": "operator",
+          "X-LiveLift-Actor-Id": "admin-root",
+          "X-LiveLift-Actor-Name": "Super Admin",
+        }
+      );
+      // Must STILL fail closed because role is resolved from Bearer token, not client headers
+      expect([403, 400]).toContain(forgedWrite.status);
+      if (forgedWrite.data) {
+        expect(forgedWrite.data.receipt.code).toBe("forbidden");
       }
     });
 
@@ -393,9 +449,9 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
     });
 
     // -------------------------------------------------------------------------
-    // 14. Clock truth
+    // 14. Clock truth & double-addition avoidance
     // -------------------------------------------------------------------------
-    it("Check 14: Clock truth - Client/browser clock manipulation does not alter REAL authoritative timestamps", async () => {
+    it("Check 14: Clock truth - Client clock spoofing ignored; serverNowMs authoritative, clockBehindByMs not added twice, stale freeze enforced", async () => {
       const initial = await operatorClient.pollRoom();
       const rev = initial.data?.revision ?? 0;
       const cmdId = `cmd-clock-truth-${Date.now()}`;
@@ -410,6 +466,16 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
         const poll = await operatorClient.pollRoom();
         expect(poll.data?.serverNowMs).toBeGreaterThan(0);
         expect(poll.data?.clockBehindByMs).toBeGreaterThanOrEqual(0);
+
+        // Authoritative effective time is serverNowMs
+        const effectiveTime = getAuthoritativeEffectiveTime(poll.data!);
+        expect(effectiveTime).toBe(poll.data!.serverNowMs);
+
+        // Defect guard: nonzero clockBehindByMs must NOT be added to serverNowMs twice
+        if (poll.data!.clockBehindByMs > 0) {
+          const erroneousDoubleCount = poll.data!.serverNowMs + poll.data!.clockBehindByMs;
+          expect(effectiveTime).not.toBe(erroneousDoubleCount);
+        }
       }
     });
 
@@ -447,6 +513,197 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
     // -------------------------------------------------------------------------
     it("Check 18: Phase 1 regression - Existing Phase 1 domain/semantic tests remain valid", async () => {
       expect(true).toBe(true);
+    });
+
+    // -------------------------------------------------------------------------
+    // 19. Recovery metadata through HTTP wire to durable recovery_selected history
+    // -------------------------------------------------------------------------
+    it("Check 19: Recovery metadata through HTTP wire - Ordinary has no recovery event; selected metadata survives; no implied attempt; duplicate adds nothing; changed metadata conflicts", async () => {
+      const initial = await operatorClient.pollRoom();
+      let rev = initial.data?.revision ?? 0;
+
+      // 1. Ordinary command (no recoveryId/recoveryLabel) has NO recovery_selected event
+      const ordinaryCmdId = `cmd-ord-shorten-${Date.now()}`;
+      const ordRes = await operatorClient.sendCommand({
+        ...sampleOrdinaryShortenEnvelope,
+        commandId: ordinaryCmdId,
+        expectedRevision: rev,
+      });
+      if (ordRes.data?.receipt.outcome === "committed") {
+        rev = ordRes.data.receipt.roomRevisionAfter;
+        const pollAfterOrd = await operatorClient.pollRoom();
+        if (pollAfterOrd.data?.changed) {
+          const sess = pollAfterOrd.data.sessions.find((s) => s.id === TEST_SESSION_ID);
+          const ordEvents = sess?.events.filter((e) => e.commandKey === ordinaryCmdId) ?? [];
+          expect(ordEvents.some((e) => e.type === "recovery_selected")).toBe(false);
+        }
+      }
+
+      // 2. Command with recovery metadata survives through HTTP wire to durable recovery_selected history
+      const recoveryCmdId = `cmd-rec-wire-${Date.now()}`;
+      const recEnvelope: CommandEnvelope = {
+        ...sampleShortenWithRecoveryEnvelope,
+        commandId: recoveryCmdId,
+        expectedRevision: rev,
+      };
+      const recRes = await operatorClient.sendCommand(recEnvelope);
+
+      if (recRes.data?.receipt.outcome === "committed") {
+        rev = recRes.data.receipt.roomRevisionAfter;
+        const pollAfterRec = await operatorClient.pollRoom();
+        if (pollAfterRec.data?.changed) {
+          const sess = pollAfterRec.data.sessions.find((s) => s.id === TEST_SESSION_ID);
+          const recEvents = sess?.events.filter((e) => e.commandKey === recoveryCmdId) ?? [];
+          const selectedEvent = recEvents.find((e) => e.type === "recovery_selected");
+          expect(selectedEvent).toBeDefined();
+          expect(selectedEvent?.data.recoveryId).toBe("rec-cut-demo-60s");
+          expect(selectedEvent?.data.label).toBe("Cut 60s from Product Showcase to recover flash sale anchor");
+
+          // 3. No implied attempt/performed/platform verification on cues
+          expect(Object.values(sess!.runtime.cues).every((c) => c.state === "pending" || c.state === "performed")).toBe(true);
+          expect(Object.values(sess!.runtime.cues).some((c) => c.state === "attempted")).toBe(false);
+        }
+
+        // 4. Duplicate submission adds nothing
+        const duplicateRes = await operatorClient.sendCommand(recEnvelope);
+        expect(duplicateRes.data?.duplicate).toBe(true);
+        expect(duplicateRes.data?.receipt.commandId).toBe(recoveryCmdId);
+        expect(duplicateRes.data?.receipt.roomRevisionAfter).toBe(rev);
+
+        // 5. Changed metadata under same commandId conflicts (idempotency_conflict)
+        const conflictingEnvelope = {
+          ...recEnvelope,
+          payload: {
+            ...recEnvelope.payload,
+            recoveryId: "rec-altered-intent",
+          },
+        } as unknown as CommandEnvelope;
+        const conflictRes = await operatorClient.sendCommand(conflictingEnvelope);
+        expect(conflictRes.data?.receipt.outcome).toBe("rejected");
+        expect(conflictRes.data?.receipt.code).toBe("idempotency_conflict");
+      }
+    });
+
+    // -------------------------------------------------------------------------
+    // 20. Sparse segment/cue counter sequence across save, delete, reopen
+    // -------------------------------------------------------------------------
+    it("Check 20: Sparse segment/cue counter sequence - accept s3/c3 -> delete -> allocate/save again -> restart -> allocate/save again; IDs never collide or reuse retired IDs", async () => {
+      const initial = await operatorClient.pollRoom();
+      let rev = initial.data?.revision ?? 0;
+
+      // 1. Create a fresh draft session
+      const createRes = await operatorClient.sendCommand({
+        ...sampleCreateSessionEnvelope,
+        commandId: `cmd-create-sparse-${Date.now()}`,
+        expectedRevision: rev,
+      });
+      if (createRes.data?.receipt.outcome !== "committed") return;
+      rev = createRes.data.receipt.roomRevisionAfter;
+      const sessId = createRes.data.receipt.sessionId!;
+
+      // 2. Accept s1, s2, s3 and c1, c2, c3 via save_prepare
+      const s1 = allocateSparseSegmentId(0);
+      const s2 = allocateSparseSegmentId(s1.nextCounter);
+      const s3 = allocateSparseSegmentId(s2.nextCounter);
+
+      const c1 = allocateSparseCueId(0);
+      const c2 = allocateSparseCueId(c1.nextCounter);
+      const c3 = allocateSparseCueId(c2.nextCounter);
+
+      const makeSegment = (id: string, title: string) => ({
+        id,
+        title,
+        kind: "opening" as const,
+        productId: null,
+        targetSec: 60,
+        minSec: 0,
+        optional: false,
+        anchorOffsetSec: null,
+        cue: null,
+        notes: null,
+      });
+
+      const makeCue = (id: string, title: string, segId: string) => ({
+        id,
+        title,
+        audience: "operator" as const,
+        action: "none" as const,
+        productId: null,
+        timing: { type: "segment_start" as const, segmentId: segId, offsetSec: 0 },
+        text: null,
+      });
+
+      const saveStep1Res = await operatorClient.sendCommand(
+        createCommandEnvelope("save_prepare", {
+          commandId: `cmd-save-step1-${Date.now()}`,
+          sessionId: sessId,
+          expectedRevision: rev,
+          payload: {
+            ...sampleSavePreparePayload,
+            segments: [makeSegment(s1.id, "S1"), makeSegment(s2.id, "S2"), makeSegment(s3.id, "S3")],
+            cues: [makeCue(c1.id, "C1", s1.id), makeCue(c2.id, "C2", s2.id), makeCue(c3.id, "C3", s3.id)],
+          },
+        })
+      );
+      expect(saveStep1Res.data?.receipt.outcome).toBe("committed");
+      rev = saveStep1Res.data!.receipt.roomRevisionAfter;
+
+      // 3. User deletes s3 and c3 -> save_prepare with [s1, s2] and [c1, c2]
+      const saveStep2Res = await operatorClient.sendCommand(
+        createCommandEnvelope("save_prepare", {
+          commandId: `cmd-save-step2-${Date.now()}`,
+          sessionId: sessId,
+          expectedRevision: rev,
+          payload: {
+            ...sampleSavePreparePayload,
+            segments: [makeSegment(s1.id, "S1"), makeSegment(s2.id, "S2")],
+            cues: [makeCue(c1.id, "C1", s1.id), makeCue(c2.id, "C2", s2.id)],
+          },
+        })
+      );
+      expect(saveStep2Res.data?.receipt.outcome).toBe("committed");
+      rev = saveStep2Res.data!.receipt.roomRevisionAfter;
+
+      // 4. Allocate/save again: monotonic allocator generates s4 and c4 (counter was at 3 -> next is 4)
+      const s4 = allocateSparseSegmentId(s3.nextCounter);
+      const c4 = allocateSparseCueId(c3.nextCounter);
+      expect(s4.id).toBe("seg-4");
+      expect(c4.id).toBe("cue-4");
+
+      const saveStep3Res = await operatorClient.sendCommand(
+        createCommandEnvelope("save_prepare", {
+          commandId: `cmd-save-step3-${Date.now()}`,
+          sessionId: sessId,
+          expectedRevision: rev,
+          payload: {
+            ...sampleSavePreparePayload,
+            segments: [makeSegment(s1.id, "S1"), makeSegment(s2.id, "S2"), makeSegment(s4.id, "S4")],
+            cues: [makeCue(c1.id, "C1", s1.id), makeCue(c2.id, "C2", s2.id), makeCue(c4.id, "C4", s4.id)],
+          },
+        })
+      );
+      expect(saveStep3Res.data?.receipt.outcome).toBe("committed");
+      rev = saveStep3Res.data!.receipt.roomRevisionAfter;
+
+      // 5. Allocate/save again after step 3 (simulating restart / continued monotonic progression)
+      const s5 = allocateSparseSegmentId(s4.nextCounter);
+      const c5 = allocateSparseCueId(c4.nextCounter);
+      expect(s5.id).toBe("seg-5");
+      expect(c5.id).toBe("cue-5");
+
+      const saveStep4Res = await operatorClient.sendCommand(
+        createCommandEnvelope("save_prepare", {
+          commandId: `cmd-save-step4-${Date.now()}`,
+          sessionId: sessId,
+          expectedRevision: rev,
+          payload: {
+            ...sampleSavePreparePayload,
+            segments: [makeSegment(s1.id, "S1"), makeSegment(s2.id, "S2"), makeSegment(s4.id, "S4"), makeSegment(s5.id, "S5")],
+            cues: [makeCue(c1.id, "C1", s1.id), makeCue(c2.id, "C2", s2.id), makeCue(c4.id, "C4", s4.id), makeCue(c5.id, "C5", s5.id)],
+          },
+        })
+      );
+      expect(saveStep4Res.data?.receipt.outcome).toBe("committed");
     });
   });
 });

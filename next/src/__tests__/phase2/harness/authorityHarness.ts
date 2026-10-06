@@ -11,7 +11,8 @@ export interface AuthorityClientConfig {
   actorId: string;
   actorName: string;
   role: "operator" | "viewer";
-  token?: string;
+  token?: string | null;
+  extraHeaders?: Record<string, string>;
 }
 
 export interface SendCommandResult {
@@ -35,41 +36,52 @@ export interface PollRoomResult {
 /**
  * Black-box HTTP client for Phase 2 Remote Room Authority.
  * Communicates strictly over the frozen wire contract defined in docs/phase2/contract.md.
+ * Configured with real Bearer capabilities matching backend test configuration.
  */
 export class AuthorityClient {
   readonly config: AuthorityClientConfig;
 
   constructor(config: Partial<AuthorityClientConfig> = {}) {
+    const role = config.role ?? "operator";
+    const defaultToken =
+      role === "operator"
+        ? (process.env.LIVELIFT_OPERATOR_TOKEN || "test-operator-token")
+        : (process.env.LIVELIFT_VIEWER_TOKEN || "test-viewer-token");
+
     this.config = {
       baseUrl: config.baseUrl ?? (process.env.LIVELIFT_TEST_SERVER_URL || "http://localhost:3130"),
       roomId: config.roomId ?? "room-default",
-      actorId: config.actorId ?? "actor-operator-1",
-      actorName: config.actorName ?? "Lead Operator",
-      role: config.role ?? "operator",
-      token: config.token,
+      actorId: config.actorId ?? (role === "operator" ? "actor-op-1" : "actor-vw-1"),
+      actorName: config.actorName ?? (role === "operator" ? "Lead Operator" : "Guest Viewer"),
+      role,
+      token: config.token === undefined ? defaultToken : config.token,
+      extraHeaders: config.extraHeaders,
     };
   }
 
-  private getHeaders(): Record<string, string> {
+  private getHeaders(overrideHeaders?: Record<string, string>): Record<string, string> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "X-LiveLift-Room": this.config.roomId,
-      "X-LiveLift-Actor-Id": this.config.actorId,
-      "X-LiveLift-Actor-Name": this.config.actorName,
-      "X-LiveLift-Role": this.config.role,
     };
     if (this.config.token) {
       headers.Authorization = `Bearer ${this.config.token}`;
+    }
+    if (this.config.extraHeaders) {
+      Object.assign(headers, this.config.extraHeaders);
+    }
+    if (overrideHeaders) {
+      Object.assign(headers, overrideHeaders);
     }
     return headers;
   }
 
   /** POST /api/v3/room/commands */
-  async sendCommand(envelope: CommandEnvelope): Promise<SendCommandResult> {
+  async sendCommand(envelope: CommandEnvelope, extraHeaders?: Record<string, string>): Promise<SendCommandResult> {
     try {
       const res = await fetch(`${this.config.baseUrl}/api/v3/room/commands`, {
         method: "POST",
-        headers: this.getHeaders(),
+        headers: this.getHeaders(extraHeaders),
         body: JSON.stringify(envelope),
       });
 
@@ -89,13 +101,13 @@ export class AuthorityClient {
   }
 
   /** GET /api/v3/room/commands/<commandId> */
-  async getReceipt(commandId: string): Promise<GetReceiptResult> {
+  async getReceipt(commandId: string, extraHeaders?: Record<string, string>): Promise<GetReceiptResult> {
     try {
       const res = await fetch(
         `${this.config.baseUrl}/api/v3/room/commands/${encodeURIComponent(commandId)}`,
         {
           method: "GET",
-          headers: this.getHeaders(),
+          headers: this.getHeaders(extraHeaders),
         }
       );
 
@@ -115,7 +127,7 @@ export class AuthorityClient {
   }
 
   /** GET /api/v3/room?afterRevision=<revision> */
-  async pollRoom(afterRevision?: number): Promise<PollRoomResult> {
+  async pollRoom(afterRevision?: number, extraHeaders?: Record<string, string>): Promise<PollRoomResult> {
     try {
       const url = new URL(`${this.config.baseUrl}/api/v3/room`);
       if (afterRevision !== undefined) {
@@ -124,7 +136,7 @@ export class AuthorityClient {
 
       const res = await fetch(url.toString(), {
         method: "GET",
-        headers: this.getHeaders(),
+        headers: this.getHeaders(extraHeaders),
       });
 
       const body = await res.json().catch(() => null);

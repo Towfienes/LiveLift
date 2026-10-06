@@ -24,6 +24,8 @@ This document defines the independent verification matrix for the Phase 2 Remote
 | **CHK-16** | Next LIVE draft derivation | Backend & Domain | **HIGH** | `authority.acceptance.test.ts` (Check 16) | PENDING INTEGRATION |
 | **CHK-17** | Semantic invariants | Domain & Transport | **CRITICAL** | `semantic.safeguards.test.ts` | **PASS NOW** |
 | **CHK-18** | Phase 1 regression safeguard | All Lanes | **CRITICAL** | Phase 1 Suite (9 test files, 211 tests) | **PASS NOW** |
+| **CHK-19** | Recovery metadata wire lifecycle | Backend & Domain | **CRITICAL** | `authority.acceptance.test.ts` (Check 19) | PENDING INTEGRATION |
+| **CHK-20** | Sparse counter sequence & no reuse | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 20) | PENDING INTEGRATION |
 
 ---
 
@@ -96,12 +98,18 @@ This document defines the independent verification matrix for the Phase 2 Remote
 - **Owning Lane:** Backend.
 - **Blocker Severity:** **CRITICAL**.
 
-### CHK-08: Viewer Enforcement
-- **Contract Reference:** `docs/phase2/contract.md` § Roles
-- **Expected Behavior:** Client authenticated with `role: "viewer"` cannot execute commands. Direct POST to `/api/v3/room/commands` must fail closed (`forbidden` or HTTP 403), even if UI controls are bypassed. Viewer read access (`GET /api/v3/room`) succeeds.
+### CHK-08: Viewer Enforcement & Bearer Capabilities
+- **Contract Reference:** `docs/phase2/contract.md` § Roles & Bearer Capabilities
+- **Expected Behavior:** Access control is enforced strictly via Bearer tokens hashed against server configuration (`LIVELIFT_CAPABILITIES`):
+  - Operator Bearer token authorizes both read (`GET /api/v3/room`) and write (`POST /api/v3/room/commands`).
+  - Viewer Bearer token authorizes read (`GET /api/v3/room`), but write commands are forbidden (`HTTP 403` / `outcome: "rejected"`, `code: "forbidden"`), even if UI controls are bypassed.
+  - Absent or invalid Bearer token is rejected with `HTTP 401 Unauthorized` / `{ error: "unauthorized" }`.
+  - Forged identity headers (`X-LiveLift-Role: operator`, `X-LiveLift-Actor-Id`) without valid Bearer token must never elevate access.
 - **Evidence Required:**
-  - Viewer POST returns HTTP 403 / `outcome: "rejected"`, `code: "forbidden"`.
-  - Viewer GET returns HTTP 200 with `access.role: "viewer"`.
+  - Operator POST/GET return 200 with `access.role: "operator"`.
+  - Viewer POST returns HTTP 403 `forbidden`; GET returns HTTP 200 with `access.role: "viewer"`.
+  - Unauthenticated / invalid token returns HTTP 401.
+  - Forged headers do not grant operator access.
 - **Owning Lane:** Backend & UI.
 - **Blocker Severity:** **CRITICAL**.
 
@@ -152,13 +160,18 @@ This document defines the independent verification matrix for the Phase 2 Remote
 - **Owning Lane:** Backend.
 - **Blocker Severity:** **CRITICAL**.
 
-### CHK-14: Clock Truth
+### CHK-14: Clock Truth & Anti-Double-Count
 - **Contract Reference:** `docs/phase2/contract.md` § Architecture, § Reads and polling
-- **Expected Behavior:** REAL authoritative event timestamps (`occurredAtMs`, `recordedAtMs`) and snapshot time (`serverNowMs`) are assigned by the server clock. Client/browser clock manipulation does not alter authoritative timestamps. `clockBehindByMs` reports any positive gap.
+- **Expected Behavior:** REAL authoritative event timestamps (`occurredAtMs`, `recordedAtMs`) and snapshot time (`serverNowMs`) are assigned strictly by the server clock.
+  - Client/browser clock manipulation does not alter authoritative timestamps.
+  - `RoomRead.serverNowMs` is already advanced to the authoritative time. Non-zero `clockBehindByMs` ($\max(0, \text{nowMs} - \text{wall})$) must **NOT** be added to `serverNowMs` twice.
+  - Client-side wall interpolation must anchor directly to authoritative `serverNowMs`.
+  - Stale freeze thresholds ($> 3000$ms behind) must remain accurately detected without double-counting skew.
 - **Evidence Required:**
   - Spoofed client timestamps ignored for authoritative records.
-  - `RoomRead.serverNowMs` reflects actual server time; `clockBehindByMs >= 0`.
-- **Owning Lane:** Backend.
+  - Authoritative effective time calculation does not add `clockBehindByMs` to `serverNowMs`.
+  - Stale gap $> 3000$ms correctly triggers stale freeze condition.
+- **Owning Lane:** Backend & UI.
 - **Blocker Severity:** **HIGH**.
 
 ### CHK-15: History Semantics
@@ -206,3 +219,58 @@ This document defines the independent verification matrix for the Phase 2 Remote
 - **Owning Lane:** All Lanes.
 - **Blocker Severity:** **CRITICAL**.
 - **Current Status:** **PASS NOW** (211/211 automated tests passing).
+
+### CHK-19: Recovery Metadata Wire Lifecycle
+- **Contract Reference:** `docs/phase2/contract.md` § Recovery & History
+- **Expected Behavior:** When an operator accepts a recovery recommendation, the recovery metadata flows end-to-end through the HTTP wire into durable history:
+  - An ordinary command (e.g. standard `shorten_segment`) produces NO `recovery_selected` event.
+  - A command with recovery metadata (`recoveryId`, `recoveryLabel`) persists a durable `recovery_selected` event into session history preserving `recoveryId` and `label`.
+  - Accepting a recovery suggestion does NOT imply automatic cue attempt, execution, or platform verification (`state` remains `pending` or `performed`, never fabricated as `attempted`).
+  - An identical retry of a command with recovery metadata returns `duplicate: true` and appends NO additional event.
+  - Submitting a command with altered recovery metadata under the same `commandId` is rejected with `code: "idempotency_conflict"`.
+- **Evidence Required:**
+  - Ordinary command: 0 `recovery_selected` events in session history.
+  - Recovery command: Exactly 1 `recovery_selected` event with matching `recoveryId` and `label`.
+  - Invariant: No cues set to `attempted` solely by accepting a recovery recommendation.
+  - Idempotency: Duplicate submission produces `duplicate: true` with zero additional events.
+  - Conflict: Mutated recovery payload on same `commandId` returns `outcome: "rejected"`, `code: "idempotency_conflict"`.
+- **Owning Lane:** Backend & Domain.
+- **Blocker Severity:** **CRITICAL**.
+- **Current Status:** PENDING INTEGRATION (Wire acceptance in Check 19; contract serialization & domain invariant tests **PASS NOW**).
+
+### CHK-20: Sparse Segment/Cue Counter Sequence & No Reuse
+- **Contract Reference:** `docs/phase2/contract.md` § Entity Identifiers & SQLite Store
+- **Expected Behavior:** Segment and cue entity counter sequences must be strictly monotonic across deletions, saves, and server restarts:
+  - When segments `s1`, `s2`, `s3` (or cues `c1`, `c2`, `c3`) are allocated and saved, deleting entity `s3`/`c3` permanently retires that identifier in the durable `used.segments` / `used.cues` register.
+  - Subsequent allocations must yield `s4`/`c4` (monotonic progression), never re-proposing or reusing retired `s3`/`c3`.
+  - After a server restart, the sparse sequence counter must continue from the max used identifier (e.g. allocating `s5`/`c5`), never resetting or colliding with retired identifiers.
+  - Re-proposing a deleted identifier must fail closed with HTTP 422 (`"Deleted segments/cues identifiers cannot be reused."`).
+- **Evidence Required:**
+  - Allocate & save `s1..s3`, `c1..c3`.
+  - Delete `s3`, `c3`.
+  - Allocate next entity $\to$ strictly receives `s4`, `c4`.
+  - Restart server, reload room $\to$ next allocation strictly receives `s5`, `c5`.
+  - Zero ID collisions or reuse of retired identifiers.
+- **Owning Lane:** Backend & UI.
+- **Blocker Severity:** **CRITICAL**.
+- **Current Status:** PENDING INTEGRATION (Wire acceptance in Check 20; contract sequence monotonicity tests **PASS NOW**).
+
+---
+
+## Cross-Lane Contract Observations & Discrepancies
+
+### Observation 1: CommandEnvelope Payload Typing vs Domain Recovery Metadata
+- In `next/src/contracts/authority.ts`, `CommandEnvelope` defines:
+  ```ts
+  payload: Omit<Extract<AuthorityCommandBody, { type: T }>, "type">
+  ```
+  where `AuthorityCommandBody` uses `RuntimeCommandBody = Exclude<CommandBody, ...>`.
+- In Phase 1 domain types, `recoveryId?: string; recoveryLabel?: string` were declared on `CommandBase`, but are not top-level properties on `CommandBody` union variants.
+- Consequently, TypeScript static analysis flags `{ ...payload, recoveryId }` on `CommandEnvelope["payload"]` unless typed with `as unknown as CommandEnvelope`.
+- **Backend Schema:** The backend `validation.ts` schema does accept `recoveryId` and `recoveryLabel` on wire command payloads.
+- **Recommendation:** Post-Phase 2, refine `CommandEnvelope` in `authority.ts` to explicitly include optional `recoveryId?: string` and `recoveryLabel?: string` across all command payloads.
+
+### Observation 2: Capability Token Hashing vs HTTP Headers
+- The backend resolves capabilities exclusively by computing SHA-256 hashes of `Authorization: Bearer <token>` against entries in `LIVELIFT_CAPABILITIES`.
+- Request headers `X-LiveLift-Role` and `X-LiveLift-Actor-Id` are purely informational/supplementary and cannot elevate access without a corresponding valid Bearer token.
+
