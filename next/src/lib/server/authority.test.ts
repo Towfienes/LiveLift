@@ -8,6 +8,8 @@ import { expect, test, vi } from "vitest";
 import { RoomAuthority } from "./authority";
 import { authenticate, type Access } from "./config";
 import { canonicalJson, envelopeSchema, parseBody, type Envelope } from "./validation";
+import { applyCommand } from "@/lib/domain/engine";
+import { newSegment } from "@/lib/domain/plan";
 
 test("single-room authority preserves atomic receipts, revisions, draft IDs and time across reopen", () => {
   const directory = mkdtempSync(join(tmpdir(), "livelift-authority-"));
@@ -142,6 +144,137 @@ test("single-room authority preserves atomic receipts, revisions, draft IDs and 
     } finally { peer.close(); }
   } finally {
     vi.restoreAllMocks();
+    authority.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("recovery attribution survives strict validation, receipts and restart without implying cue execution", () => {
+  const directory = mkdtempSync(join(tmpdir(), "livelift-recovery-"));
+  const path = join(directory, "room.sqlite");
+  const operator: Access = { actorId: "op", name: "Operator", role: "operator" };
+  let authority = new RoomAuthority("room", path);
+  try {
+    const metadata = { recoveryId: "skip:optional", recoveryLabel: "Skip optional segment" };
+    const payloads = {
+      end_segment: { segmentId: "first" }, advance_segment: {},
+      shorten_segment: { segmentId: "first", newTargetSec: 30 },
+      extend_segment: { segmentId: "first", deltaSec: 1 },
+      commit_end_by: { segmentId: "first", endByMs: Date.now() + 60000 },
+      skip_segment: { segmentId: "optional" },
+      reorder_segment: { segmentId: "optional", beforeSegmentId: null },
+      reanchor_segment: { segmentId: "optional", anchorOffsetSec: 120, reason: "Explicit change" },
+    };
+    for (const [type, payload] of Object.entries(payloads)) {
+      const envelope = { commandId: "validate", roomId: "room", sessionId: "session", expectedRevision: 0, type, payload: { ...payload, ...metadata } };
+      expect(parseBody(envelope)).toEqual({ ...payload, ...metadata, type });
+      expect(parseBody({ ...envelope, payload: { ...payload, recoveryId: 1 } })).toBeNull();
+      expect(parseBody({ ...envelope, payload: { ...payload, recoveryLabel: null } })).toBeNull();
+    }
+    let number = 0;
+    const send = (type: string, sessionId: string | null, payload = {}) => {
+      const envelope = { commandId: `recovery-${++number}`, roomId: "room", sessionId, expectedRevision: authority.read(operator).revision, type, payload };
+      const result = authority.command(envelope, operator);
+      expect(result.status).toBe(200);
+      return { envelope, ...result };
+    };
+    const snapshot = () => {
+      const read = authority.read(operator);
+      if (!read.changed) throw new Error("Expected full snapshot");
+      return read.sessions[0];
+    };
+    const created = send("create_session", null, {
+      title: "Recovery", timezone: "UTC", plannedStartMs: Date.now(),
+      products: [{ id: "product", code: "P", name: "Product", price: null }],
+      segments: [newSegment("first", { title: "Opening", kind: "opening", targetSec: 60, minSec: 0 }), newSegment("optional", { title: "Optional", targetSec: 60, minSec: 0, optional: true })],
+      cues: [{ id: "cue", title: "Pin product", audience: "operator", action: "pin_product", productId: "product", timing: { type: "at_offset", offsetSec: 0 }, text: null }],
+    });
+    const id = created.body.receipt.sessionId!;
+    send("start_live", id);
+    const beforeOrdinary = snapshot();
+    const ordinary = send("extend_segment", id, { segmentId: "first", deltaSec: 1 });
+    const afterOrdinary = snapshot();
+    expect(afterOrdinary).toEqual(applyCommand(beforeOrdinary, { type: "extend_segment", segmentId: "first", deltaSec: 1, key: ordinary.envelope.commandId, actor: operator.name, nowMs: afterOrdinary.updatedAtMs }).session);
+    expect(afterOrdinary.events.some((event) => event.type === "recovery_selected")).toBe(false);
+    const selected = send("skip_segment", id, { segmentId: "optional", ...metadata });
+    const afterSelected = snapshot();
+    const decision = afterSelected.events.find((event) => event.type === "recovery_selected")!;
+    expect(decision).toMatchObject({ actor: operator.name, commandKey: selected.envelope.commandId, data: { recoveryId: metadata.recoveryId, label: metadata.recoveryLabel } });
+    expect(selected.body.receipt.eventIds).toContain(decision.id);
+    expect(afterSelected.runtime.cues).toEqual(beforeOrdinary.runtime.cues);
+    expect(afterSelected.runtime.cues.cue.state).toBe("pending");
+    expect(afterSelected.runtime.actions).toEqual({});
+    expect(afterSelected.events.some((event) => event.type === "cue_reported" || event.type === "action_reported")).toBe(false);
+    expect(authority.command(selected.envelope, operator).body).toEqual({ receipt: selected.body.receipt, duplicate: true });
+    for (const changed of [{ ...metadata, recoveryId: "other" }, { ...metadata, recoveryLabel: "Changed intent" }]) {
+      expect(authority.command({ ...selected.envelope, payload: { segmentId: "optional", ...changed } }, operator).body.receipt.code).toBe("idempotency_conflict");
+    }
+    expect(snapshot()).toEqual(afterSelected);
+    authority.close();
+    authority = new RoomAuthority("room", path);
+    expect(snapshot()).toEqual(afterSelected);
+    expect(authority.receipt(selected.envelope.commandId)).toEqual(selected.body.receipt);
+    expect(authority.command(selected.envelope, operator).body.duplicate).toBe(true);
+    expect(snapshot()).toEqual(afterSelected);
+  } finally {
+    authority.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("sparse segment and cue counter floors survive deletion, normal allocation and restart", () => {
+  const directory = mkdtempSync(join(tmpdir(), "livelift-counters-"));
+  const path = join(directory, "room.sqlite");
+  const operator: Access = { actorId: "op", name: "Operator", role: "operator" };
+  let authority = new RoomAuthority("room", path);
+  try {
+    let number = 0;
+    const command = (type: string, sessionId: string | null, payload = {}) => authority.command({ commandId: `counter-${++number}`, roomId: "room", sessionId, expectedRevision: authority.read(operator).revision, type, payload }, operator);
+    const draft = { title: "Sparse IDs", timezone: "UTC", plannedStartMs: Date.now(), objective: null, accountLabel: null, products: [] };
+    const created = command("create_session", null, draft);
+    expect(created.status).toBe(200);
+    const id = created.body.receipt.sessionId!;
+    const session = () => {
+      const read = authority.read(operator);
+      if (!read.changed) throw new Error("Expected full snapshot");
+      return read.sessions[0];
+    };
+    const save = (segmentIds: string[], cueIds: string[]) => command("save_prepare", id, {
+      ...draft,
+      segments: segmentIds.map((id) => newSegment(id, { title: "Segment", targetSec: 60 })),
+      cues: cueIds.map((id) => ({ id, title: "Cue", audience: "presenter", action: "none", productId: null, timing: { type: "at_offset", offsetSec: 0 }, text: null })),
+    });
+    expect(session().seq).toMatchObject({ segment: 0, cue: 0 });
+    expect(save([`${id}:s3`], [`${id}:c3`]).status).toBe(200);
+    expect(session().seq).toMatchObject({ segment: 3, cue: 3 });
+    expect(save([`${id}:s3`, `${id}:s3`], [`${id}:c3`]).status).toBe(422);
+    expect(save([`${id}:s3`], [`${id}:c3`, `${id}:c3`]).status).toBe(422);
+    expect(save([], []).status).toBe(200);
+    expect(save([], []).status).toBe(200);
+    expect(session().seq).toMatchObject({ segment: 3, cue: 3 });
+    expect(save([`${id}:s3`], []).status).toBe(422);
+    expect(save([], [`${id}:c3`]).status).toBe(422);
+    const allocated = () => {
+      const before = session();
+      const segmentId = `${id}:s${before.seq.segment + 1}`;
+      const cueId = `${id}:c${before.seq.cue + 1}`;
+      expect(save([...before.plans[0].segments.map((s) => s.id), segmentId], [...before.plans[0].cues.map((c) => c.id), cueId]).status).toBe(200);
+      return { segmentId, cueId };
+    };
+    expect(allocated()).toEqual({ segmentId: `${id}:s4`, cueId: `${id}:c4` });
+    const beforeRestart = session();
+    authority.close();
+    authority = new RoomAuthority("room", path);
+    expect(session()).toEqual(beforeRestart);
+    expect(allocated()).toEqual({ segmentId: `${id}:s5`, cueId: `${id}:c5` });
+    expect(session().seq).toMatchObject({ segment: 5, cue: 5 });
+    expect(save([`${id}:s3`], []).status).toBe(422);
+    expect(save([], [`${id}:c3`]).status).toBe(422);
+    const beforeInvalid = session();
+    expect(save([`${id}:s9007199254740992`], []).status).toBe(422);
+    expect(save([], [`${id}:c9007199254740992`]).status).toBe(422);
+    expect(session()).toEqual(beforeInvalid);
+  } finally {
     authority.close();
     rmSync(directory, { recursive: true, force: true });
   }

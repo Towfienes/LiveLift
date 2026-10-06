@@ -31,6 +31,16 @@ function idsOf(session: Session): UsedIds {
   };
 }
 
+function counterFloor(sessionId: string, kind: "s" | "c", counter: number, ids: string[]): number {
+  const prefix = `${sessionId}:${kind}`;
+  for (const id of ids) {
+    if (!id.startsWith(prefix)) continue;
+    const suffix = id.slice(prefix.length);
+    if (/^\d+$/.test(suffix)) counter = Math.max(counter, Number(suffix));
+  }
+  return counter;
+}
+
 /** Validate draft identities/references without preventing incomplete or infeasible planning. */
 function checkDraft(session: Session, previous?: StoredSession): string | null {
   const ids = idsOf(session);
@@ -239,6 +249,12 @@ export class RoomAuthority {
       const used = creation ? ids : Object.fromEntries(
         (["products", "segments", "cues"] as const).map((kind) => [kind, [...new Set([...target!.used[kind], ...ids[kind]])]]),
       );
+      // Retired IDs also contribute, so deleting a sparse suffix never lowers the allocation floor.
+      next.seq.segment = counterFloor(next.id, "s", next.seq.segment, used.segments);
+      next.seq.cue = counterFloor(next.id, "c", next.seq.cue, used.cues);
+      if (![next.seq.segment, next.seq.cue].every((counter) => Number.isSafeInteger(counter) && counter < Number.MAX_SAFE_INTEGER)) {
+        return refuse("invalid_payload", "Session-scoped numeric IDs must leave room for a safe next counter.");
+      }
       if (creation) {
         this.db.prepare("INSERT INTO sessions VALUES (?, ?, ?, ?, ?)").run(next.id, this.roomId, next.lifecycle, JSON.stringify(next), JSON.stringify(used));
       } else {

@@ -15,6 +15,7 @@ const coverage = {
   followUp: z.string().optional(),
   acknowledgeBelowMinimum: z.boolean().optional(),
 };
+const recovery = { recoveryId: z.string().optional(), recoveryLabel: z.string().optional() };
 const segment = SegmentSchema.extend({
   id: idSchema, productId: idSchema.nullable(),
   targetSec: z.number().int().safe().positive().nullable(),
@@ -69,16 +70,16 @@ const payloads = {
   create_next: z.object({ title: editable.title, plannedStartMs: instant, changeIds: z.array(idSchema), note: z.string() }).strict(),
   start_live: z.object({ rebaseToNow: z.boolean().optional() }).strict(),
   start_segment: z.object({ segmentId: idSchema }).strict(),
-  end_segment: z.object({ segmentId: idSchema, ...coverage }).strict(),
-  advance_segment: z.object(coverage).strict(),
-  shorten_segment: z.object({ segmentId: idSchema, newTargetSec: number, acknowledgeBelowMinimum: z.boolean().optional() }).strict(),
-  extend_segment: z.object({ segmentId: idSchema, deltaSec: number }).strict(),
-  commit_end_by: z.object({ segmentId: idSchema, endByMs: instant, acknowledgeBelowMinimum: z.boolean().optional() }).strict(),
+  end_segment: z.object({ segmentId: idSchema, ...coverage, ...recovery }).strict(),
+  advance_segment: z.object({ ...coverage, ...recovery }).strict(),
+  shorten_segment: z.object({ segmentId: idSchema, newTargetSec: number, acknowledgeBelowMinimum: z.boolean().optional(), ...recovery }).strict(),
+  extend_segment: z.object({ segmentId: idSchema, deltaSec: number, ...recovery }).strict(),
+  commit_end_by: z.object({ segmentId: idSchema, endByMs: instant, acknowledgeBelowMinimum: z.boolean().optional(), ...recovery }).strict(),
   set_remaining_estimate: z.object({ segmentId: idSchema, remainingSec: number.nullable() }).strict(),
   mark_remaining_unknown: z.object({ segmentId: idSchema }).strict(),
-  skip_segment: z.object({ segmentId: idSchema, acknowledgeCoverageLoss: z.boolean().optional() }).strict(),
-  reorder_segment: z.object({ segmentId: idSchema, beforeSegmentId: idSchema.nullable() }).strict(),
-  reanchor_segment: z.object({ segmentId: idSchema, anchorOffsetSec: number, reason: z.string() }).strict(),
+  skip_segment: z.object({ segmentId: idSchema, acknowledgeCoverageLoss: z.boolean().optional(), ...recovery }).strict(),
+  reorder_segment: z.object({ segmentId: idSchema, beforeSegmentId: idSchema.nullable(), ...recovery }).strict(),
+  reanchor_segment: z.object({ segmentId: idSchema, anchorOffsetSec: number, reason: z.string(), ...recovery }).strict(),
   report_cue: z.object({ cueId: idSchema, report, occurredAtMs: instant.optional(), reason: z.string().optional() }).strict(),
   report_manual_action: z.object({
     actionId: idSchema.optional(), action: z.enum(["pin_product", "unpin_product", "start_promotion", "other"]).optional(),
