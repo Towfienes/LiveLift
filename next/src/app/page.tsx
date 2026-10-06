@@ -199,8 +199,8 @@ export default function HomePage(): React.ReactElement {
         <div className="mt-12 rounded-[12px] bg-[#101319] p-6">
           <h3 className="text-[20px] font-medium text-[#F5F7FC]">Nothing to connect before you begin</h3>
           <p className="text-[15px] text-[#B7C1CE] mt-2 max-w-[720px]">
-            Start blank, use the 30-minute template, or rehearse a simulated show. Shows are stored in this browser only — they are not shared
-            with other browsers or devices.
+            Start blank, use the 30-minute template, or rehearse a simulated show. REAL shows are kept in the shared room and every desk sees
+            the same record; rehearsals stay in this browser only.
           </p>
         </div>
       </div>

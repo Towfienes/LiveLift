@@ -1,15 +1,17 @@
 "use client";
 
-import React, { use, useMemo, useState } from "react";
+import React, { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Cue, PlanVersion, Session } from "@/contracts";
+import { SessionSchema, type Cue, type PlanVersion, type Session } from "@/contracts";
+import type { SavePreparePayload } from "@/contracts/authority";
 import { StandardShell, SessionContextBar } from "@/components/shell";
-import { Button, Dialog } from "@/components/ui";
-import { SessionGate } from "@/components/ops/SessionGate";
+import { Button, CommandStateContext, Dialog } from "@/components/ui";
+import { SessionGate, type GateContext } from "@/components/ops/SessionGate";
 import { PrepareRos, ProductPack } from "@/components/ops/PrepareRos";
 import { CueEditorDialog, DetailsDialog, SegmentEditorDialog, type CueDraft, type SegmentDraft } from "@/components/ops/SegmentEditor";
 import { Signal } from "@/components/ops/StatusChips";
+import { afterResult } from "@/lib/client/commandText";
 import {
   SCENARIO_BY_ID,
   addCue,
@@ -29,7 +31,7 @@ import {
   type ScenarioId,
 } from "@/lib/domain";
 import { sessionStore } from "@/lib/store/sessionStore";
-import { useNow, useStoreState } from "@/lib/store/hooks";
+import { useAuthorityClock, useNow, useRemoteCommands, useRemoteState, useStoreState, type SessionSource } from "@/lib/store/hooks";
 
 interface PageProps {
   params: Promise<{ sessionId: string }>;
@@ -37,11 +39,11 @@ interface PageProps {
 
 export default function PreparePage({ params }: PageProps): React.ReactElement {
   const { sessionId } = use(params);
-  return <SessionGate id={sessionId}>{(session) => <PrepareRoot session={session} />}</SessionGate>;
+  return <SessionGate id={sessionId}>{(session, ctx) => <PrepareRoot session={session} source={ctx.source} />}</SessionGate>;
 }
 
-function PrepareRoot({ session }: { session: Session }): React.ReactElement {
-  if (session.lifecycle === "planned") return <PrepareDesk session={session} />;
+function PrepareRoot({ session, source }: { session: Session; source: GateContext["source"] }): React.ReactElement {
+  if (session.lifecycle === "planned") return <PrepareDesk session={session} source={source} />;
   const ended = session.lifecycle === "ended";
   return (
     <StandardShell>
@@ -63,10 +65,21 @@ function PrepareRoot({ session }: { session: Session }): React.ReactElement {
 
 type Editing = { mode: "new" } | { mode: "edit"; id: string } | null;
 
-function PrepareDesk({ session }: { session: Session }): React.ReactElement {
+type Alloc = { segmentId: () => string; cueId: () => string };
+
+function PrepareDesk({ session, source }: { session: Session; source: SessionSource }): React.ReactElement {
   const router = useRouter();
-  const nowMs = useNow(session);
+  const isRemote = source === "remote";
+  const localNow = useNow(isRemote ? null : session);
+  const authorityClock = useAuthorityClock();
+  const nowMs = isRemote ? authorityClock.nowMs : localNow;
   const storeState = useStoreState();
+  const remote = useRemoteState();
+  const commands = useRemoteCommands();
+  // REAL plans are saved to the room: the controls work only while it is reachable and this browser is an operator.
+  const editable = !isRemote || commands.canWrite || commands.pending !== null;
+  const [busy, setBusy] = useState(false);
+  const [cmdError, setCmdError] = useState<string | null>(null);
   const plan = session.plans[0];
   const tz = session.timezone;
 
@@ -85,13 +98,66 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
   // "Planned" is the span from start to finish. Idle buffers before anchors are part of it.
   const spanSec = assessment.finishMs !== null ? Math.round((assessment.finishMs - plan.plannedStartMs) / 1000) : null;
 
-  /** Returns false when the change was not saved; the caller keeps the operator's input open for a retry. */
-  const edit = (fn: (draft: Session, alloc: { segmentId: () => string; cueId: () => string }) => void): boolean => {
+  // An error shown inside a dialog belongs to that dialog only.
+  useEffect(() => {
+    setCmdError(null);
+  }, [segmentEditing, cueEditing, detailsOpen, startOpen]);
+
+  /** One operator intent -> one `save_prepare` command carrying the complete editable draft. Nothing is installed until the room answers. */
+  const editRemote = async (fn: (draft: Session, alloc: Alloc) => void): Promise<boolean> => {
+    setMessage(null);
+    setCmdError(null);
+    const draft = structuredClone(session);
+    fn(draft, {
+      segmentId: () => `${draft.id}:s${++draft.seq.segment}`,
+      cueId: () => `${draft.id}:c${++draft.seq.cue}`,
+    });
+    const checked = SessionSchema.safeParse(draft);
+    if (!checked.success) {
+      const why = `That change is not valid and was not saved: ${checked.error.issues[0]?.message ?? "invalid plan"}.`;
+      setMessage(why);
+      setCmdError(why);
+      return false;
+    }
+    const d = checked.data;
+    const payload: SavePreparePayload = {
+      title: d.title,
+      timezone: d.timezone,
+      objective: d.objective,
+      accountLabel: d.accountLabel,
+      products: d.products,
+      plannedStartMs: d.plans[0].plannedStartMs,
+      segments: d.plans[0].segments,
+      cues: d.plans[0].cues,
+    };
+    setBusy(true);
+    try {
+      const outcome = await commands.submit({ body: { type: "save_prepare", ...payload }, sessionId: session.id });
+      if (outcome.status === "committed") return true;
+      if (outcome.status === "unknown") {
+        // The exact request is kept (see the banner above); the dialog may close without losing it.
+        setMessage(`${outcome.message} Your change is held exactly as sent; use the banner to check it.`);
+        return true;
+      }
+      setMessage(outcome.message);
+      setCmdError(outcome.message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Returns false when the change was not saved; the caller keeps the operator's input open for a retry.
+   * A rehearsal answers immediately; a REAL show answers when the room has.
+   */
+  const edit = (fn: (draft: Session, alloc: Alloc) => void): boolean | Promise<boolean> => {
+    if (isRemote) return editRemote(fn);
     const r = sessionStore.editDraft(session.id, fn);
     setMessage(r.ok ? null : r.reason);
     return r.ok;
   };
-  const editPlan = (fn: (p: PlanVersion, alloc: { segmentId: () => string; cueId: () => string }) => PlanVersion): boolean =>
+  const editPlan = (fn: (p: PlanVersion, alloc: Alloc) => PlanVersion): boolean | Promise<boolean> =>
     edit((d, alloc) => {
       d.plans[0] = fn(d.plans[0], alloc);
     });
@@ -102,7 +168,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
       segmentEditing?.mode === "edit"
         ? editPlan((p) => updateSegment(p, segmentEditing.id, draft))
         : editPlan((p, alloc) => addSegment(p, newSegment(alloc.segmentId(), draft)));
-    if (ok) setSegmentEditing(null);
+    afterResult(ok, () => setSegmentEditing(null));
   };
 
   const saveCue = (draft: CueDraft): void => {
@@ -110,37 +176,62 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
       cueEditing?.mode === "edit"
         ? editPlan((p) => updateCue(p, cueEditing.id, draft))
         : editPlan((p, alloc) => addCue(p, { id: alloc.cueId(), ...draft }));
-    if (ok) setCueEditing(null);
+    afterResult(ok, () => setCueEditing(null));
   };
 
-  const startLive = (rebaseToNow: boolean): void => {
-    const res = sessionStore.dispatch(session.id, { type: "start_live", rebaseToNow, expectedRevision: session.revision });
-    if (res?.receipt.outcome === "committed") router.push(`/live/${session.id}/operate`);
-    else setMessage(res?.receipt.message ?? "Could not start.");
+  const startLive = async (rebaseToNow: boolean): Promise<void> => {
+    if (!isRemote) {
+      const res = sessionStore.dispatch(session.id, { type: "start_live", rebaseToNow, expectedRevision: session.revision });
+      if (res?.receipt.outcome === "committed") router.push(`/live/${session.id}/operate`);
+      else setMessage(res?.receipt.message ?? "Could not start.");
+      return;
+    }
+    setMessage(null);
+    setCmdError(null);
+    setBusy(true);
+    try {
+      const outcome = await commands.submit({ body: { type: "start_live", rebaseToNow }, sessionId: session.id });
+      if (outcome.status === "committed") router.push(`/live/${session.id}/operate`);
+      else {
+        setMessage(outcome.message);
+        setCmdError(outcome.message);
+        if (outcome.status !== "unknown") setStartOpen(false);
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
-  // One active REAL show per device: another running REAL show blocks Start and links back to it.
+  // One active REAL show per room: another running REAL show blocks Start and links back to it. (The room enforces it too.)
   const otherActiveReal =
     session.environment === "REAL"
-      ? (storeState.sessions.find((s) => s.environment === "REAL" && s.lifecycle === "active" && s.id !== session.id) ?? null)
+      ? ((isRemote ? (remote.snapshot?.sessions ?? []) : storeState.sessions).find(
+          (s) => s.environment === "REAL" && s.lifecycle === "active" && s.id !== session.id
+        ) ?? null)
       : null;
   const sampleProducts = session.environment === "REAL" ? session.products.filter((p) => p.source === "sample_library").length : 0;
 
   const onStartClick = (): void => {
     const far = session.environment === "REAL" && nowMs !== null && Math.abs(nowMs - plan.plannedStartMs) > 5 * 60_000;
     if (far) setStartOpen(true);
-    else startLive(false);
+    else void startLive(false);
   };
 
   const editingSegment = segmentEditing?.mode === "edit" ? (plan.segments.find((s) => s.id === segmentEditing.id) ?? null) : null;
   const editingCue: Cue | null = cueEditing?.mode === "edit" ? (plan.cues.find((c) => c.id === cueEditing.id) ?? null) : null;
-  const saved =
-    storeState.storage === "ok"
+  const saved = isRemote
+    ? commands.role === "viewer"
+      ? { tone: "warn" as const, icon: "ri-eye-line", text: "Read-only — viewing" }
+      : commands.stale
+        ? { tone: "warn" as const, icon: "ri-wifi-off-line", text: "Not connected — changes paused" }
+        : { tone: "neutral" as const, icon: "ri-save-line", text: "Saved to the room" }
+    : storeState.storage === "ok"
       ? { tone: "neutral" as const, icon: "ri-save-line", text: "Saved on this device" }
       : { tone: "warn" as const, icon: "ri-alert-line", text: "Not saved — storage unavailable" };
 
   return (
     <StandardShell>
+      <CommandStateContext.Provider value={{ busy, error: cmdError }}>
       <div className="flex-1 flex flex-col min-h-0 bg-[#090B0F]">
         <SessionContextBar
           eyebrow="Prepare"
@@ -166,9 +257,18 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
             {message}
           </div>
         )}
+        {isRemote && commands.role === "viewer" && commands.blockedReason && (
+          <p className="mx-6 lg:mx-8 mt-3 text-[14px] text-[#F6C875]" data-testid="prepare-readonly-note">
+            <i className="ri-lock-line mr-1.5" aria-hidden="true" />
+            {commands.blockedReason}
+          </p>
+        )}
 
         <div className="px-4 lg:px-6 py-4 max-w-[1720px] w-full mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_310px] gap-4 lg:h-[calc(100dvh-222px)] lg:min-h-[480px]">
+          <fieldset
+            disabled={!editable}
+            className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_310px] gap-4 lg:h-[calc(100dvh-222px)] lg:min-h-[480px] border-0 p-0 m-0 min-w-0"
+          >
             {/* Product Pack */}
             <section className="rounded-[12px] bg-[#13161C] p-4 flex flex-col min-h-0" aria-label="Product Pack">
               <div className="flex items-center justify-between mb-1 shrink-0">
@@ -240,11 +340,13 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
                 issues={assessment.issues}
                 products={session.products}
                 tz={tz}
-                onEdit={(id) => setSegmentEditing({ mode: "edit", id })}
-                onMove={(id, delta) => editPlan((p) => moveSegment(p, id, delta))}
-                onAddSegment={() => setSegmentEditing({ mode: "new" })}
-                onAddCue={() => setCueEditing({ mode: "new" })}
-                onEditCue={(id) => setCueEditing({ mode: "edit", id })}
+                onEdit={(id) => editable && setSegmentEditing({ mode: "edit", id })}
+                onMove={(id, delta) => {
+                  if (editable) void editPlan((p) => moveSegment(p, id, delta));
+                }}
+                onAddSegment={() => editable && setSegmentEditing({ mode: "new" })}
+                onAddCue={() => editable && setCueEditing({ mode: "new" })}
+                onEditCue={(id) => editable && setCueEditing({ mode: "edit", id })}
               />
             </section>
 
@@ -255,7 +357,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
               {otherActiveReal && (
                 <p className="mb-2 text-[15px] text-[#F6C875]" data-testid="other-show-active">
                   <i className="ri-error-warning-line mr-1" aria-hidden="true" />
-                  {otherActiveReal.title} is running on this device. End it before starting another REAL show.{" "}
+                  {otherActiveReal.title} is running {isRemote ? "in this room" : "on this device"}. End it before starting another REAL show.{" "}
                   <Link href={`/live/${otherActiveReal.id}/operate`} className="underline hover:text-[#DFFF00]">
                     Open the running show
                   </Link>
@@ -347,7 +449,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
                   size="lg"
                   icon="ri-play-line"
                   onClick={onStartClick}
-                  disabled={blockers.length > 0 || otherActiveReal !== null}
+                  disabled={blockers.length > 0 || otherActiveReal !== null || !editable || busy}
                   className="w-full min-h-[52px] text-[19px]"
                   data-testid="start-live-cta-btn"
                 >
@@ -362,12 +464,12 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
                   <span className="inline-flex items-center gap-1.5 text-[13px] text-[#9AA5B5]">
                     <i className={session.environment === "SIMULATED" ? "ri-flask-line text-[#C8B2FF]" : "ri-broadcast-line"} aria-hidden="true" />
                     {session.environment}
-                    {session.environment === "SIMULATED" ? " · uses a virtual clock" : " · uses the device clock"}
+                    {session.environment === "SIMULATED" ? " · uses a virtual clock" : " · uses the room's clock"}
                   </span>
                 </p>
               </div>
             </aside>
-          </div>
+          </fieldset>
         </div>
 
         <SegmentEditorDialog
@@ -378,7 +480,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
           onDelete={
             editingSegment
               ? () => {
-                  if (editPlan((p) => removeSegment(p, editingSegment.id))) setSegmentEditing(null);
+                  afterResult(editPlan((p) => removeSegment(p, editingSegment.id)), () => setSegmentEditing(null));
                 }
               : undefined
           }
@@ -395,7 +497,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
           onDelete={
             editingCue
               ? () => {
-                  if (editPlan((p) => removeCue(p, editingCue.id))) setCueEditing(null);
+                  afterResult(editPlan((p) => removeCue(p, editingCue.id)), () => setCueEditing(null));
                 }
               : undefined
           }
@@ -419,7 +521,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
               d.plans[0] = setPlannedStart(d.plans[0], input.plannedStartMs);
               if (d.environment === "SIMULATED") d.virtualNowMs = input.plannedStartMs;
             });
-            if (ok) setDetailsOpen(false);
+            afterResult(ok, () => setDetailsOpen(false));
           }}
         />
 
@@ -429,8 +531,8 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
           title="Start away from the planned time?"
           confirmText="Shift the schedule to now"
           onConfirm={() => {
-            setStartOpen(false);
-            startLive(true);
+            if (!isRemote) setStartOpen(false);
+            void startLive(true);
           }}
         >
           <div className="space-y-3 text-[15px] text-[#CAD0DA]" data-testid="start-rebase-dialog">
@@ -456,8 +558,8 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
             <button
               type="button"
               onClick={() => {
-                setStartOpen(false);
-                startLive(false);
+                if (!isRemote) setStartOpen(false);
+                void startLive(false);
               }}
               className="text-[14px] text-[#CAD0DA] underline hover:text-[#DFFF00] cursor-pointer"
               data-testid="start-keep-planned"
@@ -467,6 +569,7 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
           </div>
         </Dialog>
       </div>
+      </CommandStateContext.Provider>
     </StandardShell>
   );
 }

@@ -19,7 +19,9 @@ import {
 } from "@/lib/domain";
 import { Button } from "@/components/ui";
 import { Signal } from "./StatusChips";
+import type { GateContext } from "./SessionGate";
 import { sessionStore } from "@/lib/store/sessionStore";
+import { useRemoteCommands } from "@/lib/store/hooks";
 
 const INPUT = "w-full h-11 bg-[#13161C] border border-[#39414D] rounded-[8px] px-3 text-[16px] text-[#F5F7FC]";
 
@@ -27,8 +29,12 @@ const INPUT = "w-full h-11 bg-[#13161C] border border-[#39414D] rounded-[8px] px
  * Next LIVE. Selected adjustments become a NEW plan with new ids and an empty actual history.
  * The source show is never edited. Infeasible selections are shown, not hidden.
  */
-export function NextLivePanel({ session }: { session: Session }): React.ReactElement {
+export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateContext }): React.ReactElement {
   const router = useRouter();
+  const commands = useRemoteCommands();
+  const isRemote = ctx?.source === "remote";
+  const archive = ctx?.archive === true;
+  const [submitting, setSubmitting] = useState(false);
   const tz = session.timezone;
   const base = baselinePlan(session);
   const proposals = useMemo(() => proposeChanges(session), [session]);
@@ -76,10 +82,29 @@ export function NextLivePanel({ session }: { session: Session }): React.ReactEle
     });
   };
 
-  const canCreate = title.trim() !== "" && plannedStartMs !== null && (late.length === 0 || acknowledged);
+  // A pre-Phase-2 archive is never turned into a room show here (nothing is uploaded or merged silently).
+  const writable = archive ? false : isRemote ? commands.canWrite : true;
+  const canCreate = title.trim() !== "" && plannedStartMs !== null && (late.length === 0 || acknowledged) && writable && !submitting;
 
-  const create = (): void => {
+  const create = async (): Promise<void> => {
     if (plannedStartMs === null) return;
+    setError(null);
+    if (isRemote) {
+      // The room creates the next show (new id, its own clock, no runtime copied) and answers with a receipt.
+      setSubmitting(true);
+      try {
+        const outcome = await commands.submit({
+          body: { type: "create_next", title, plannedStartMs, changeIds: chosen.map((c) => c.id), note },
+          sessionId: session.id,
+        });
+        if (outcome.status === "committed" && outcome.receipt.sessionId) router.push(`/live/${outcome.receipt.sessionId}/prepare`);
+        else if (outcome.status === "committed") setError("The room recorded the next show but did not say which one. Open it from Sessions.");
+        else setError(outcome.status === "unknown" ? `${outcome.message} Check it above before creating the next show again.` : outcome.message);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     const result = sessionStore.createNext(session.id, {
       title,
       plannedStartMs,
@@ -181,6 +206,7 @@ export function NextLivePanel({ session }: { session: Session }): React.ReactEle
           <h2 className="text-[20px] font-medium text-[#F5F7FC]">Resulting next plan</h2>
           <Signal tone={session.environment === "SIMULATED" ? "violet" : "neutral"} icon={session.environment === "SIMULATED" ? "ri-flask-line" : "ri-broadcast-line"}>
             created as {session.environment}
+            {session.environment === "REAL" ? " in the room" : ""}
           </Signal>
         </div>
 
@@ -281,14 +307,22 @@ export function NextLivePanel({ session }: { session: Session }): React.ReactEle
         </div>
 
         {error && <p role="alert" className="mt-3 text-[14px] text-[#F4A4A4]">{error}</p>}
+        {!writable && (
+          <p className="mt-3 text-[14px] text-[#F6C875]" data-testid="next-live-blocked">
+            <i className="ri-lock-line mr-1.5" aria-hidden="true" />
+            {archive
+              ? "This is a local archive. It is not uploaded or turned into a room show; plan the next LIVE from a show in the room."
+              : (commands.blockedReason ?? "The next show cannot be created right now.")}
+          </p>
+        )}
 
         <div className="mt-4 pt-4 border-t border-[#2A313E] flex items-center justify-between gap-4 flex-wrap">
           <p className="text-[13px] text-[#9AA5B5] max-w-[360px]">
             Products and planned segments are copied from this show&apos;s baseline, plus only the changes you ticked. Actual runtime, reports,
             coverage, follow-ups, history and verification are not copied.
           </p>
-          <Button variant="primary" size="lg" icon="ri-arrow-right-line" onClick={create} disabled={!canCreate} data-testid="create-next-live-cta-btn">
-            Create next LIVE{chosen.length > 0 ? ` · ${chosen.length} change${chosen.length === 1 ? "" : "s"}` : ""}
+          <Button variant="primary" size="lg" icon="ri-arrow-right-line" onClick={() => void create()} disabled={!canCreate} data-testid="create-next-live-cta-btn">
+            {submitting ? "Waiting for the room…" : `Create next LIVE${chosen.length > 0 ? ` · ${chosen.length} change${chosen.length === 1 ? "" : "s"}` : ""}`}
           </Button>
         </div>
       </section>

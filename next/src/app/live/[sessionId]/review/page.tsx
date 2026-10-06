@@ -5,14 +5,15 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Session } from "@/contracts";
 import { SessionContextBar, StandardShell } from "@/components/shell";
-import { Button } from "@/components/ui";
-import { SessionGate } from "@/components/ops/SessionGate";
+import { Button, CommandStateContext } from "@/components/ui";
+import { SessionGate, type GateContext } from "@/components/ops/SessionGate";
 import { PlanActualLanes } from "@/components/ops/PlanActualLanes";
 import { ActionResults, CueResults, HistoryList, PlanActualRows, ReviewSummary } from "@/components/ops/ReviewTable";
 import { NextLivePanel } from "@/components/ops/NextLivePanel";
 import { Signal } from "@/components/ops/StatusChips";
 import { buildReview, formatClock, formatDay, formatDuration, proposeChanges } from "@/lib/domain";
-import { useSessionActions } from "@/lib/store/hooks";
+import { useRemoteCommands, useSessionActions } from "@/lib/store/hooks";
+import type { RuntimeCommandBody } from "@/contracts/authority";
 
 interface PageProps {
   params: Promise<{ sessionId: string }>;
@@ -22,13 +23,15 @@ export default function ReviewPage({ params }: PageProps): React.ReactElement {
   const { sessionId } = use(params);
   return (
     <Suspense fallback={null}>
-      <SessionGate id={sessionId}>{(session) => <ReviewRoot session={session} />}</SessionGate>
+      <SessionGate id={sessionId} allowArchive>
+        {(session, ctx) => <ReviewRoot session={session} ctx={ctx} />}
+      </SessionGate>
     </Suspense>
   );
 }
 
-function ReviewRoot({ session }: { session: Session }): React.ReactElement {
-  if (session.lifecycle === "ended") return <ReviewDesk session={session} />;
+function ReviewRoot({ session, ctx }: { session: Session; ctx: GateContext }): React.ReactElement {
+  if (session.lifecycle === "ended") return <ReviewDesk session={session} ctx={ctx} />;
   const live = session.lifecycle === "active";
   return (
     <StandardShell>
@@ -49,12 +52,18 @@ function ReviewRoot({ session }: { session: Session }): React.ReactElement {
   );
 }
 
-function ReviewDesk({ session }: { session: Session }): React.ReactElement {
+function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): React.ReactElement {
   const params = useSearchParams();
   const initial = params.get("view") === "next" || params.get("view") === "learn" ? "next" : "plan";
   const [view, setView] = useState<"plan" | "next">(initial);
   const { dispatch } = useSessionActions(session);
+  const commands = useRemoteCommands();
+  const isRemote = ctx.source === "remote";
   const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [cmdError, setCmdError] = useState<string | null>(null);
+  // History is appended after the show: a REAL show only through the room, a pre-Phase-2 archive never.
+  const canAppend = ctx.archive ? false : isRemote ? commands.canWrite || commands.pending !== null : true;
   const tz = session.timezone;
   const review = useMemo(() => buildReview(session), [session]);
   const proposals = useMemo(() => proposeChanges(session), [session]);
@@ -69,16 +78,37 @@ function ReviewDesk({ session }: { session: Session }): React.ReactElement {
     );
   }
 
-  const append = (body: Parameters<typeof dispatch>[0]): void => {
-    const res = dispatch(body);
-    setMessage(res && res.receipt.outcome === "rejected" ? (res.receipt.message ?? "Not accepted.") : null);
+  /** Rehearsals append at once. A REAL note or correction is only recorded when the room says so. */
+  const append = (body: RuntimeCommandBody): boolean | Promise<boolean> => {
+    if (!isRemote) {
+      const res = dispatch(body);
+      setMessage(res && res.receipt.outcome === "rejected" ? (res.receipt.message ?? "Not accepted.") : null);
+      return !(res && res.receipt.outcome === "rejected");
+    }
+    setMessage(null);
+    setCmdError(null);
+    setBusy(true);
+    return commands
+      .submit({ body, sessionId: session.id })
+      .then((outcome) => {
+        if (outcome.status === "committed") return true;
+        if (outcome.status === "unknown") {
+          setMessage(`${outcome.message} It is held exactly as sent; use the banner to check it.`);
+          return true;
+        }
+        setMessage(outcome.message);
+        setCmdError(outcome.message);
+        return false;
+      })
+      .finally(() => setBusy(false));
   };
 
   return (
     <StandardShell>
+      <CommandStateContext.Provider value={{ busy, error: cmdError }}>
       <div className="flex-1 flex flex-col min-h-0 bg-[#090B0F]">
         <SessionContextBar
-          eyebrow="Review"
+          eyebrow={ctx.archive ? "Review · local archive" : "Review"}
           title={session.title}
           environment={session.environment}
           metaText={`${formatDay(review.summary.startedAtMs, tz)} · ${formatClock(review.summary.startedAtMs, tz)}–${formatClock(review.summary.endedAtMs, tz)} · ${formatDuration(review.summary.trackedSec)} tracked`}
@@ -114,6 +144,19 @@ function ReviewDesk({ session }: { session: Session }): React.ReactElement {
           <p className="px-6 lg:px-8 pt-3 text-[14px] text-[#C8B2FF]" data-testid="simulated-review-note">
             <i className="ri-flask-line mr-1.5" aria-hidden="true" />
             Every record on this page is SIMULATED. It is never mixed with REAL history and never counts as real learning.
+          </p>
+        )}
+        {ctx.archive && (
+          <p className="px-6 lg:px-8 pt-3 text-[14px] text-[#F6C875]" data-testid="archive-note">
+            <i className="ri-archive-line mr-1.5" aria-hidden="true" />
+            Local archive. This REAL show was recorded in this browser before LiveLift moved REAL shows to the shared room. It is history only: it is
+            read-only here and was never uploaded or merged into the room.
+          </p>
+        )}
+        {isRemote && commands.role === "viewer" && (
+          <p className="px-6 lg:px-8 pt-3 text-[14px] text-[#F6C875]" data-testid="review-readonly-note">
+            <i className="ri-eye-line mr-1.5" aria-hidden="true" />
+            You are viewing this room read-only. Notes, corrections and Next LIVE need an operator.
           </p>
         )}
         {message && (
@@ -190,7 +233,7 @@ function ReviewDesk({ session }: { session: Session }): React.ReactElement {
                 <HistoryList
                   items={review.history}
                   tz={tz}
-                  canAppend
+                  canAppend={canAppend}
                   onNote={(text) => append({ type: "add_note", text })}
                   onCorrect={(targetEventId, text) => append({ type: "append_correction", targetEventId, text })}
                 />
@@ -212,10 +255,11 @@ function ReviewDesk({ session }: { session: Session }): React.ReactElement {
           </div>
         ) : (
           <div className="px-4 lg:px-6 py-4 max-w-[1760px] w-full mx-auto">
-            <NextLivePanel key={session.id} session={session} />
+            <NextLivePanel key={session.id} session={session} ctx={ctx} />
           </div>
         )}
       </div>
+      </CommandStateContext.Provider>
     </StandardShell>
   );
 }

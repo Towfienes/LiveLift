@@ -5,6 +5,7 @@ import type { ProductSnapshot } from "@/contracts";
 import type { HistoryItem, Review, ReviewAction, ReviewCue, ReviewRow } from "@/lib/domain";
 import { MANUAL_ACTION_LABEL, formatClock, formatDuration, formatSigned } from "@/lib/domain";
 import { Button, Dialog } from "@/components/ui";
+import { afterResult } from "@/lib/client/commandText";
 import { SegmentTile } from "./SegmentTile";
 import { Signal, type Tone } from "./StatusChips";
 import { CUE_ACTION_LABEL } from "./CueBar";
@@ -366,8 +367,9 @@ export function HistoryList({
   items: HistoryItem[];
   tz: string;
   canAppend: boolean;
-  onNote: (text: string) => void;
-  onCorrect: (targetEventId: string, text: string) => void;
+  /** A rehearsal answers at once; a REAL show answers when the room has (true = recorded, false = keep the input). */
+  onNote: (text: string) => void | boolean | Promise<boolean>;
+  onCorrect: (targetEventId: string, text: string) => void | boolean | Promise<boolean>;
 }): React.ReactElement {
   const [noteOpen, setNoteOpen] = useState(false);
   const [note, setNote] = useState("");
@@ -421,11 +423,12 @@ export function HistoryList({
         title="Add a note"
         confirmText="Save note"
         confirmDisabled={note.trim() === ""}
-        onConfirm={() => {
-          onNote(note);
-          setNote("");
-          setNoteOpen(false);
-        }}
+        onConfirm={() =>
+          afterResult(onNote(note), () => {
+            setNote("");
+            setNoteOpen(false);
+          })
+        }
       >
         <textarea
           data-autofocus
@@ -445,8 +448,8 @@ export function HistoryList({
         confirmText="Append correction"
         confirmDisabled={correction.trim().length < 3}
         onConfirm={() => {
-          if (target) onCorrect(target.id, correction);
-          setTarget(null);
+          if (!target) return setTarget(null);
+          afterResult(onCorrect(target.id, correction), () => setTarget(null));
         }}
       >
         <div className="space-y-3" data-testid="correction-dialog">
