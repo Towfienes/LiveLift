@@ -38,6 +38,7 @@ export function NextPanel({
   onShowAll,
   onReanchorNext,
   onEndLive,
+  simulated = false,
 }: {
   nextSegment: Segment | null;
   nextForecast: SegmentForecast | null;
@@ -51,6 +52,8 @@ export function NextPanel({
   onShowAll: () => void;
   onReanchorNext: () => void;
   onEndLive: () => void;
+  /** A SIMULATED rehearsal: the end action names the mode instead of saying "LIVE". */
+  simulated?: boolean;
 }): React.ReactElement {
   const clock = (ms: number): string => formatClock(ms, tz, true);
   const tone = analysis.situation.tone;
@@ -64,12 +67,12 @@ export function NextPanel({
           <span className="text-[16px] leading-5 font-semibold tracking-[1.5px] text-[#DFFF00] uppercase">NEXT</span>
           <p className="text-[22px] font-medium text-[#F5F7FC] mt-3">Nothing left in the Run of Show</p>
           <p className="text-[16px] text-[#B7C1CE] mt-1">
-            {activeSegment ? `${activeSegment.title} is the last segment.` : "All segments have run or been skipped."} End LIVE when the
-            show is over.
+            {activeSegment ? `${activeSegment.title} is the last segment.` : "All segments have run or been skipped."}{" "}
+            {simulated ? "End the simulated session when the rehearsal is over." : "End LIVE when the show is over."}
           </p>
         </div>
         <Button variant="primary" size="lg" onClick={onEndLive} data-testid="end-live-primary-btn" className="w-full mt-4">
-          End LIVE
+          {simulated ? "End simulated session" : "End LIVE"}
         </Button>
       </section>
     );
@@ -166,7 +169,11 @@ export function NextPanel({
                 </Signal>
               )}
               {analysis.status === "already_missed" && (
-                <Signal tone="danger" icon="ri-time-line" size="desk">Commitment missed — options limit further delay</Signal>
+                <Signal tone="danger" icon="ri-time-line" size="desk">
+                  {analysis.criticalSegmentId === nextSegment.id && anchor?.deficitSec === 0
+                    ? "Commitment due now — options limit further delay"
+                    : "Commitment missed — options limit further delay"}
+                </Signal>
               )}
               {analysis.status === "possible_risk" && (
                 <Signal tone="warn" icon="ri-question-line" size="desk">End unknown</Signal>

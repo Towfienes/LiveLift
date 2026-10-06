@@ -227,7 +227,11 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
                     </ul>
                   )}
                   {session.derivedFrom.changeNote && <p className="mt-1 text-[#9AA5B5]">Note: {session.derivedFrom.changeNote}</p>}
-                  <p className="mt-1 text-[12px] text-[#9AA5B5]">Actual runtime, reports and history were not copied.</p>
+                  <p className="mt-1 text-[14px] text-[#B7C1CE]" data-testid="derived-not-copied">
+                    <i className="ri-shield-check-line mr-1.5 text-[#9AA5B5]" aria-hidden="true" />
+                    A fresh plan: only the changes listed above were carried over. Actual runtime, reports and history were not copied from the
+                    earlier show — nothing there counts as done here.
+                  </p>
                 </div>
               )}
               <PrepareRos
@@ -347,10 +351,12 @@ function PrepareDesk({ session }: { session: Session }): React.ReactElement {
                   className="w-full min-h-[52px] text-[19px]"
                   data-testid="start-live-cta-btn"
                 >
-                  Start LIVE
+                  {session.environment === "SIMULATED" ? "Start SIMULATED session" : "Start LIVE"}
                 </Button>
-                <p className="text-[13px] leading-5 text-[#AEB7C5] mt-2 text-center">
-                  Starts LiveLift tracking and locks this baseline. Start your broadcast in the platform separately.
+                <p className="text-[13px] leading-5 text-[#AEB7C5] mt-2 text-center" data-testid="start-helper">
+                  {session.environment === "SIMULATED"
+                    ? "Starts a rehearsal on a virtual clock and locks this baseline. Nothing is broadcast and TikTok is not involved."
+                    : "Starts LiveLift tracking and locks this baseline. Start your broadcast in the platform separately."}
                 </p>
                 <p className="mt-2 text-center">
                   <span className="inline-flex items-center gap-1.5 text-[13px] text-[#9AA5B5]">

@@ -63,7 +63,9 @@ function OperateRoot({ session }: { session: Session }): React.ReactElement {
         <p className="text-[16px] text-[#B7C1CE] mt-2 max-w-[520px]">
           {ended
             ? "The runtime is frozen. Plan vs Actual, the history and Next LIVE adjustments are in Review."
-            : "Prepare the Run of Show, then start LIVE to open the operating desk."}
+            : session.environment === "SIMULATED"
+              ? "Prepare the Run of Show, then start the simulated session to open the rehearsal desk. Nothing is broadcast."
+              : "Prepare the Run of Show, then start LIVE to open the operating desk."}
         </p>
         <Link href={`/live/${session.id}/${ended ? "review" : "prepare"}`} className="mt-6">
           <Button variant="primary" size="lg" icon="ri-arrow-right-line">
@@ -278,6 +280,10 @@ function Desk({
     const extra = after.deficitSec - before.deficitSec;
     if (extra > 0) return { tone: "warn" as const, text: `+${formatDuration(extra)} late`, full: `+${formatDuration(extra)} late for ${title}` };
     if (before.status === "at_risk" || before.status === "missed") {
+      // At the exact anchor instant nothing is late yet: say it is due, not "0:00 late".
+      if (before.deficitSec === 0) {
+        return { tone: "warn" as const, text: "anchor due now", full: `${title} is due now and has not started; this does not change the forecast` };
+      }
       return {
         tone: "warn" as const,
         text: `already ${formatDuration(before.deficitSec)} late`,
@@ -456,6 +462,7 @@ function Desk({
             onShowAll={() => setDialog("options")}
             onReanchorNext={openReanchorForNext}
             onEndLive={() => setDialog("end")}
+            simulated={simulated}
           />
         </div>
 
@@ -479,9 +486,9 @@ function Desk({
               onClick={() => active && run({ type: "extend_segment", segmentId: active.id, deltaSec: 60 })}
               data-testid="extend-plus-one-btn"
               className="!py-0.5 flex-col !gap-0 leading-tight"
-              title={extendHint ? `Extend ${active?.title} by 1:00 · ${extendHint.full}` : undefined}
+              title={`Adds 1:00 to ${active?.title ?? "the segment"}'s planned target (recorded as a plan change; the baseline stays untouched). It is not the host's estimate.${extendHint ? ` · ${extendHint.full}` : ""}`}
             >
-              <span>Extend +1m</span>
+              <span>Extend target +1m</span>
               {extendHint && (
                 <span className={`text-[16px] font-normal max-w-[230px] truncate ${extendHint.tone === "warn" ? "text-[#F6C875]" : "text-[#AEB7C5]"}`} data-testid="extend-hint" title={extendHint.full}>
                   {extendHint.text}

@@ -224,7 +224,10 @@ export function describeSituation(session: Session, forecast: Forecast): Situati
       return {
         tone: "missed",
         headline: `${title} was committed for ${clock(a.committedMs)}`,
-        detail: `It can start no earlier than ${clock(a.projectedStartMs)} — ${lower}${formatDuration(a.deficitSec)} late. The commitment is not moved; ${cause}.`,
+        detail:
+          a.deficitSec === 0
+            ? `The commitment time has arrived and it has not started. The commitment is not moved; ${cause}.`
+            : `It can start no earlier than ${clock(a.projectedStartMs)} — ${lower}${formatDuration(a.deficitSec)} late. The commitment is not moved; ${cause}.`,
       };
     }
     return {

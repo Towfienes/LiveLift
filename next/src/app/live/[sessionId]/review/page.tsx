@@ -135,6 +135,10 @@ function ReviewDesk({ session }: { session: Session }): React.ReactElement {
 
                 <section className="rounded-[12px] bg-[#13161C] p-3" aria-label="Segments">
                   <h2 className="text-[18px] font-medium text-[#F5F7FC] px-2 mb-1">Segments</h2>
+                  <p className="text-[13px] text-[#9AA5B5] px-2 mb-1" data-testid="segments-coverage-note">
+                    Completed means the segment ran and was closed — not that everything planned was covered. Coverage is shown only when the operator
+                    declared it; otherwise it is unknown, not complete and not failed.
+                  </p>
                   <PlanActualRows rows={review.rows} products={session.products} tz={tz} />
                 </section>
 

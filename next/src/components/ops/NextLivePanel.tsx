@@ -8,6 +8,7 @@ import {
   applyChangeOps,
   assessPlan,
   baselinePlan,
+  buildReview,
   diffPlans,
   formatClock,
   formatDuration,
@@ -31,6 +32,19 @@ export function NextLivePanel({ session }: { session: Session }): React.ReactEle
   const tz = session.timezone;
   const base = baselinePlan(session);
   const proposals = useMemo(() => proposeChanges(session), [session]);
+  // Coverage and follow-ups the operator declared in THIS show. Shown beside proposals for context only:
+  // they are never selectable, never copied, and never turned into a change on the operator's behalf.
+  const rowBySegment = useMemo(() => new Map((buildReview(session)?.rows ?? []).map((r) => [r.segmentId, r])), [session]);
+  const openNotes = [...rowBySegment.values()].filter((r) => r.followUp || r.coverage === "partial");
+  const coverageNote = (segmentId: string): string | null => {
+    const r = rowBySegment.get(segmentId);
+    if (!r) return null;
+    if (r.coverage === "partial") return `Coverage partial${r.followUp ? ` · follow-up: ${r.followUp}` : ""}`;
+    if (r.followUp) return `Follow-up: ${r.followUp}`;
+    if (r.coverage === "complete") return "Coverage declared complete";
+    if (r.outcome === "completed" || r.outcome === "closed_early") return "Coverage not declared (unknown, not a failure)";
+    return null;
+  };
 
   const defaultStart = useMemo(() => addDaysZoned(base.plannedStartMs, 1, tz), [base.plannedStartMs, tz]);
   const startParts = msToZonedParts(defaultStart, tz);
@@ -92,11 +106,33 @@ export function NextLivePanel({ session }: { session: Session }): React.ReactEle
           Select the concrete changes to carry forward. One show supports a manual choice; it is not a recurring pattern and says nothing about
           sales. Nothing is applied until you create the next show.
         </p>
+        <p className="text-[14px] text-[#CAD0DA] mt-2" data-testid="only-selected-note">
+          <i className="ri-checkbox-circle-line mr-1.5 text-[#DFFF00]" aria-hidden="true" />
+          Only the boxes you tick change the next plan. Everything else stays as in the original baseline.
+        </p>
 
         {proposals.length === 0 && (
           <p className="mt-4 text-[15px] text-[#CAD0DA]" data-testid="no-proposals">
             Nothing in this show justifies a change. You can still carry the plan forward unchanged.
           </p>
+        )}
+
+        {openNotes.length > 0 && (
+          <div className="mt-4 rounded-[8px] bg-[#1A1E26] px-3 py-2" data-testid="coverage-followups">
+            <p className="text-[12px] font-semibold tracking-[1.4px] uppercase text-[#AEB7C5]">Declared in this show — for your reference</p>
+            <ul className="mt-1 space-y-0.5 text-[14px] text-[#CAD0DA]">
+              {openNotes.map((r) => (
+                <li key={r.segmentId}>
+                  <span className="text-[#F5F7FC]">{r.title}</span> — {r.coverage === "partial" ? "coverage partial" : "follow-up noted"}
+                  {r.followUp ? `: ${r.followUp}` : ""}
+                </li>
+              ))}
+            </ul>
+            <p className="text-[13px] text-[#9AA5B5] mt-1">
+              These are your own notes. They are not copied into the next plan and nothing is moved for you — add a segment in Prepare if one should be
+              covered next time.
+            </p>
+          </div>
         )}
 
         {groups.map((g) => {
@@ -124,6 +160,12 @@ export function NextLivePanel({ session }: { session: Session }): React.ReactEle
                       <span className="min-w-0">
                         <span className="block text-[16px] font-medium text-[#F5F7FC]">{p.title}</span>
                         <span className="block text-[13px] text-[#B7C1CE] mt-0.5">{p.detail}</span>
+                        {coverageNote(p.segmentId) && (
+                          <span className="block text-[13px] text-[#9AA5B5] mt-0.5" data-testid={`proposal-context-${p.id}`}>
+                            <i className="ri-information-line mr-1" aria-hidden="true" />
+                            In this show: {coverageNote(p.segmentId)}
+                          </span>
+                        )}
                       </span>
                     </label>
                   </li>
@@ -242,7 +284,8 @@ export function NextLivePanel({ session }: { session: Session }): React.ReactEle
 
         <div className="mt-4 pt-4 border-t border-[#2A313E] flex items-center justify-between gap-4 flex-wrap">
           <p className="text-[13px] text-[#9AA5B5] max-w-[360px]">
-            Products and planned segments are copied from this show&apos;s baseline. Actual runtime, reports, history and verification are not.
+            Products and planned segments are copied from this show&apos;s baseline, plus only the changes you ticked. Actual runtime, reports,
+            coverage, follow-ups, history and verification are not copied.
           </p>
           <Button variant="primary" size="lg" icon="ri-arrow-right-line" onClick={create} disabled={!canCreate} data-testid="create-next-live-cta-btn">
             Create next LIVE{chosen.length > 0 ? ` · ${chosen.length} change${chosen.length === 1 ? "" : "s"}` : ""}

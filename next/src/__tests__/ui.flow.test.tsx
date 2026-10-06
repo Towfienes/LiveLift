@@ -190,7 +190,12 @@ describe("Prepare", () => {
 
   it("Start LIVE locks the baseline, starts the show and opens the desk", async () => {
     await renderPage(PreparePage as PageComponent, "sim-buffered");
-    fireEvent.click(await screen.findByTestId("start-live-cta-btn"));
+    // A SIMULATED show never says "Start LIVE": it names the mode and says nothing is broadcast.
+    const cta = await screen.findByTestId("start-live-cta-btn");
+    expect(cta).toHaveTextContent("Start SIMULATED session");
+    expect(cta).not.toHaveTextContent("Start LIVE");
+    expect(screen.getByTestId("start-helper")).toHaveTextContent("Nothing is broadcast");
+    fireEvent.click(cta);
     await act(async () => {});
     const s = sessionStore.getSession("sim-buffered")!;
     expect(s.lifecycle).toBe("active");
@@ -296,7 +301,9 @@ describe("Operate desk", () => {
     fireEvent.click(await screen.findByTestId("end-live-header-btn"));
     await act(async () => {});
     const dialog = screen.getByTestId("end-live-dialog");
-    expect(dialog).toHaveTextContent("does not stop your platform broadcast");
+    // A SIMULATED rehearsal never claims to stop a platform broadcast: none exists.
+    expect(dialog).toHaveTextContent("Nothing was broadcast");
+    expect(dialog).not.toHaveTextContent("platform broadcast");
     expect(dialog).toHaveTextContent("not reached");
     expect(dialog).toHaveTextContent("no report");
     await act(async () => {
@@ -321,6 +328,35 @@ describe("Review and Next LIVE", () => {
     expect(screen.getByTestId("review-history")).toHaveTextContent("Operator chose: End Zip Hoodie by 20:12:00");
     expect(screen.getByTestId("plan-revisions")).toHaveTextContent("Committed to end Zip Hoodie by 20:12:00");
     expect(screen.getByTestId("simulated-review-note")).toBeInTheDocument();
+  });
+
+  it("Completed is not coverage: the row states coverage beside the outcome, and unknown is explained as not failed", async () => {
+    await renderPage(ReviewPage as PageComponent, "sim-buffered-done");
+    const hoodie = await screen.findByTestId("review-row-sim-buffered-done:a");
+    expect(hoodie).toHaveTextContent(/Completed · coverage partial/); // declared partial: a completed segment is not a covered one
+    expect(hoodie).not.toHaveTextContent("coverage complete");
+    // A completed segment nobody declared coverage for is labelled unknown, never complete and never failed.
+    const opening = screen.getByTestId("review-row-sim-buffered-done:open");
+    expect(opening).toHaveTextContent(/Completed · coverage not declared/);
+    expect(opening).toHaveTextContent("coverage not declared · unknown");
+    expect(screen.getByTestId("segments-coverage-note")).toHaveTextContent("not that everything planned was covered");
+    expect(screen.getByTestId("review-reading-note")).toHaveTextContent("not failures");
+  });
+
+  it("Next LIVE keeps coverage context beside proposals and carries none of it into the new session", async () => {
+    nav.search = new URLSearchParams("view=next");
+    await renderPage(ReviewPage as PageComponent, "sim-buffered-done");
+    await screen.findByTestId("next-live");
+    expect(screen.getByTestId("only-selected-note")).toHaveTextContent("Only the boxes you tick");
+    expect(screen.getByTestId("proposal-context-duration:sim-buffered-done:a")).toHaveTextContent("Coverage partial · follow-up: Remaining Zip Hoodie points");
+    expect(screen.getByTestId("coverage-followups")).toHaveTextContent("not copied into the next plan");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("create-next-live-cta-btn"));
+    });
+    const created = sessionStore.list("SIMULATED").find((s) => s.derivedFrom?.sessionId === "sim-buffered-done")!;
+    expect(created.derivedFrom?.appliedChanges).toEqual([]);
+    expect(created.events).toEqual([]);
+    expect(Object.values(created.runtime.segments).every((r) => r.coverage === null && !r.followUp)).toBe(true);
   });
 
   it("a missed anchor is shown as late against the unchanged commitment, never as recovered", async () => {
@@ -511,7 +547,7 @@ describe("Stage-2 audit repairs in the UI", () => {
   it("UI-04: the host can say the remaining time is unknown, distinct from no estimate", async () => {
     advanceRehearsal("sim-buffered", 2); // Zip Hoodie running
     await renderPage(OperatePage as PageComponent, "sim-buffered");
-    expect(await screen.findByTestId("now-end-line")).toHaveTextContent("target (no estimate entered)");
+    expect(await screen.findByTestId("now-end-line")).toHaveTextContent("planned target");
     fireEvent.click(screen.getByTestId("estimate-open-btn"));
     await act(async () => {
       fireEvent.click(screen.getByTestId("estimate-unknown-btn"));

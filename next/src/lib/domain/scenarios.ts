@@ -177,7 +177,7 @@ const BUFFERED: Scenario = {
       { flashAnchorMin: 12, closeAnchorMin: 26, flashCueAtClock: true }
     ),
   script: [
-    { id: "start", label: "Start LIVE at 20:00", atSec: 0, build: () => ({ type: "start_live" }) },
+    { id: "start", label: "Start the simulated session at 20:00", atSec: 0, build: () => ({ type: "start_live" }) },
     { id: "a-start", label: "Opening ends · Zip Hoodie starts (20:03)", atSec: min(3), build: () => ({ type: "advance_segment" }) },
     {
       id: "estimate",
@@ -220,7 +220,7 @@ const BUFFERED: Scenario = {
       build: (c) => ({ type: "report_cue", cueId: c.cue("cue-unpin-b"), report: "performed", occurredAtMs: c.at(min(23, 5)) }),
     },
     { id: "close-start", label: "Q&A ends · Closing starts at its anchor (20:26)", atSec: min(26), build: () => ({ type: "advance_segment" }) },
-    { id: "end", label: "End LIVE at 20:30", atSec: min(30), build: () => ({ type: "end_live" }) },
+    { id: "end", label: "End the simulated session at 20:30", atSec: min(30), build: () => ({ type: "end_live" }) },
   ],
 };
 
@@ -242,7 +242,7 @@ const MISSED: Scenario = {
   productIds: ["prod_m02", "prod_m03"],
   buildPlan: BUFFERED.buildPlan,
   script: [
-    { id: "start", label: "Start LIVE at 20:00", atSec: 0, build: () => ({ type: "start_live" }) },
+    { id: "start", label: "Start the simulated session at 20:00", atSec: 0, build: () => ({ type: "start_live" }) },
     { id: "a-start", label: "Opening ends · Zip Hoodie starts (20:03)", atSec: min(3), build: () => ({ type: "advance_segment" }) },
     {
       id: "estimate",
@@ -279,7 +279,7 @@ const MISSED: Scenario = {
       build: (c) => ({ type: "report_cue", cueId: c.cue("cue-unpin-b"), report: "performed", occurredAtMs: c.at(min(24, 5)) }),
     },
     { id: "close-start", label: "Closing starts at its anchor (20:26)", atSec: min(26), build: () => ({ type: "advance_segment" }) },
-    { id: "end", label: "End LIVE at 20:30", atSec: min(30), build: () => ({ type: "end_live" }) },
+    { id: "end", label: "End the simulated session at 20:30", atSec: min(30), build: () => ({ type: "end_live" }) },
   ],
 };
 
@@ -308,7 +308,7 @@ const MINIMUM: Scenario = {
     return built;
   },
   script: [
-    { id: "start", label: "Start LIVE at 20:00", atSec: 0, build: () => ({ type: "start_live" }) },
+    { id: "start", label: "Start the simulated session at 20:00", atSec: 0, build: () => ({ type: "start_live" }) },
     { id: "a-start", label: "Opening ran 7:00 · Zip Hoodie starts 20:07", atSec: min(7), build: () => ({ type: "advance_segment" }) },
     {
       id: "estimate",
@@ -337,7 +337,7 @@ const MINIMUM: Scenario = {
     },
     { id: "b-start", label: "Flash Sale ends · Cargo Pants starts (20:19)", atSec: min(19), build: () => ({ type: "advance_segment" }) },
     { id: "close-start", label: "Cargo Pants ends · Closing starts (20:27)", atSec: min(27), build: () => ({ type: "advance_segment" }) },
-    { id: "end", label: "End LIVE at 20:30", atSec: min(30), build: () => ({ type: "end_live" }) },
+    { id: "end", label: "End the simulated session at 20:30", atSec: min(30), build: () => ({ type: "end_live" }) },
   ],
 };
 

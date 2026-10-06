@@ -4,6 +4,7 @@ import React from "react";
 import { EnvironmentBadge } from "@/components/ui/EnvironmentBadge";
 import { MetricValue } from "@/components/ui/MetricValue";
 import { EvidenceLabel } from "@/components/ui/EvidenceLabel";
+import { anchorSignal } from "@/components/ops/StatusChips";
 import {
   analyzeRecovery,
   applyCommand,
@@ -12,6 +13,30 @@ import {
   runScript,
   SCENARIO_START_MS,
 } from "@/lib/domain";
+
+describe("Hard-anchor display at the exact anchor instant", () => {
+  const base = {
+    committedMs: SCENARIO_START_MS,
+    baselineCommittedMs: SCENARIO_START_MS,
+    projectedStartMs: SCENARIO_START_MS,
+    bufferSec: 0,
+    lowerBound: false,
+  } as const;
+
+  it("0:00 late is shown as due now, not as a miss — while the status itself stays 'missed'", () => {
+    const anchor = { ...base, status: "missed" as const, deficitSec: 0 };
+    const s = anchorSignal(anchor, "Asia/Ho_Chi_Minh");
+    expect(s.text).toBe("Due now · not started yet");
+    expect(s.text).not.toMatch(/Missed|0:00 late/);
+    expect(anchor.status).toBe("missed"); // the forecast is untouched; only the label differs
+  });
+
+  it("once the anchor is actually late it is still a miss with the real lateness", () => {
+    const s = anchorSignal({ ...base, status: "missed", deficitSec: 5 }, "Asia/Ho_Chi_Minh");
+    expect(s.text).toBe("Missed · 0:05 late");
+    expect(s.tone).toBe("danger");
+  });
+});
 
 describe("Non-negotiable Semantic Invariants", () => {
   it("distinguishes REAL and SIMULATED environments visibly", () => {

@@ -93,6 +93,9 @@ export function anchorSignal(
         text: `Possible risk · up to ${formatDuration(anchor.bufferSec)} buffer, end unknown`,
       };
     case "missed":
+      // At the exact anchor instant nothing is late yet (0:00). The commitment time has arrived and the
+      // segment has not started — say that, instead of "Missed · 0:00 late". The forecast itself is unchanged.
+      if (anchor.deficitSec === 0) return { tone: "warn", icon: "ri-time-line", text: "Due now · not started yet" };
       return { tone: "danger", icon: "ri-time-line", text: `Missed · ${late} late` };
     case "met":
       return { tone: "neutral", icon: "ri-checkbox-circle-line", text: `Met at ${formatClock(anchor.projectedStartMs, tz, true)}` };

@@ -273,6 +273,12 @@ export function ProductPack({
         </Button>
       </div>
 
+      {products.length > 0 && (
+        <p className="text-[13px] text-[#9AA5B5] mb-1.5 shrink-0" data-testid="product-edit-hint">
+          <i className="ri-edit-line mr-1" aria-hidden="true" />
+          Select a product to set its priority, disable it for this show, or remove it.
+        </p>
+      )}
       {products.length === 0 ? (
         <div className="py-6 text-center" data-testid="empty-pack">
           <i className="ri-shopping-bag-3-line text-[24px] text-[#8A95A5]" aria-hidden="true" />
@@ -285,6 +291,7 @@ export function ProductPack({
             <li key={p.id}>
               <button
                 type="button"
+                title={`Edit ${p.code} · ${p.name}`}
                 onClick={() => setSelectedId(p.id)}
                 className={`w-full text-left flex gap-3 items-center p-2.5 rounded-[10px] cursor-pointer transition-colors ${
                   p.status === "disabled" ? "bg-[#111317] opacity-70" : "bg-[#181C24] hover:bg-[#202632]"
@@ -305,6 +312,7 @@ export function ProductPack({
                     {p.source === "sample_library" && <span className="ml-2 text-[#F6C875]" data-testid="sample-tag">Sample</span>}
                   </p>
                 </div>
+                <i className="ri-edit-line text-[18px] text-[#8A95A5] shrink-0" aria-hidden="true" />
               </button>
             </li>
           ))}
@@ -312,10 +320,19 @@ export function ProductPack({
       )}
       <p className="pt-2 text-[12px] text-[#8A95A5] shrink-0">Session snapshot · edits here never change the library or past shows.</p>
 
-      <Dialog isOpen={selected !== null} onClose={() => setSelectedId(null)} title={selected ? `${selected.code} · ${selected.name}` : ""} cancelText="Close">
+      <Dialog
+        isOpen={selected !== null}
+        onClose={() => setSelectedId(null)}
+        title={selected ? `${selected.code} · ${selected.name}` : ""}
+        description="Product details for this show only. Changes save immediately and never touch the library or past shows."
+        cancelText="Close"
+      >
         {selected && (
           <div className="space-y-4 pb-1" data-testid="product-dialog">
             <p className="text-[15px] text-[#F5F7FC]">Price: {selected.price !== null ? `${selected.currency} ${selected.price}` : "Not entered"}</p>
+            <p className="text-[13px] text-[#9AA5B5] -mt-2" data-testid="product-correct-hint">
+              To correct the name or price, remove this product and add it again with the right values (Import).
+            </p>
             {selected.talkingPoints.length > 0 && (
               <ul className="list-disc list-inside text-[14px] text-[#B7C1CE] space-y-1">
                 {selected.talkingPoints.map((t) => (
@@ -325,7 +342,7 @@ export function ProductPack({
             )}
             <div className="flex flex-wrap gap-2">
               <Button variant={selected.priority === "high" ? "primary" : "secondary"} size="sm" onClick={() => onPatch(selected.id, { priority: selected.priority === "high" ? "normal" : "high" })}>
-                Priority: {selected.priority}
+                {selected.priority === "high" ? "High priority · set to normal" : "Mark as high priority"}
               </Button>
               <Button variant="secondary" size="sm" onClick={() => onPatch(selected.id, { status: selected.status === "enabled" ? "disabled" : "enabled" })}>
                 {selected.status === "enabled" ? "Disable for this show" : "Enable"}
@@ -357,8 +374,8 @@ export function ProductPack({
         <div className="space-y-3 pb-1" data-testid="library-dialog">
           <p className="text-[15px] text-[#F6C875]" data-testid="library-sample-notice">
             <i className="ri-information-line mr-1.5" aria-hidden="true" />
-            Sample library shipped with LiveLift — example products, names and prices, not your catalog. Copies are marked “Sample” until you edit
-            them; check every one before a real show.
+            Sample library shipped with LiveLift — example products, names and prices, not your catalog. Copies stay marked “Sample”; check every
+            one before a real show.
           </p>
           {PACK_LIBRARY.map((pack) => {
             const items = PRODUCT_LIBRARY.filter((p) => pack.productIds.includes(p.id) && available.some((a) => a.id === p.id));

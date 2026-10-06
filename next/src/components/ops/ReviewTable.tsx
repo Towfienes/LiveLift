@@ -64,8 +64,9 @@ export function ReviewSummary({ review, tz }: { review: Review; tz: string }): R
         c.operatorTotal === 0
           ? "no operator cues planned"
           : [
+              c.attempted > 0 ? `${c.attempted} attempted, outcome unknown` : "",
               c.late > 0 ? `${c.late} late` : "",
-              c.noReport > 0 ? `${c.noReport} no report` : "",
+              c.noReport > 0 ? `${c.noReport} no report (unknown)` : "",
               c.cancelled > 0 ? `${c.cancelled} cancelled` : "",
               s.actions.total > 0 ? `${s.actions.total} unplanned` : "",
               "unverified",
@@ -78,14 +79,18 @@ export function ReviewSummary({ review, tz }: { review: Review; tz: string }): R
   return (
     <div className="shrink-0" data-testid="review-summary">
       <p className="text-[14px] text-[#9AA5B5] tabular-nums">
-        {clock(s.startedAtMs)} → {clock(s.endedAtMs)} · recorded from this show's commands only
+        {clock(s.startedAtMs)} → {clock(s.endedAtMs)} · recorded from this show&apos;s commands only
+      </p>
+      <p className="text-[13px] text-[#9AA5B5] mt-0.5" data-testid="review-reading-note">
+        How to read this: “reported” is the operator&apos;s word, not platform confirmation, and an attempt is not a performed action.
+        Unknown, no report and unverified mean nothing was recorded — they are not failures.
       </p>
       <div className="mt-2 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
         {groups.map((g) => (
           <div key={g.label} className="min-w-0">
             <p className="text-[12px] tracking-[1.2px] uppercase text-[#AEB7C5]">{g.label}</p>
             <p className={`text-[20px] leading-tight font-medium tabular-nums ${g.tone === "warn" ? "text-[#F6C875]" : "text-[#F5F7FC]"}`}>{g.value}</p>
-            <p className="text-[13px] text-[#9AA5B5] truncate" title={g.sub}>{g.sub}</p>
+            <p className="text-[13px] text-[#9AA5B5] line-clamp-2" title={g.sub}>{g.sub}</p>
           </div>
         ))}
       </div>
@@ -129,6 +134,7 @@ export function PlanActualRows({
       <div className="divide-y divide-[#1F2530]">
         {rows.map((r) => {
           const out = OUTCOME[r.outcome];
+          const ranOutcome = r.outcome === "completed" || r.outcome === "closed_early";
           const product = r.productId ? (productById.get(r.productId) ?? null) : null;
           return (
             <div
@@ -143,7 +149,14 @@ export function PlanActualRows({
                 <div className="min-w-0">
                   <p className="text-[16px] font-medium text-[#F5F7FC] truncate">{r.title}</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Signal tone={out.tone} icon={out.icon}>{out.text}</Signal>
+                    <Signal
+                      tone={out.tone}
+                      icon={out.icon}
+                      title={ranOutcome ? "The segment ran and was closed. That does not mean everything planned was covered — coverage is declared separately." : undefined}
+                    >
+                      {out.text}
+                      {ranOutcome && ` · ${r.coverage === "complete" ? "coverage complete (declared)" : r.coverage === "partial" ? "coverage partial" : "coverage not declared"}`}
+                    </Signal>
                     {r.actualOrder !== null && r.plannedRank !== null && r.actualOrder !== r.plannedRank && (
                       <Signal tone="muted" className="text-[13px]" title="Order among the segments that ran">
                         ran #{r.actualOrder}, planned #{r.plannedRank}
@@ -218,7 +231,9 @@ export function PlanActualRows({
                   {r.coverage === "partial" && <Signal tone="warn" className="text-[14px]">coverage partial (declared)</Signal>}
                   {r.coverage === "complete" && <Signal tone="neutral" className="text-[14px]">coverage complete (declared)</Signal>}
                   {r.coverage === null && r.actual !== null && r.outcome !== "ended_with_show" && (
-                    <Signal tone="muted" className="text-[14px]">coverage not declared</Signal>
+                    <Signal tone="muted" className="text-[14px]" title="The segment ended, but nobody declared whether everything planned was covered. That is unknown — not complete, not failed.">
+                      coverage not declared · unknown
+                    </Signal>
                   )}
                   {r.followUp && (
                     <Signal tone="warn" icon="ri-arrow-go-forward-line" className="text-[14px]" title="A manual follow-up the operator declared. Not moved anywhere automatically.">

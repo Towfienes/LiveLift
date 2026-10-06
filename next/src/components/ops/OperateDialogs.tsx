@@ -55,17 +55,24 @@ export function EndLiveDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="End LIVE tracking?"
+      title={session.environment === "SIMULATED" ? "End the simulated session?" : "End LIVE tracking?"}
       confirmText="End tracking"
       confirmSize="lg"
       cancelText="Keep operating"
       onConfirm={onConfirm}
     >
       <div className="space-y-3 text-[16px] leading-relaxed text-[#CAD0DA]" data-testid="end-live-dialog">
-        <p>
-          This stops <strong className="text-[#F5F7FC]">LiveLift tracking</strong>. It does not stop your platform broadcast — end that in
-          TikTok LIVE Manager separately.
-        </p>
+        {session.environment === "SIMULATED" ? (
+          <p>
+            This stops the <strong className="text-[#F5F7FC]">SIMULATED rehearsal</strong>. Nothing was broadcast, so there is nothing to end
+            in TikTok.
+          </p>
+        ) : (
+          <p>
+            This stops <strong className="text-[#F5F7FC]">LiveLift tracking</strong>. It does not stop your platform broadcast — end that in
+            TikTok LIVE Manager separately.
+          </p>
+        )}
         <ul className="space-y-1.5 text-[16px]">
           {running && <li>The running segment will be closed with the show; its coverage stays undeclared.</li>}
           <li>
@@ -613,7 +620,11 @@ export function CoverageDialog({
             <input id="coverage-followup" data-testid="coverage-followup" value={followUp} onChange={(e) => setFollowUp(e.target.value)} className={INPUT} />
           </div>
         )}
-        <p className="text-[16px] text-[#9AA5B5]">LiveLift does not move unfinished points anywhere automatically. A follow-up is a note for you, shown in Coverage and Review.</p>
+        <p className="text-[16px] text-[#9AA5B5]">
+          Ending a segment records that it ran, not that everything in it was covered. “Not sure” is recorded as undeclared — never as complete
+          and never as failed. LiveLift does not move unfinished points anywhere automatically; a follow-up is a note for you, shown in
+          Coverage and Review.
+        </p>
       </div>
     </Dialog>
   );

@@ -63,15 +63,23 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
               className={tracking === "active" ? "ri-record-circle-line" : "ri-stop-circle-line"}
               aria-hidden="true"
             />
-            <span>{tracking === "active" ? "Tracking active" : "Tracking ended"}</span>
+            <span>
+              {simulated ? "Simulated session" : "Tracking"} {tracking === "active" ? "active" : "ended"}
+            </span>
           </span>
 
           <span
-            data-testid="elapsed-runtime-clock"
-            aria-label="LiveLift tracked time"
-            className="text-[26px] font-medium tracking-tight text-[#F5F7FC] tabular-nums min-w-[72px] text-right"
+            className="inline-flex items-baseline gap-2"
+            title="Time since LiveLift tracking started for the whole show — not the current segment's time."
           >
-            {elapsedLabel ?? "--:--"}
+            <span className="text-[16px] text-[#AEB7C5] whitespace-nowrap">Show time</span>
+            <span
+              data-testid="elapsed-runtime-clock"
+              aria-label="LiveLift tracked time"
+              className="text-[26px] font-medium tracking-tight text-[#F5F7FC] tabular-nums min-w-[72px] text-right"
+            >
+              {elapsedLabel ?? "--:--"}
+            </span>
           </span>
 
           <Link
@@ -89,7 +97,7 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
               data-testid="end-live-header-btn"
               className="bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944]"
             >
-              End LIVE
+              {simulated ? "End simulated session" : "End LIVE"}
             </Button>
           )}
         </div>
@@ -115,6 +123,12 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
             <span className="inline-flex items-center gap-2 text-[#CAD0DA] truncate">
               <i className="ri-live-line" aria-hidden="true" />
               <span className="truncate">{accountLabel || "Manual desk · no provider attached"}</span>
+            </span>
+          )}
+          {simulated && (
+            <span className="hidden 2xl:inline-flex items-center gap-2 truncate" title="Rehearsal only: nothing is broadcast and TikTok is not involved.">
+              <i className="ri-flask-line" aria-hidden="true" />
+              <span className="truncate">Rehearsal · no real broadcast</span>
             </span>
           )}
         </div>

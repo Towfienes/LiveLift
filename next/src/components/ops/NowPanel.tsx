@@ -100,7 +100,7 @@ export function NowPanel({
               : `Ends ${clock(active.endMs)} · host estimate`,
         }
       : active?.basis === "target"
-        ? { tone: "neutral" as const, text: `Ends ${clock(active.endMs)} · target (no estimate entered)` }
+        ? { tone: "neutral" as const, text: `Ends ${clock(active.endMs)} · planned target` }
         : active?.basis === "declared_unknown"
           ? { tone: "warn" as const, text: `Host: remaining time unknown · earliest end ${clock(nowMs)}` }
           : { tone: "warn" as const, text: `End unknown · earliest possible ${clock(nowMs)}` };
@@ -136,7 +136,9 @@ export function NowPanel({
 
       <div className="mt-3 [@media(max-height:800px)]:mt-2 flex items-end justify-between gap-4">
         <div>
-          <p className="text-[16px] leading-5 text-[#AEB7C5]">Actual elapsed</p>
+          <p className="text-[16px] leading-5 text-[#AEB7C5]" title="Time this segment has actually been running — not the planned target, and not the whole show.">
+            Segment elapsed
+          </p>
           <p
             data-testid="now-actual-elapsed"
             className={`text-[44px] leading-none font-medium tabular-nums tracking-tight mt-1 ${over > 0 ? "text-[#F6C875]" : "text-[#F5F7FC]"}`}
@@ -149,7 +151,7 @@ export function NowPanel({
             {over > 0 ? `${formatDuration(over)} over target` : `${formatDuration(-over)} to target`}
           </p>
           <p className="text-[16px] leading-6 text-[#B7C1CE] tabular-nums">
-            Target {formatDuration(targetSec)}
+            Planned target {formatDuration(targetSec)}
             {minSec !== null ? ` · min ${formatDuration(minSec)}` : " · no minimum set"}
           </p>
         </div>
@@ -223,9 +225,10 @@ export function NowPanel({
                 type="button"
                 onClick={() => setEditing(true)}
                 data-testid="estimate-open-btn"
+                title="Enter how long the host says is left. It is the host's own estimate: it does not change the planned target or the plan (use Extend for that)."
                 className="min-h-[44px] px-2.5 rounded-[8px] text-[16px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
               >
-                {hasHostInput ? "Update estimate" : "Host estimate"}
+                {hasHostInput ? "Edit host time" : "Host time left"}
               </button>
               {hasHostInput && (
                 <button
