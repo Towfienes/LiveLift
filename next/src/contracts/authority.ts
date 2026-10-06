@@ -1,10 +1,12 @@
-import type { CommandBody, CreateSessionInput } from "@/lib/domain/engine";
+import type { CommandBase, CommandBody, CreateSessionInput } from "@/lib/domain/engine";
 import type { NextSessionInput } from "@/lib/domain/nextLive";
 import type { PlanVersion } from "./plan";
 import type { Session } from "./session";
 
 /** REAL runtime commands retain Phase 1 payloads; simulation clock controls stay local. */
-export type RuntimeCommandBody = Exclude<CommandBody, { type: "advance_clock" | "set_clock" }>;
+export type RuntimeCommandBody =
+  Exclude<CommandBody, { type: "advance_clock" | "set_clock" }> &
+  Pick<CommandBase, "recoveryId" | "recoveryLabel">;
 
 /** IDs, time, environment and operator identity are assigned by the authority. */
 export type CreateSessionPayload = Pick<
