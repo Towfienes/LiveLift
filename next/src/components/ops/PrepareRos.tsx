@@ -13,6 +13,7 @@ import {
   type Schedule,
 } from "@/lib/domain";
 import { Button, Dialog } from "@/components/ui";
+import { afterResult } from "@/lib/client/commandText";
 import { SegmentTile } from "./SegmentTile";
 import { Signal } from "./StatusChips";
 import { CUE_ACTION_LABEL } from "./CueBar";
@@ -244,10 +245,10 @@ export function ProductPack({
 }: {
   products: ProductSnapshot[];
   plan: PlanVersion;
-  /** Returns false when nothing was added (the reason is shown by the page). */
-  onAdd: (items: ProductSnapshot[]) => boolean;
-  onPatch: (productId: string, patch: Partial<ProductSnapshot>) => void;
-  onRemove: (productId: string) => void;
+  /** Returns false when nothing was added (the reason is shown by the page). A REAL show answers asynchronously. */
+  onAdd: (items: ProductSnapshot[]) => boolean | Promise<boolean>;
+  onPatch: (productId: string, patch: Partial<ProductSnapshot>) => void | boolean | Promise<boolean>;
+  onRemove: (productId: string) => void | boolean | Promise<boolean>;
 }): React.ReactElement {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -353,10 +354,7 @@ export function ProductPack({
                 disabled={usedBy.length > 0}
                 title={usedBy.length > 0 ? `Used by ${usedBy.join(", ")}` : undefined}
                 data-testid="remove-product-btn"
-                onClick={() => {
-                  onRemove(selected.id);
-                  setSelectedId(null);
-                }}
+                onClick={() => afterResult(onRemove(selected.id), () => setSelectedId(null))}
               >
                 Remove
               </Button>
@@ -418,10 +416,10 @@ export function ProductPack({
         onConfirm={() => {
           // Distinct codes keep distinct identities even when they normalise alike ("A-B" vs "A_B").
           const items = toProductSnapshots(rows, "Imported", products.map((p) => p.id));
-          if (onAdd(items)) {
+          afterResult(onAdd(items), () => {
             setImportText("");
             setImportOpen(false);
-          }
+          });
         }}
         size="lg"
       >

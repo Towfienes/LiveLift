@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import React, { Suspense } from "react";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const nav = vi.hoisted(() => ({
   push: vi.fn(),
@@ -24,8 +24,12 @@ import SimulatorPage from "@/app/simulator/page";
 import ProductsPage from "@/app/products/page";
 import IntegrationsPage from "@/app/integrations/page";
 import { sessionStore } from "@/lib/store/sessionStore";
+import { remoteRoomStore } from "@/lib/store/remoteRoomStore";
+import { FakeRoom } from "./helpers/fakeRoom";
+import { snapshotProducts } from "@/fixtures/library";
+import type { Session } from "@/contracts";
 import { scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
-import { SCENARIO_START_MS as SCENARIO_START } from "@/lib/domain";
+import { SCENARIO_BY_ID, SCENARIO_START_MS as SCENARIO_START, applyCommand, createSession } from "@/lib/domain";
 
 type PageComponent = (props: { params: Promise<{ sessionId: string }> }) => React.ReactElement;
 
@@ -62,8 +66,39 @@ function finishRehearsal(id: string): void {
   }
 }
 
+let restoreFetch: (() => void) | null = null;
+
+/** REAL shows live in the room: stand up a contract-speaking room for the test. */
+function openRoom(room = new FakeRoom()): FakeRoom {
+  restoreFetch = room.install();
+  return room;
+}
+
+/** A REAL show built from the 30-minute template, as the room would hold it (planned, not started). */
+function templateShow(room: FakeRoom, id: string, title: string, timezone = "UTC"): Session {
+  const template = SCENARIO_BY_ID.buffered;
+  const { segments, cues } = template.buildPlan(id);
+  return createSession({
+    id,
+    title,
+    environment: "REAL",
+    timezone,
+    plannedStartMs: room.nowMs,
+    nowMs: room.nowMs,
+    products: snapshotProducts(template.productIds),
+    segments,
+    cues,
+  });
+}
+
+afterEach(() => {
+  restoreFetch?.();
+  restoreFetch = null;
+});
+
 beforeEach(() => {
   localStorage.clear();
+  remoteRoomStore.reset();
   sessionStore.reloadFromStorage();
   nav.push.mockClear();
   nav.replace.mockClear();
@@ -122,23 +157,29 @@ describe("Home, Sessions, Simulator", () => {
 });
 
 describe("Create LIVE", () => {
-  it("creates a REAL show from the 30-minute template and opens Prepare", async () => {
+  it("creates a REAL show in the room from the 30-minute template and opens Prepare", async () => {
+    const room = openRoom();
     await renderPlain(<CreateLivePage />);
     fireEvent.click(await screen.findByTestId("start-template"));
     const submit = screen.getByTestId("submit-create-live-btn");
-    await act(async () => {});
-    expect(submit).not.toBeDisabled();
+    // A REAL show can only be created while the room is reachable and this browser is an operator.
+    await waitFor(() => expect(submit).not.toBeDisabled());
     fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: "Friday launch" } });
     await act(async () => {
       fireEvent.click(submit);
     });
-    const created = sessionStore.list("REAL");
+    await waitFor(() => expect(nav.push).toHaveBeenCalled());
+    const created = room.sessions;
     expect(created.length).toBe(1);
     expect(created[0].environment).toBe("REAL");
     expect(created[0].title).toBe("Friday launch");
     expect(created[0].plans[0].segments.length).toBe(6);
     expect(created[0].lifecycle).toBe("planned");
+    expect(created[0].operator.name).toBe("Mai"); // identity comes from the room's capability, not the form
     expect(nav.push).toHaveBeenCalledWith(`/live/${created[0].id}/prepare`);
+    // The browser keeps no REAL authority of its own.
+    expect(sessionStore.list("REAL")).toEqual([]);
+    expect(localStorage.getItem("livelift.v3.REAL")).toBeNull();
   });
 
   it("copying a previous session is limited to the same environment", async () => {
@@ -204,9 +245,18 @@ describe("Prepare", () => {
   });
 
   it("an unknown id is a real not-found state — never another show", async () => {
+    openRoom();
     await renderPage(PreparePage as PageComponent, "no-such-show");
     expect(await screen.findByTestId("session-not-found")).toHaveTextContent("no-such-show");
     expect(screen.queryByTestId("prepare-ros-list")).toBeNull();
+  });
+
+  it("an unknown id is NOT 'not found' while the room cannot be reached", async () => {
+    const room = openRoom();
+    room.offline = true;
+    await renderPage(PreparePage as PageComponent, "real-1");
+    expect(await screen.findByTestId("session-unavailable")).toHaveTextContent("cannot tell you whether");
+    expect(screen.queryByTestId("session-not-found")).toBeNull();
   });
 });
 
@@ -581,12 +631,15 @@ describe("Stage-2 audit repairs in the UI", () => {
   });
 
   it("UI-08: Prepare blocks a second REAL show and links to the running one", async () => {
-    const one = sessionStore.createSession({ title: "Running show", environment: "REAL", timezone: "UTC", plannedStartMs: Date.now(), start: { type: "template" } });
-    const two = sessionStore.createSession({ title: "Second show", environment: "REAL", timezone: "UTC", plannedStartMs: Date.now(), start: { type: "template" } });
-    if (!one.ok || !two.ok) throw new Error("create failed");
-    expect(sessionStore.dispatch(one.session.id, { type: "start_live", rebaseToNow: true })!.receipt.outcome).toBe("committed");
-    await renderPage(PreparePage as PageComponent, two.session.id);
-    expect(await screen.findByTestId("other-show-active")).toHaveTextContent("Running show is running on this device");
+    const room = openRoom();
+    room.seed(templateShow(room, "real-1", "Running show"));
+    room.seed(templateShow(room, "real-2", "Second show"));
+    const running = applyCommand(room.sessions[0], { type: "start_live", rebaseToNow: true, nowMs: room.nowMs });
+    expect(running.receipt.outcome).toBe("committed");
+    room.sessions = [running.session, room.sessions[1]];
+    room.revision += 1;
+    await renderPage(PreparePage as PageComponent, room.sessions[1].id);
+    expect(await screen.findByTestId("other-show-active")).toHaveTextContent("Running show is running in this room");
     expect(screen.getByTestId("start-live-cta-btn")).toBeDisabled();
   });
 
@@ -651,27 +704,28 @@ describe("Stage-2 audit repairs in the UI", () => {
   });
 });
 
-describe("UI-09: a backward REAL clock is surfaced, not silently applied", () => {
-  it("shows the discontinuity and keeps time moving forward", async () => {
-    const created = sessionStore.createSession({ title: "Clock show", environment: "REAL", timezone: "Asia/Ho_Chi_Minh", plannedStartMs: Date.now(), start: { type: "template" } });
-    if (!created.ok) throw new Error(created.reason);
-    const t = Date.now();
-    sessionStore.dispatch(created.session.id, { type: "start_live", nowMs: t });
-    sessionStore.dispatch(created.session.id, { type: "add_note", text: "late note", nowMs: t + 10 * 60_000 }); // recorded 10 minutes ahead
-    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
-    try {
-      await renderPage(OperatePage as PageComponent, created.session.id); // device clock is now behind the recorded time
-      expect(await screen.findByTestId("clock-discontinuity")).toHaveTextContent("Device clock moved back");
-      await act(async () => {
-        fireEvent.click(screen.getByTestId("clock-discontinuity-record-btn"));
-      });
-      const s = sessionStore.getSession(created.session.id)!;
-      expect(s.events.some((e) => e.type === "clock_discontinuity")).toBe(true);
-      // Nothing was recorded earlier than the latest recorded time.
-      const times = s.events.map((e) => e.recordedAtMs);
-      expect(times).toEqual([...times].sort((a, b) => a - b));
-    } finally {
-      vi.useRealTimers();
-    }
+describe("UI-09: a REAL clock behind recorded time is surfaced, not silently applied", () => {
+  it("shows the discontinuity, keeps time moving forward, and records it through the room", async () => {
+    const room = openRoom();
+    room.seed(templateShow(room, "real-1", "Clock show", "Asia/Ho_Chi_Minh"));
+    const started = applyCommand(room.sessions[0], { type: "start_live", nowMs: room.nowMs });
+    expect(started.receipt.outcome).toBe("committed");
+    room.sessions = [started.session];
+    room.revision += 1;
+    room.clockBehindByMs = 10 * 60_000; // the room's clock is 10 minutes behind time it already recorded
+    await renderPage(OperatePage as PageComponent, "real-1");
+    expect(await screen.findByTestId("clock-discontinuity")).toHaveTextContent("The room's clock is behind recorded time by");
+    const record = screen.getByTestId("clock-discontinuity-record-btn");
+    await waitFor(() => expect(record).not.toBeDisabled());
+    await act(async () => {
+      fireEvent.click(record);
+    });
+    await waitFor(() => expect(room.sessions[0].events.some((e) => e.type === "clock_discontinuity")).toBe(true));
+    // The browser never supplied a time: the command carries none.
+    const sent = room.posts().at(-1)!;
+    expect(sent.type).toBe("acknowledge_clock_discontinuity");
+    expect(JSON.stringify(sent)).not.toContain("nowMs");
+    const times = room.sessions[0].events.map((e) => e.recordedAtMs);
+    expect(times).toEqual([...times].sort((x, y) => x - y));
   });
 });

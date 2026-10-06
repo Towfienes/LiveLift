@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { Session } from "@/contracts";
 import {
   MANUAL_ACTION_LABEL,
@@ -642,6 +642,10 @@ export function NoteDialog({
   onSave: (text: string) => void;
 }): React.ReactElement {
   const [text, setText] = useState("");
+  // The text stays until the dialog closes: a REAL note the room has not accepted must not lose what was typed.
+  useEffect(() => {
+    if (!isOpen) setText("");
+  }, [isOpen]);
   return (
     <Dialog
       isOpen={isOpen}
@@ -649,10 +653,7 @@ export function NoteDialog({
       title="Add a note"
       confirmText="Save note"
       confirmSize="lg"
-      onConfirm={() => {
-        onSave(text);
-        setText("");
-      }}
+      onConfirm={() => onSave(text)}
       confirmDisabled={text.trim() === ""}
     >
       <textarea

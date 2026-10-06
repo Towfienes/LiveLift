@@ -11,7 +11,7 @@ const CAPABILITIES: Array<{ id: string; name: string; status: string; variant: V
     name: "Manual Operation Desk",
     status: "Available",
     variant: "available",
-    details: "The whole loop — Prepare, Operate, Review and Next LIVE — runs on this device with zero external integrations.",
+    details: "The whole loop — Prepare, Operate, Review and Next LIVE — runs with zero external integrations: REAL shows in the shared room, rehearsals in this browser.",
   },
   {
     id: "catalog",

@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import type { EnvironmentIdentity, OperatorContext } from "@/contracts";
 import { EnvironmentBadge, Button } from "@/components/ui";
+import { ConnectionChip, RemoteBanners } from "@/components/ops/ConnectionStatus";
 
 export interface FocusedShellProps {
   sessionTitle: string;
@@ -13,9 +14,13 @@ export interface FocusedShellProps {
   tracking: "active" | "ended";
   operator: OperatorContext;
   accountLabel?: string | null;
+  /** REAL room, read-only access: the person at this desk is watching, not leading. */
+  viewer?: { name: string } | null;
   /** Right side of the operator line — e.g. the rehearsal controls for a SIMULATED show. */
   contextExtra?: React.ReactNode;
   onEndLiveClick?: () => void;
+  /** REAL room: not connected, read-only or waiting on an answer. */
+  endLiveDisabled?: boolean;
   children: React.ReactNode;
 }
 
@@ -26,8 +31,10 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
   tracking,
   operator,
   accountLabel,
+  viewer = null,
   contextExtra,
   onEndLiveClick,
+  endLiveDisabled = false,
   children,
 }) => {
   const simulated = environment === "SIMULATED";
@@ -94,6 +101,7 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
             <Button
               variant="secondary"
               onClick={onEndLiveClick}
+              disabled={endLiveDisabled}
               data-testid="end-live-header-btn"
               className="bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944]"
             >
@@ -114,10 +122,16 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
         <div className="flex items-center gap-4 min-w-0">
           <span className="inline-flex items-center gap-2 text-[#CAD0DA] whitespace-nowrap">
             <i className="ri-user-settings-line" aria-hidden="true" />
-            <span>
-              {operator.isLead ? "You are Lead · " : "Assistant · "}
-              <strong>{operator.name}</strong>
-            </span>
+            {viewer ? (
+              <span data-testid="viewer-identity">
+                Viewing as <strong>{viewer.name}</strong> · Lead is <strong>{operator.name}</strong>
+              </span>
+            ) : (
+              <span>
+                {operator.isLead ? "You are Lead · " : "Assistant · "}
+                <strong>{operator.name}</strong>
+              </span>
+            )}
           </span>
           {!simulated && (
             <span className="inline-flex items-center gap-2 text-[#CAD0DA] truncate">
@@ -132,8 +146,16 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
             </span>
           )}
         </div>
-        {contextExtra}
+        {simulated ? (
+          contextExtra
+        ) : (
+          <div className="flex items-center gap-4 shrink-0">
+            <ConnectionChip size="desk" />
+            {contextExtra}
+          </div>
+        )}
       </div>
+      {!simulated && <RemoteBanners size="desk" />}
 
       {/* Desk content. If the window is too short the desk scrolls rather than clipping controls. */}
       <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>

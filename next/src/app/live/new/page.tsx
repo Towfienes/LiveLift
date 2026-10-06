@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StandardShell } from "@/components/shell";
 import { Button } from "@/components/ui";
-import { PACK_LIBRARY } from "@/fixtures/library";
-import { DEFAULT_TIMEZONE, addDaysZoned, msToZonedParts, zonedTimeToMs } from "@/lib/domain";
+import type { Cue, ProductSnapshot, Segment } from "@/contracts";
+import { PACK_LIBRARY, snapshotProducts } from "@/fixtures/library";
+import type { AuthorityCommandBody } from "@/contracts/authority";
+import { SCENARIO_BY_ID, DEFAULT_TIMEZONE, addDaysZoned, duplicateSession, msToZonedParts, zonedTimeToMs } from "@/lib/domain";
 import { sessionStore, type StartingPoint } from "@/lib/store/sessionStore";
-import { useSessions } from "@/lib/store/hooks";
+import { useRemoteCommands, useSessions } from "@/lib/store/hooks";
 
 type StartType = StartingPoint["type"];
 
@@ -28,7 +30,8 @@ function CreateLiveForm(): React.ReactElement {
   const router = useRouter();
   const params = useSearchParams();
   const fromId = params.get("from");
-  const { hydrated, sessions } = useSessions();
+  const { hydrated, sessions, remote } = useSessions();
+  const commands = useRemoteCommands();
 
   const [title, setTitle] = useState("October collection · Evening LIVE");
   const [startType, setStartType] = useState<StartType>("blank");
@@ -42,8 +45,8 @@ function CreateLiveForm(): React.ReactElement {
   const [showObjective, setShowObjective] = useState(false);
   const [account, setAccount] = useState("");
   const [showAccount, setShowAccount] = useState(false);
-  const [operatorName, setOperatorName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [seeded, setSeeded] = useState(false);
 
   // Defaults that depend on the clock are set after mount, so server and client renders agree.
@@ -51,17 +54,20 @@ function CreateLiveForm(): React.ReactElement {
     setDate(msToZonedParts(addDaysZoned(Date.now(), 1, DEFAULT_TIMEZONE), DEFAULT_TIMEZONE).date);
   }, []);
 
-  // Duplicating from the Sessions list pre-fills the form once the stored data has loaded.
+  // Duplicating from the Sessions list pre-fills the form once the show's data has loaded (a REAL show comes from the room).
   useEffect(() => {
     if (seeded || !hydrated || !fromId) return;
     const source = sessions.find((s) => s.id === fromId);
+    if (!source) {
+      if (remote.snapshot || remote.connection === "disconnected") setSeeded(true);
+      return;
+    }
     setSeeded(true);
-    if (!source) return;
     setStartType("previous");
     setSourceId(source.id);
     setSimulated(source.environment === "SIMULATED");
     setTitle(`${source.title} · copy`);
-  }, [hydrated, fromId, sessions, seeded]);
+  }, [hydrated, fromId, sessions, seeded, remote.snapshot, remote.connection]);
 
   const environment = simulated ? "SIMULATED" : "REAL";
   const sources = useMemo(() => sessions.filter((s) => s.environment === environment), [sessions, environment]);
@@ -69,15 +75,73 @@ function CreateLiveForm(): React.ReactElement {
   const plannedStartMs = date ? zonedTimeToMs(date, time, timezone) : null;
   const ready = title.trim() !== "" && plannedStartMs !== null && (startType !== "previous" || effectiveSourceId !== "");
 
-  const submit = (e: React.FormEvent): void => {
+  /** REAL shows are created by the room: the server assigns the id, time and operator. */
+  const createRemote = async (start: StartingPoint, at: number): Promise<void> => {
+    let body: AuthorityCommandBody;
+    let targetSessionId: string | null = null;
+    const source = start.type === "previous" ? sources.find((s) => s.id === start.sourceId) : undefined;
+    if (start.type === "previous" && !source) {
+      setError("The session to copy no longer exists.");
+      return;
+    }
+    if (source && source.lifecycle === "ended") {
+      // An ended show is carried forward through the room's own Next LIVE command, which keeps the "planned from" link.
+      targetSessionId = source.id;
+      body = { type: "create_next", title: title.trim(), plannedStartMs: at, changeIds: [], note: `Duplicated from ${source.title}` };
+    } else {
+      // Segment and cue ids are scoped to this plan; the room assigns the session id.
+      let products: ProductSnapshot[] = [];
+      let segments: Segment[] | undefined;
+      let cues: Cue[] | undefined;
+      if (start.type === "template") {
+        const template = SCENARIO_BY_ID.buffered;
+        ({ segments, cues } = template.buildPlan("draft"));
+        products = snapshotProducts(template.productIds);
+      } else if (start.type === "pack") {
+        products = snapshotProducts(PACK_LIBRARY.find((p) => p.id === start.packId)?.productIds ?? []);
+      } else if (source) {
+        const copy = duplicateSession(source, { id: "draft", title: title.trim(), plannedStartMs: at, nowMs: at });
+        products = copy.products;
+        segments = copy.plans[0].segments;
+        cues = copy.plans[0].cues;
+      }
+      body = {
+        type: "create_session",
+        title: title.trim(),
+        timezone,
+        plannedStartMs: at,
+        objective: objective.trim() || (source?.objective ?? null),
+        accountLabel: account.trim() || (source?.accountLabel ?? null),
+        products,
+        ...(segments && cues ? { segments, cues } : {}),
+      };
+    }
+    const outcome = await commands.submit({ body, sessionId: targetSessionId });
+    if (outcome.status === "committed" && outcome.receipt.sessionId) router.push(`/live/${outcome.receipt.sessionId}/prepare`);
+    else if (outcome.status === "committed") setError("The room recorded the show but did not say which one. Open it from Sessions.");
+    else if (outcome.status === "unknown") setError(`${outcome.message} It is shown above; check it before creating the show again.`);
+    else setError(outcome.message);
+  };
+
+  const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!ready || plannedStartMs === null) return;
+    if (!ready || plannedStartMs === null || submitting) return;
     const start: StartingPoint =
       startType === "pack"
         ? { type: "pack", packId }
         : startType === "previous"
           ? { type: "previous", sourceId: effectiveSourceId }
           : { type: startType };
+    setError(null);
+    if (environment === "REAL") {
+      setSubmitting(true);
+      try {
+        await createRemote(start, plannedStartMs);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     const result = sessionStore.createSession({
       title,
       environment,
@@ -85,7 +149,6 @@ function CreateLiveForm(): React.ReactElement {
       plannedStartMs,
       objective: objective.trim() || null,
       accountLabel: account.trim() || null,
-      operatorName: environment === "REAL" ? operatorName : null,
       start,
     });
     if (result.ok) router.push(`/live/${result.session.id}/prepare`);
@@ -105,7 +168,7 @@ function CreateLiveForm(): React.ReactElement {
         <h1 className="text-[34px] leading-[1.2] font-medium tracking-[-0.6px] text-[#F5F7FC]">Create LIVE</h1>
         <p className="text-[16px] leading-6 text-[#B7C1CE] mt-1.5">Start small. You can refine everything in Prepare.</p>
 
-        <form onSubmit={submit} className="mt-8 space-y-6">
+        <form onSubmit={(e) => void submit(e)} className="mt-8 space-y-6">
           <div>
             <label htmlFor="session-title" className="block text-[15px] font-medium text-[#CAD0DA] mb-2">
               Session title <span className="text-[#F4A4A4]">*</span>
@@ -225,23 +288,12 @@ function CreateLiveForm(): React.ReactElement {
           )}
 
           {!simulated && (
-            <div>
-              <label htmlFor="operator-name" className="block text-[15px] font-medium text-[#CAD0DA] mb-2">
-                Your name (optional)
-              </label>
-              <input
-                id="operator-name"
-                data-testid="operator-name-input"
-                value={operatorName}
-                onChange={(e) => setOperatorName(e.target.value)}
-                className={INPUT}
-                placeholder="Recorded with every action in this show"
-                maxLength={60}
-              />
-              <p className="text-[14px] text-[#9AA5B5] mt-1">
-                LiveLift has no accounts. If you leave this empty, actions are recorded as “Local operator”, never under another person&apos;s name.
-              </p>
-            </div>
+            <p className="text-[14px] text-[#9AA5B5]" data-testid="recorded-as">
+              <i className="ri-user-line mr-1.5" aria-hidden="true" />
+              {remote.access
+                ? `Actions are recorded as ${remote.access.name}, the identity the room gave this browser.`
+                : "Actions are recorded under the identity the room gives this browser once it is connected."}
+            </p>
           )}
 
           <div className="pt-2 border-t border-[#232935]">
@@ -256,15 +308,29 @@ function CreateLiveForm(): React.ReactElement {
               <span className="text-[16px] font-medium text-[#F5F7FC]">Create as SIMULATED rehearsal</span>
             </label>
             <p className="text-[14px] text-[#B7C1CE] mt-1.5 ml-8">
-              REAL is the default and uses the device clock. A SIMULATED show uses a virtual clock and is never mixed with real history.
+              REAL is the default: it lives in the shared room and uses the room&apos;s clock. A SIMULATED show stays in this browser on a virtual
+              clock and is never mixed with real history.
             </p>
           </div>
 
           {error && <p role="alert" className="text-[14px] text-[#F4A4A4]">{error}</p>}
+          {!simulated && !commands.canWrite && commands.blockedReason && !submitting && (
+            <p className="text-[14px] text-[#F6C875]" data-testid="create-blocked">
+              <i className="ri-lock-line mr-1.5" aria-hidden="true" />
+              {commands.blockedReason}
+            </p>
+          )}
 
           <div className="flex items-center gap-4 pt-2">
-            <Button type="submit" variant="primary" size="lg" icon="ri-arrow-right-line" disabled={!ready} data-testid="submit-create-live-btn">
-              Create LIVE
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              icon="ri-arrow-right-line"
+              disabled={!ready || submitting || (!simulated && !commands.canWrite)}
+              data-testid="submit-create-live-btn"
+            >
+              {submitting ? "Waiting for the room…" : "Create LIVE"}
             </Button>
             <Link href="/">
               <Button variant="ghost" size="lg" type="button">Cancel</Button>

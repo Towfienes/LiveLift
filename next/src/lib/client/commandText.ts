@@ -1,0 +1,77 @@
+import type { CommandBase, CommandBody } from "@/lib/domain";
+import type { AuthorityCommandBody, RuntimeCommandBody } from "@/contracts/authority";
+
+/** Phase 1 command base fields that only exist for the local authority. REAL commands never carry them. */
+const LOCAL_ONLY_FIELDS = ["key", "actor", "expectedRevision", "nowMs", "recoveryId", "recoveryLabel"] as const;
+
+export type DeskCommandInput = CommandBody & Partial<CommandBase>;
+
+/**
+ * Turn a desk command into a REAL authority command body.
+ *
+ * Dropped on purpose: the idempotency key (the envelope's commandId replaces it), the expected session revision
+ * (the envelope carries the ROOM revision), device time (the server assigns recording time) and the actor.
+ * Recovery attribution (`recoveryId`/`recoveryLabel`) has no field in the frozen contract's payload types, so it
+ * is not sent; see docs/phase2/ui.md.
+ * Simulation clock controls are local-only and can never reach the REAL API.
+ */
+export function toRuntimeBody(input: DeskCommandInput): RuntimeCommandBody | null {
+  if (input.type === "advance_clock" || input.type === "set_clock") return null;
+  const body: Record<string, unknown> = { ...input };
+  for (const field of LOCAL_ONLY_FIELDS) delete body[field];
+  return body as RuntimeCommandBody;
+}
+
+const LABELS: Record<AuthorityCommandBody["type"], string> = {
+  create_session: "Create show",
+  save_prepare: "Save plan",
+  create_next: "Create next LIVE",
+  start_live: "Start LIVE",
+  start_segment: "Start segment",
+  end_segment: "End segment",
+  advance_segment: "Next segment",
+  shorten_segment: "Shorten segment",
+  extend_segment: "Extend segment",
+  commit_end_by: "Commit end time",
+  set_remaining_estimate: "Set remaining estimate",
+  mark_remaining_unknown: "Mark remaining unknown",
+  skip_segment: "Skip segment",
+  reorder_segment: "Choose next segment",
+  reanchor_segment: "Re-anchor segment",
+  report_cue: "Report cue",
+  report_manual_action: "Report action",
+  add_note: "Add note",
+  end_live: "End LIVE",
+  acknowledge_clock_discontinuity: "Record clock note",
+  append_correction: "Append correction",
+};
+
+/** A short operator-facing name for a command type. */
+export function commandLabel(type: string): string {
+  return (LABELS as Record<string, string>)[type] ?? "Command";
+}
+
+/** What the operator reads when the authority refused a command. Never implies a failure of the show itself. */
+export function describeRejection(code: string | null, message: string | null, role: "operator" | "viewer" | null): string {
+  if (code === "forbidden") {
+    return role === "viewer"
+      ? "You are viewing this room read-only. Only an operator can record changes."
+      : "This room did not allow that action for your access. Nothing was recorded.";
+  }
+  if (code === "stale_revision") {
+    return "The room changed since you last looked. The latest state is shown now. Nothing was recorded; review it and try again.";
+  }
+  if (code === "idempotency_conflict") {
+    return "That action's ID was already used for a different request, so it was not applied. Nothing new was recorded.";
+  }
+  return message && message.trim() !== "" ? message : "That was not accepted. Nothing was recorded.";
+}
+
+/**
+ * Run `done` when an action succeeded. Local actions answer immediately (boolean); REAL actions answer when the
+ * authority has (Promise). `false` means "not done": the caller's input stays where it is.
+ */
+export function afterResult(result: boolean | Promise<boolean> | void, done: () => void): void {
+  if (result === undefined || result === true) done();
+  else if (result instanceof Promise) void result.then((ok) => ok && done());
+}

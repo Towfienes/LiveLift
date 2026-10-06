@@ -2,6 +2,7 @@
 
 import React, { useEffect, useId, useRef } from "react";
 import { Button, type ButtonSize } from "./Button";
+import { useCommandState } from "./CommandState";
 
 export interface DialogProps {
   isOpen: boolean;
@@ -36,10 +37,13 @@ export const Dialog: React.FC<DialogProps> = ({
   confirmSize = "md",
   onConfirm,
   confirmDisabled = false,
-  isLoading = false,
+  isLoading: isLoadingProp = false,
   size = "md",
   children,
 }) => {
+  // A REAL command waiting on the authority keeps the dialog open and busy; a refusal is shown with the input intact.
+  const command = useCommandState();
+  const isLoading = isLoadingProp || command.busy;
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descId = useId();
@@ -121,13 +125,19 @@ export const Dialog: React.FC<DialogProps> = ({
 
         {children && <div className="px-6 pt-4 min-h-0 overflow-y-auto">{children}</div>}
 
+        {command.error && (
+          <p role="alert" data-testid="dialog-command-error" className="mx-6 mt-4 rounded-[8px] bg-[#302025] px-3 py-2 text-[16px] text-[#F4A4A4]">
+            {command.error}
+          </p>
+        )}
+
         <div className="p-6 pt-5 flex justify-end gap-3 shrink-0">
           <Button variant="ghost" onClick={onClose} disabled={isLoading}>
             {cancelText}
           </Button>
           {onConfirm && (
             <Button variant={confirmVariant} size={confirmSize} onClick={onConfirm} disabled={isLoading || confirmDisabled}>
-              {isLoading ? "Processing..." : confirmText}
+              {command.busy ? "Waiting for confirmation…" : isLoading ? "Processing..." : confirmText}
             </Button>
           )}
         </div>

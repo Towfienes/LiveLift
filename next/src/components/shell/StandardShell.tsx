@@ -3,6 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ConnectionChip, RemoteBanners } from "@/components/ops/ConnectionStatus";
+import { useRemoteState } from "@/lib/store/hooks";
 
 export interface StandardShellProps {
   activeSessionId?: string | null;
@@ -16,6 +18,8 @@ export const StandardShell: React.FC<StandardShellProps> = ({
   children,
 }) => {
   const pathname = usePathname();
+  // Where a REAL room is in use its connection status takes the place of the "This device" note (same space, no wider header).
+  const roomInUse = useRemoteState().active;
 
   const isNavActive = (path: string) => {
     if (path === "/" && pathname === "/") return true;
@@ -117,16 +121,22 @@ export const StandardShell: React.FC<StandardShellProps> = ({
 
             <span className="text-[#39414D]">|</span>
 
-            <span
-              className="inline-flex items-center gap-1.5 text-[15px] text-[#CAD0DA] px-2 py-1"
-              title="LiveLift has no accounts. Shows are stored in this browser only."
-            >
-              <i className="ri-computer-line" aria-hidden="true" />
-              <span>This device</span>
-            </span>
+            {roomInUse ? (
+              <ConnectionChip />
+            ) : (
+              <span
+                className="inline-flex items-center gap-1.5 text-[15px] text-[#CAD0DA] px-2 py-1"
+                title="Rehearsals are stored in this browser only. REAL shows live in the shared room."
+              >
+                <i className="ri-computer-line" aria-hidden="true" />
+                <span>This device</span>
+              </span>
+            )}
           </div>
         </div>
       </header>
+
+      <RemoteBanners />
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col">{children}</main>
