@@ -9,6 +9,7 @@ import {
   lastRecordedMs,
   type ClockState,
 } from "@/lib/domain";
+import { authStore, type AuthState } from "@/lib/client/authStore";
 import { sessionStore, type DispatchInput, type DispatchResult, type StoreState } from "./sessionStore";
 import {
   CLOCK_BEHIND_TOLERANCE_MS,
@@ -16,6 +17,7 @@ import {
   type CommandIntent,
   type CommandOutcome,
   type InFlightCommand,
+  type RemoteProblem,
   type RemoteState,
 } from "./remoteRoomStore";
 
@@ -37,11 +39,16 @@ export type SessionSource = "remote" | "local";
 
 export type SessionLookup =
   | { status: "loading"; session: null }
-  /** The room cannot be reached and nothing about this id is known yet. */
-  | { status: "unavailable"; session: null; reason: string }
+  /** The room cannot be asked (signed out, session ended, backend/storage unavailable, wrong deployment…) and nothing about this id is known. */
+  | { status: "unavailable"; session: null; reason: string; problem: RemoteProblem | null }
   | { status: "missing"; session: null }
   /** `archive`: a pre-Phase-2 REAL show kept in this browser. Read-only history, never uploaded or merged. */
   | { status: "ready"; session: Session; source: SessionSource; archive: boolean };
+
+/** Who is signed in, as the server last described it (never a token; the cookie is not readable here). */
+export function useAuth(): AuthState {
+  return useSyncExternalStore(authStore.subscribe, authStore.getSnapshot, authStore.getServerSnapshot);
+}
 
 /** Subscribe to the room store without keeping it polling. */
 export function useRemoteState(): RemoteState {
@@ -81,9 +88,10 @@ export function useSession(id: string, opts: { archive?: boolean } = {}): Sessio
   const found = remote.snapshot?.sessions.find((s) => s.id === id);
   if (found) return { status: "ready", session: found, source: "remote", archive: false };
   if (remote.awaitingSessionIds.includes(id)) return { status: "loading", session: null };
-  if (remote.snapshot && remote.connection === "connected") return { status: "missing", session: null };
-  if (remote.connection === "disconnected" || (remote.snapshot && remote.connection === "stale")) {
-    return { status: "unavailable", session: null, reason: remote.lastError ?? "The room cannot be reached." };
+  // "Missing" is only ever said about a room that is connected and has answered; a problem is never "no such show".
+  if (remote.snapshot && remote.connection === "connected" && remote.problem === null) return { status: "missing", session: null };
+  if (remote.problem !== null || remote.connection === "disconnected" || (remote.snapshot && remote.connection === "stale")) {
+    return { status: "unavailable", session: null, reason: remote.lastError ?? "The room cannot be reached.", problem: remote.problem };
   }
   return { status: "loading", session: null };
 }
@@ -254,6 +262,8 @@ export function useRemoteCommands(): RemoteCommands {
   const unresolved = remote.unresolved.length > 0;
   let blockedReason: string | null = null;
   if (role === "viewer") blockedReason = "You are viewing this room read-only. Only an operator can record changes.";
+  else if (remote.problem === "signed_out") blockedReason = "You are signed out. Sign in to see and record REAL shows.";
+  else if (remote.problem === "session_ended") blockedReason = "Your session ended. This is the last confirmed state; sign in again to record changes.";
   else if (!connected) blockedReason = "Not connected to the room: this is the last confirmed state and changes are paused until contact returns.";
   else if (unresolved) blockedReason = `The outcome of “${remote.unresolved[0].label}” is not known yet. Resolve it before recording anything else.`;
   return {

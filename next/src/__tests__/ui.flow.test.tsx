@@ -26,7 +26,7 @@ import IntegrationsPage from "@/app/integrations/page";
 import { sessionStore } from "@/lib/store/sessionStore";
 import { remoteRoomStore } from "@/lib/store/remoteRoomStore";
 import { FakeRoom } from "./helpers/fakeRoom";
-import { resetCapabilityCache } from "@/lib/client/capability";
+import { authStore } from "@/lib/client/authStore";
 import { snapshotProducts } from "@/fixtures/library";
 import type { Session } from "@/contracts";
 import { scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
@@ -99,7 +99,7 @@ afterEach(() => {
 
 beforeEach(() => {
   sessionStorage.clear();
-  resetCapabilityCache();
+  authStore.reset();
   localStorage.clear();
   remoteRoomStore.reset();
   sessionStore.reloadFromStorage();
@@ -110,6 +110,7 @@ beforeEach(() => {
 
 describe("Home, Sessions, Simulator", () => {
   it("first run shows no fabricated REAL history, only the Simulator entry", async () => {
+    openRoom(); // a signed-in, connected room with no shows: only then is "first run" the truth
     await renderPlain(<HomePage />);
     expect(await screen.findByTestId("first-run")).toBeInTheDocument();
     expect(screen.getByTestId("try-simulator-btn")).toBeInTheDocument();
@@ -178,7 +179,7 @@ describe("Create LIVE", () => {
     expect(created[0].title).toBe("Friday launch");
     expect(created[0].plans[0].segments.length).toBe(6);
     expect(created[0].lifecycle).toBe("planned");
-    expect(created[0].operator.name).toBe("Mai"); // identity comes from the room's capability, not the form
+    expect(created[0].operator.name).toBe("Mai"); // identity comes from the signed-in account, not the form
     expect(nav.push).toHaveBeenCalledWith(`/live/${created[0].id}/prepare`);
     // The browser keeps no REAL authority of its own.
     expect(sessionStore.list("REAL")).toEqual([]);
@@ -684,6 +685,11 @@ describe("Stage-2 audit repairs in the UI", () => {
     expect(card).toHaveAttribute("tabindex", "0");
     fireEvent.keyDown(card, { key: "Enter" });
     expect(await screen.findByText("Product: Ribbed Tee")).toBeInTheDocument();
+    // The product dialog is modal: everything behind it is inert until it is closed (Escape), as it is for a real user.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Packs/ })).toBeNull();
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     fireEvent.click(screen.getByRole("tab", { name: /Packs/ }));
     fireEvent.click(screen.getByTestId("inspect-pack-pack_02"));
     expect(await screen.findByTestId("pack-dialog")).toHaveTextContent("Ribbed Tee");

@@ -1,6 +1,7 @@
 import { SessionSchema, type Session } from "@/contracts";
 import type { AuthorityReceipt, CommandEnvelope, CommandResponse, RoomRead } from "@/contracts/authority";
-import { getCapability } from "./capability";
+import { authStore } from "./authStore";
+import { buildHeaders, classifyCode, readError, sendBounded, type RequestContext } from "./productionTransport";
 
 /**
  * Typed HTTP client for the frozen Phase 2 authority endpoints (docs/phase2/contract.md):
@@ -13,9 +14,14 @@ import { getCapability } from "./capability";
  * a failure MEANS for a command: it only reports what it saw. In particular a timeout, a dropped connection or
  * a 5xx during a POST is `unknown` — the server may or may not have committed — and is never reported as rejected.
  *
- * Every request carries the active room capability as `Authorization: Bearer <capability>`, attached here and
- * nowhere else (never in a URL, body, message or log). With no capability nothing is sent: that is the
- * `unauthenticated` state, reported as such rather than as a network failure.
+ * Phase 3: authentication is the server-managed HttpOnly session cookie, which the browser attaches to these
+ * same-origin requests itself. Every request carries `X-LiveLift-Request: 1`, POSTs carry
+ * `Content-Type: application/json`, and every request carries `X-LiveLift-Workspace` / `X-LiveLift-Generation` taken
+ * from the CURRENT authenticated session (`getContext`), never from anything the user typed. With no authenticated
+ * session nothing is sent: that is the `unauthenticated` state, reported as such rather than as a network failure.
+ *
+ * A 401, a timeout or a 503 after a command was submitted does NOT prove it failed (the session may have ended, or
+ * the server may have committed before the answer was lost), so those are `unknown`.
  */
 
 export const ROOM_PATH = "/api/v3/room";
@@ -28,6 +34,8 @@ export interface TransportFailure {
   kind: TransportKind;
   /** HTTP status when a response arrived. */
   status: number | null;
+  /** The production error code the server named (`context_required`, `recovery_required`, `storage_unavailable`…), when it named one. */
+  code: string | null;
   message: string;
 }
 
@@ -36,7 +44,7 @@ export type ReadResult = { ok: true; read: RoomRead } | TransportFailure;
 export type PostResult =
   /** The server answered with a receipt (committed, rejected or a duplicate of an earlier command). */
   | { kind: "response"; response: CommandResponse; status: number }
-  /** The server refused the request before executing anything (HTTP 4xx without a receipt). */
+  /** The server (or this client) refused the request before executing anything (HTTP 4xx without a receipt, or no session to send under). */
   | { kind: "refused"; status: number; code: string | null; message: string }
   /** The request may or may not have been executed. The outcome is UNKNOWN, not failed. */
   | { kind: "unknown"; reason: TransportKind; status: number | null; message: string };
@@ -45,15 +53,15 @@ export type ReceiptResult =
   | { kind: "found"; receipt: AuthorityReceipt }
   /** No receipt on record. This is NOT evidence that the command failed. */
   | { kind: "absent" }
-  | { kind: "failed"; reason: TransportKind; status: number | null; message: string };
+  | { kind: "failed"; reason: TransportKind; status: number | null; code: string | null; message: string };
 
 export interface AuthorityClientOptions {
   fetchImpl?: typeof fetch;
   /** Abort a request after this long. Must be shorter than the 3 s staleness window to keep polling honest. */
   timeoutMs?: number;
   baseUrl?: string;
-  /** Where the active capability comes from. Defaults to this tab's capability (`./capability`). */
-  getCapability?: () => string | null;
+  /** The deployment context of the current authenticated session, or null when there is none. Defaults to the auth store. */
+  getContext?: () => RequestContext | null;
 }
 
 export interface AuthorityClient {
@@ -107,115 +115,77 @@ function parseRoomRead(body: unknown): RoomRead | null {
   return { ...common, changed: true, sessions };
 }
 
-function messageOf(body: unknown, fallback: string): string {
-  if (isRecord(body)) {
-    if (typeof body.message === "string") return body.message;
-    if (isRecord(body.error) && typeof body.error.message === "string") return body.error.message;
-    if (typeof body.error === "string") return body.error;
-  }
-  return fallback;
-}
-
-function codeOf(body: unknown, status: number): string | null {
-  if (isRecord(body)) {
-    if (typeof body.code === "string") return body.code;
-    if (isRecord(body.error) && typeof body.error.code === "string") return body.error.code;
-  }
-  return status === 401 ? "unauthorized" : status === 403 ? "forbidden" : null;
-}
+const messageOf = (body: unknown, fallback: string): string => readError(body).message ?? fallback;
 
 export function createAuthorityClient(options: AuthorityClientOptions = {}): AuthorityClient {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const base = options.baseUrl ?? "";
 
-  /** One bounded request. Never throws: transport trouble is a value. */
-  async function send(path: string, init: RequestInit): Promise<{ ok: true; status: number; body: unknown } | TransportFailure> {
-    const fetchImpl = options.fetchImpl ?? (typeof fetch === "function" ? fetch : undefined);
-    if (!fetchImpl) return { ok: false, kind: "network", status: null, message: "This browser cannot make network requests." };
-    const token = (options.getCapability ?? getCapability)();
-    if (!token) return { ok: false, kind: "unauthenticated", status: null, message: "This browser holds no room capability, so nothing was sent." };
-    const controller = new AbortController();
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, timeoutMs);
-    try {
-      const res = await fetchImpl(`${base}${path}`, {
-        ...init,
-        headers: { ...(init.headers as Record<string, string>), authorization: `Bearer ${token}` },
-        cache: "no-store",
-        credentials: "omit",
-        signal: controller.signal,
-      });
-      let body: unknown = null;
-      try {
-        const text = await res.text();
-        body = text === "" ? null : (JSON.parse(text) as unknown);
-      } catch {
-        body = undefined; // present but not JSON
-      }
-      return { ok: true, status: res.status, body };
-    } catch {
-      return timedOut
-        ? { ok: false, kind: "timeout", status: null, message: "The room server did not answer in time." }
-        : { ok: false, kind: "network", status: null, message: "The room server could not be reached." };
-    } finally {
-      clearTimeout(timer);
+  /** One bounded request under the current session context. Never throws: transport trouble is a value. */
+  async function send(path: string, init: RequestInit & { unsafe: boolean }): Promise<{ ok: true; status: number; body: unknown } | TransportFailure> {
+    const context = (options.getContext ?? authStore.getContext)();
+    if (!context) {
+      return { ok: false, kind: "unauthenticated", status: null, code: null, message: "There is no signed-in session, so nothing was sent." };
     }
+    const { unsafe, ...rest } = init;
+    const res = await sendBounded(options.fetchImpl, `${base}${path}`, { ...rest, headers: buildHeaders({ unsafe, context }) }, timeoutMs);
+    if (!res.ok) return { ok: false, kind: res.kind, status: null, code: null, message: res.kind === "timeout" ? "The room server did not answer in time." : "The room server could not be reached." };
+    return { ok: true, status: res.status, body: res.body };
   }
 
   return {
     async getRoom(opts = {}) {
       const after = opts.afterRevision;
       const query = after === null || after === undefined ? "" : `?afterRevision=${encodeURIComponent(String(after))}`;
-      const res = await send(`${ROOM_PATH}${query}`, { method: "GET", headers: { accept: "application/json" } });
+      const res = await send(`${ROOM_PATH}${query}`, { method: "GET", unsafe: false });
       if (!res.ok) return res;
       if (res.status < 200 || res.status >= 300) {
-        return { ok: false, kind: "http", status: res.status, message: messageOf(res.body, `The room server answered ${res.status}.`) };
+        return { ok: false, kind: "http", status: res.status, code: classifyCode(res.status, res.body), message: messageOf(res.body, `The room server answered ${res.status}.`) };
       }
       const read = parseRoomRead(res.body);
-      if (!read) return { ok: false, kind: "malformed", status: res.status, message: "The room server sent a response LiveLift could not trust." };
+      if (!read) return { ok: false, kind: "malformed", status: res.status, code: null, message: "The room server sent a response LiveLift could not trust." };
       return { ok: true, read };
     },
 
     async postCommand(envelope) {
-      const res = await send(COMMANDS_PATH, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(envelope),
-      });
-      // Never transmitted without a capability: a definite "not sent", not an unknown outcome.
-      if (!res.ok && res.kind === "unauthenticated") return { kind: "refused", status: 401, code: "unauthorized", message: res.message };
+      const res = await send(COMMANDS_PATH, { method: "POST", unsafe: true, body: JSON.stringify(envelope) });
+      // Never transmitted without a session: a definite "not sent", not an unknown outcome.
+      if (!res.ok && res.kind === "unauthenticated") return { kind: "refused", status: 401, code: "unauthenticated", message: res.message };
       if (!res.ok) return { kind: "unknown", reason: res.kind, status: res.status, message: res.message };
       const body = res.body;
       if (isRecord(body) && isReceipt(body.receipt)) {
         return { kind: "response", status: res.status, response: { receipt: body.receipt, duplicate: body.duplicate === true } };
       }
-      if (res.status >= 400 && res.status < 500 && res.status !== 408) {
-        return { kind: "refused", status: res.status, code: codeOf(body, res.status), message: messageOf(body, `The room server refused the request (${res.status}).`) };
+      // 401 is NOT a refusal here: the session may have ended while the command was already on its way, and a server
+      // that committed it cannot tell this browser so. 408 and 5xx (503 storage/authority unavailable) are the same.
+      if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 401) {
+        return { kind: "refused", status: res.status, code: classifyCode(res.status, body), message: messageOf(body, `The room server refused the request (${res.status}).`) };
       }
-      // 2xx without a receipt, 5xx, 408 or an unreadable body: the server may have committed. UNKNOWN.
+      // 2xx without a receipt, 401, 5xx, 408 or an unreadable body: the server may have committed. UNKNOWN.
       const ok2xx = res.status >= 200 && res.status < 300;
       return {
         kind: "unknown",
         reason: ok2xx ? "malformed" : "http",
         status: res.status,
-        message: ok2xx ? "The room server answered without a receipt." : messageOf(body, `The room server answered ${res.status} before confirming the command.`),
+        message: ok2xx
+          ? "The room server answered without a receipt."
+          : res.status === 401
+            ? "Your session ended before the room confirmed the command."
+            : messageOf(body, `The room server answered ${res.status} before confirming the command.`),
       };
     },
 
     async getReceipt(commandId) {
-      const res = await send(`${COMMANDS_PATH}/${encodeURIComponent(commandId)}`, { method: "GET", headers: { accept: "application/json" } });
-      if (!res.ok) return { kind: "failed", reason: res.kind, status: res.status, message: res.message };
+      const res = await send(`${COMMANDS_PATH}/${encodeURIComponent(commandId)}`, { method: "GET", unsafe: false });
+      if (!res.ok) return { kind: "failed", reason: res.kind, status: res.status, code: res.code, message: res.message };
       if (res.status === 404) return { kind: "absent" };
       if (res.status >= 200 && res.status < 300) {
         const body = res.body;
         const receipt = isRecord(body) && isReceipt(body.receipt) ? body.receipt : isReceipt(body) ? body : null;
         if (receipt) return { kind: "found", receipt };
-        return { kind: "failed", reason: "malformed", status: res.status, message: "The receipt lookup answered with something LiveLift could not trust." };
+        return { kind: "failed", reason: "malformed", status: res.status, code: null, message: "The receipt lookup answered with something LiveLift could not trust." };
       }
-      return { kind: "failed", reason: "http", status: res.status, message: messageOf(res.body, `The receipt lookup answered ${res.status}.`) };
+      return { kind: "failed", reason: "http", status: res.status, code: classifyCode(res.status, res.body), message: messageOf(res.body, `The receipt lookup answered ${res.status}.`) };
     },
   };
 }

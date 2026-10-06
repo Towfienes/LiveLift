@@ -658,6 +658,7 @@ export function NoteDialog({
     >
       <textarea
         data-testid="note-input"
+        aria-label="Note"
         data-autofocus
         rows={3}
         value={text}

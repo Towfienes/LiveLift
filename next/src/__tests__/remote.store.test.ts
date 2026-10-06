@@ -3,7 +3,7 @@ import { snapshotProducts } from "@/fixtures/library";
 import { SCENARIO_BY_ID, applyCommand, createSession } from "@/lib/domain";
 import { RemoteRoomStore, STALE_AFTER_MS } from "@/lib/store/remoteRoomStore";
 import { FakeRoom } from "./helpers/fakeRoom";
-import { clearCapability, resetCapabilityCache, setCapability } from "@/lib/client/capability";
+import { authStore } from "@/lib/client/authStore";
 import { authorityNowMs } from "@/lib/client/authorityTime";
 import { toRuntimeBody } from "@/lib/client/commandText";
 
@@ -36,8 +36,11 @@ let ids = 0;
 let restore: (() => void) | null = null;
 const stores: RemoteRoomStore[] = [];
 
-function makeStore(room: FakeRoom): RemoteRoomStore {
+/** A store under a session: the browser asks the server who it is first, exactly as a page does. */
+async function makeStore(room: FakeRoom): Promise<RemoteRoomStore> {
   restore = room.install();
+  authStore.reset();
+  await authStore.bootstrap();
   const store = new RemoteRoomStore({ perfNow: () => perf, newCommandId: () => `cmd-${++ids}` });
   stores.push(store);
   return store;
@@ -45,7 +48,7 @@ function makeStore(room: FakeRoom): RemoteRoomStore {
 
 beforeEach(() => {
   sessionStorage.clear();
-  resetCapabilityCache();
+  authStore.reset();
   perf = 1000;
   ids = 0;
   localStorage.clear();
@@ -65,7 +68,7 @@ describe("polling and installation", () => {
   it("installs the room snapshot and keeps it when the room answers 'unchanged'", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     const first = store.getSnapshot();
@@ -86,7 +89,7 @@ describe("polling and installation", () => {
     const room = new FakeRoom();
     runningShow(room);
     room.revision = 5;
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     expect(store.getSnapshot().snapshot?.revision).toBe(5);
@@ -98,7 +101,7 @@ describe("polling and installation", () => {
   it("polls every second while a view is mounted, with at most one request in flight", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     let inFlight = 0;
     let peak = 0;
     const base = globalThis.fetch;
@@ -125,7 +128,7 @@ describe("polling and installation", () => {
   it("a view that is no longer mounted stops the polling", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     const release = store.acquire();
     await vi.advanceTimersByTimeAsync(0);
     release();
@@ -146,7 +149,7 @@ describe("foreground and reconnect", () => {
   it("a hidden view does not poll, and coming back polls immediately", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await vi.advanceTimersByTimeAsync(0);
     setVisibility("hidden");
@@ -163,8 +166,8 @@ describe("foreground and reconnect", () => {
   it("the browser coming back online polls immediately", async () => {
     const room = new FakeRoom();
     runningShow(room);
+    const store = await makeStore(room); // the session is known; it is the room that cannot be reached
     room.offline = true;
-    const store = makeStore(room);
     store.acquire();
     await vi.advanceTimersByTimeAsync(0);
     expect(store.getSnapshot().connection).toBe("disconnected");
@@ -179,7 +182,7 @@ describe("stale and disconnected state", () => {
   it("failed contact keeps the last snapshot, marks it stale, freezes authority time and refuses writes", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     perf += 500;
@@ -203,7 +206,7 @@ describe("stale and disconnected state", () => {
   it("more than 3 seconds without contact marks the room stale even if no request failed", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     expect(store.getSnapshot().connection).toBe("connected");
@@ -216,11 +219,12 @@ describe("stale and disconnected state", () => {
   it("the first contact failing is 'disconnected', and a later success recovers", async () => {
     const room = new FakeRoom();
     runningShow(room);
+    const store = await makeStore(room);
     room.offline = true;
-    const store = makeStore(room);
     store.acquire();
     await store.refreshNow();
     expect(store.getSnapshot().connection).toBe("disconnected");
+    expect(store.getSnapshot().problem).toBe("unreachable");
     expect(store.getSnapshot().snapshot).toBeNull();
     room.offline = false;
     await store.refreshNow();
@@ -233,7 +237,7 @@ describe("commands", () => {
   it("sends the room revision and no browser time, persists the envelope before sending, and installs fresh state before reporting", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     let storedAtArrival: string | null = null;
@@ -259,7 +263,7 @@ describe("commands", () => {
   it("does not advance anything while the command is pending", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     const before = store.getSnapshot().snapshot;
@@ -275,7 +279,7 @@ describe("commands", () => {
   it("only one command is in flight; a second is refused, not queued", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     const [a, b] = await Promise.all([store.submit(note("one")), store.submit(note("two"))]);
@@ -287,7 +291,7 @@ describe("commands", () => {
   it("a stale revision is surfaced as a rejection and the room is read again", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     room.revision += 1; // someone else committed; this tab has not polled yet
@@ -301,7 +305,7 @@ describe("commands", () => {
   it("a viewer is refused before anything is sent", async () => {
     const room = new FakeRoom({ role: "viewer" });
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     const outcome = await store.submit(note("nope"));
@@ -312,7 +316,7 @@ describe("commands", () => {
   it("the room's own 'forbidden' is a rejection with a role-aware message, not an unknown outcome", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     room.role = "viewer"; // the capability changed server-side after this tab last looked
@@ -327,7 +331,7 @@ describe("outcome unknown", () => {
   it("a lost response is UNKNOWN, not failed; the envelope is kept and nothing else may be sent", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     room.loseNextResponses = 1; // the room commits, the answer never arrives
@@ -345,7 +349,7 @@ describe("outcome unknown", () => {
   it("reconnect reconciles through the receipt endpoint and never POSTs again", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     room.loseNextResponses = 1;
@@ -365,7 +369,7 @@ describe("outcome unknown", () => {
   it("an absent receipt is not evidence of failure: it stays unresolved until explicitly retried with the exact same envelope", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     room.dropNextPosts = 1; // never reached the room: nothing committed, no receipt
@@ -388,7 +392,7 @@ describe("outcome unknown", () => {
   it("retrying a command that was in fact committed returns the original receipt as a duplicate", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     room.loseNextResponses = 1;
@@ -403,7 +407,7 @@ describe("outcome unknown", () => {
   it("an interrupted command survives a reload and is looked up, not replayed", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const first = makeStore(room);
+    const first = await makeStore(room);
     first.acquire();
     await first.refreshNow();
     room.loseNextResponses = 1;
@@ -425,7 +429,7 @@ describe("outcome unknown", () => {
   it("setting an unresolved command aside is explicit and does not claim it failed", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     room.dropNextPosts = 1;
@@ -438,99 +442,132 @@ describe("outcome unknown", () => {
   });
 });
 
-describe("bearer capability", () => {
-  it("every authority request carries the capability as a bearer header, and nowhere else", async () => {
+describe("cookie session and production context", () => {
+  it("every authority request is a same-origin cookie request with the marker and the session's context, and nothing else", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     room.loseNextResponses = 1;
-    await store.submit(note("with a token")); // POST
+    await store.submit(note("with context")); // POST
     await store.reconcile(); // GET receipt
 
     const methods = new Set(room.requests.map((r) => `${r.method} ${r.path.split("?")[0].replace(/cmd-\d+/, "{id}")}`));
     expect(methods).toEqual(new Set(["GET /api/v3/room", "POST /api/v3/room/commands", "GET /api/v3/room/commands/{id}"]));
-    for (const r of room.requests) expect(r.authorization).toBe(`Bearer ${room.token}`);
-    // Never in a URL, a command envelope, the pending record, or any state/message the UI can show or log.
-    expect(room.requests.some((r) => r.path.includes(room.token))).toBe(false);
-    expect(JSON.stringify(room.posts())).not.toContain(room.token);
-    expect(JSON.stringify(store.getSnapshot())).not.toContain(room.token);
-    expect(localStorage.getItem(PENDING_KEY) ?? "").not.toContain(room.token);
-    expect(JSON.stringify(room.sessions)).not.toContain(room.token); // not in session/domain history either
+    for (const r of room.requests) {
+      expect(r.headers["x-livelift-request"]).toBe("1");
+      expect(r.headers["x-livelift-workspace"]).toBe(room.workspaceId);
+      expect(r.headers["x-livelift-generation"]).toBe(room.generation);
+      expect(r.headers.authorization).toBeUndefined(); // the cookie is the browser's; there is no token header
+    }
+    for (const r of room.requests.filter((x) => x.method === "POST")) expect(r.headers["content-type"]).toContain("application/json");
+    // Context is the session's, never part of a URL, an envelope or the pending record.
+    expect(room.requests.some((r) => r.path.includes(room.generation) || r.path.includes(room.workspaceId))).toBe(false);
+    expect(JSON.stringify(room.posts())).not.toContain(room.generation);
+    expect(localStorage.getItem(PENDING_KEY) ?? "").not.toContain("Bearer");
   });
 
-  it("with no capability nothing is sent, and the state says authentication is missing — not 'unreachable'", async () => {
-    const room = new FakeRoom();
+  it("signed out: nothing is sent to the room, the state says so — not 'unreachable'", async () => {
+    const room = new FakeRoom({ signedIn: false });
     runningShow(room);
-    const store = makeStore(room);
-    clearCapability();
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     const state = store.getSnapshot();
     expect(room.requests).toHaveLength(0);
-    expect(state.auth).toBe("missing");
+    expect(state.problem).toBe("signed_out");
     expect(state.connection).toBe("disconnected");
-    expect(state.lastError).toMatch(/capability/i);
-    expect(await store.submit(note("no token"))).toMatchObject({ status: "refused", code: "not_connected" });
+    expect(state.snapshot).toBeNull();
+    expect(await store.submit(note("no session"))).toMatchObject({ status: "refused", code: "not_connected" });
     expect(room.posts()).toHaveLength(0);
 
-    setCapability(room.token); // entering it connects without a reload
+    await authStore.login({ username: "mai", password: room.accounts.mai.password }); // signing in connects without a reload
     await vi.advanceTimersByTimeAsync(0);
     await store.refreshNow();
-    expect(store.getSnapshot().auth).toBe("ok");
-    expect(store.getSnapshot().connection).toBe("connected");
+    expect(store.getSnapshot()).toMatchObject({ problem: null, connection: "connected" });
   });
 
-  it("a capability the room does not accept is 'rejected' (401), truthfully, and never echoed", async () => {
+  it("a session that ends mid-poll is 'session ended', keeps the last confirmed state frozen, and sends nothing more", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
-    setCapability("wrong-secret-value");
+    const store = await makeStore(room);
     store.acquire();
+    await store.refreshNow();
+    expect(store.getSnapshot().snapshot).not.toBeNull();
+    room.revokeSession();
     await store.refreshNow();
     const state = store.getSnapshot();
-    expect(room.requests[0].authorization).toBe("Bearer wrong-secret-value");
-    expect(state.auth).toBe("rejected");
-    expect(state.snapshot).toBeNull();
-    expect(JSON.stringify(state)).not.toContain("wrong-secret-value");
-
-    setCapability(room.token);
-    await vi.advanceTimersByTimeAsync(0);
+    expect(state.problem).toBe("session_ended");
+    expect(state.snapshot).not.toBeNull(); // last confirmed state, not an empty room
+    expect(authStore.getSnapshot().status).toBe("ended");
+    const before = room.requests.length;
     await store.refreshNow();
-    expect(store.getSnapshot()).toMatchObject({ auth: "ok", connection: "connected" });
+    expect(room.requests).toHaveLength(before);
+    expect(await store.submit(note("too late"))).toMatchObject({ status: "refused", code: "not_connected" });
   });
 
-  it("a capability revoked mid-session turns a command into a rejection, not an unknown outcome", async () => {
+  it("a 401 AFTER a command was submitted is UNKNOWN, not a rejection", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
-    room.token = "rotated"; // the room no longer accepts what this browser holds
-    const outcome = await store.submit(note("too late"));
-    expect(outcome).toMatchObject({ status: "rejected", code: "unauthorized" });
-    expect(store.getSnapshot().unresolved).toHaveLength(0);
-    expect(store.getSnapshot().auth).toBe("rejected");
+    room.revokeSession(); // the session ends before this tab has noticed; the command goes out and is answered 401
+    const outcome = await store.submit(note("sent as the session ended"));
+    expect(outcome).toMatchObject({ status: "unknown" });
+    expect(store.getSnapshot().unresolved).toHaveLength(1);
+    expect(localStorage.getItem(PENDING_KEY)).not.toBeNull(); // saved to be checked after signing in again
+    expect(store.getSnapshot().problem).toBe("session_ended");
+    expect(room.posts()).toHaveLength(1);
   });
 
-  it("switching capability drops what the previous identity saw; a viewer capability stays read-only", async () => {
+  it("when the sign-in service cannot be asked, the state says so and recovers once it can", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    room.offline = true;
+    const store = await makeStore(room); // the very first question fails
+    store.acquire();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(authStore.getSnapshot().status).toBe("unavailable");
+    expect(store.getSnapshot()).toMatchObject({ problem: "auth_unavailable", connection: "disconnected", snapshot: null });
+    room.offline = false;
+    await vi.advanceTimersByTimeAsync(5000); // it keeps asking by itself
+    await vi.advanceTimersByTimeAsync(0);
+    expect(authStore.getSnapshot().status).toBe("authenticated");
+    expect(store.getSnapshot()).toMatchObject({ problem: null, connection: "connected" });
+  });
+
+  it("a viewer session stays read-only: the role comes from the room, and a role change shows up without a reload", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     expect(store.getSnapshot().access?.role).toBe("operator");
-
-    room.token = "viewer-cap";
-    room.role = "viewer";
-    setCapability("viewer-cap");
-    expect(store.getSnapshot().snapshot).toBeNull(); // nothing carried over from the other identity
-    await vi.advanceTimersByTimeAsync(0);
+    room.role = "viewer"; // changed server-side
     await store.refreshNow();
     expect(store.getSnapshot().access?.role).toBe("viewer");
+    expect(authStore.getSnapshot().session?.access.role).toBe("viewer"); // the cached role follows the room, never the reverse
     expect(await store.submit(note("viewer"))).toMatchObject({ status: "refused", code: "read_only" });
     expect(room.posts()).toHaveLength(0);
+  });
+
+  it("switching accounts drops what the previous identity saw", async () => {
+    const room = new FakeRoom();
+    runningShow(room);
+    const store = await makeStore(room);
+    store.acquire();
+    await store.refreshNow();
+    expect(store.getSnapshot().access?.name).toBe("Mai");
+
+    await authStore.logout();
+    expect(store.getSnapshot().snapshot).toBeNull(); // gone at once, before the next account is even known
+    await authStore.login({ username: "linh", password: room.accounts.linh.password });
+    await vi.advanceTimersByTimeAsync(0);
+    await store.refreshNow();
+    expect(store.getSnapshot().access).toMatchObject({ name: "Linh", role: "viewer" });
+    expect(await store.submit(note("viewer"))).toMatchObject({ status: "refused", code: "read_only" });
   });
 });
 
@@ -545,7 +582,7 @@ describe("recovery attribution", () => {
   it("reaches the wire unchanged inside the envelope payload", async () => {
     const room = new FakeRoom();
     const show = runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     const segmentId = show.runtime.currentSegmentId!;
@@ -562,7 +599,7 @@ describe("authority time", () => {
     const room = new FakeRoom();
     runningShow(room);
     room.clockBehindByMs = 10 * 60_000;
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     expect(store.getSnapshot().clockBehindByMs).toBe(10 * 60_000); // still reported, as information
@@ -574,7 +611,7 @@ describe("authority time", () => {
   it("interpolates between polls and takes the room's word at the next one", async () => {
     const room = new FakeRoom();
     runningShow(room);
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     perf += 700;
@@ -591,7 +628,7 @@ describe("authority time", () => {
     const room = new FakeRoom();
     runningShow(room);
     room.clockBehindByMs = 120_000;
-    const store = makeStore(room);
+    const store = await makeStore(room);
     store.acquire();
     await store.refreshNow();
     perf += 800;

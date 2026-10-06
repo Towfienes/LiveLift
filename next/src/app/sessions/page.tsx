@@ -7,6 +7,8 @@ import { StandardShell } from "@/components/shell";
 import { Button, EnvironmentBadge, StatusLabel } from "@/components/ui";
 import { baselinePlan, formatClock, formatDay } from "@/lib/domain";
 import { Signal } from "@/components/ops/StatusChips";
+import { ExportControl } from "@/components/auth/ExportControl";
+import { RoomStatusPanel } from "@/components/ops/ConnectionStatus";
 import { useLegacyArchive, useSessions } from "@/lib/store/hooks";
 
 function primaryAction(s: Session): { href: string; label: string; variant: "primary" | "secondary" | "ghost" } {
@@ -45,6 +47,8 @@ export default function SessionsPage(): React.ReactElement {
           </Link>
         </div>
 
+        <RoomStatusPanel />
+
         <div className="flex items-center gap-3 flex-wrap p-3 rounded-[10px] bg-[#13161C]">
           <div className="relative flex-1 min-w-[240px]">
             <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-[#8A95A5]" aria-hidden="true" />
@@ -81,9 +85,9 @@ export default function SessionsPage(): React.ReactElement {
               <i className="ri-stack-line text-[28px] text-[#8A95A5]" aria-hidden="true" />
               <h2 className="text-[22px] font-medium text-[#F5F7FC] mt-2">{sessions.length === 0 ? "Make your first rundown" : "No sessions match"}</h2>
               <p className="text-[15px] text-[#B7C1CE] mt-1">
-                {remote.snapshot || remote.connection === "connecting"
+                {remote.snapshot || (remote.connection === "connecting" && remote.problem === null)
                   ? "Real shows and simulated rehearsals will appear here."
-                  : "REAL shows appear here once the room can be reached. Simulated rehearsals appear here either way."}
+                  : "REAL shows cannot be listed right now (see above), which does not mean there are none. Simulated rehearsals appear here either way."}
               </p>
               <Link href="/live/new" className="inline-block mt-4">
                 <Button variant="primary">Create LIVE</Button>
@@ -144,6 +148,8 @@ export default function SessionsPage(): React.ReactElement {
             </div>
           )}
         </div>
+
+        <ExportControl />
 
         {archive.hydrated && archive.sessions.length > 0 && (
           <section className="rounded-[12px] bg-[#101319] overflow-hidden" aria-label="Local archive" data-testid="legacy-archive">

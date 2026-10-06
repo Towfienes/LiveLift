@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import type { EnvironmentIdentity, OperatorContext } from "@/contracts";
 import { EnvironmentBadge, Button } from "@/components/ui";
+import { AccountControl } from "@/components/auth/AccountControl";
 import { ConnectionChip, RemoteBanners } from "@/components/ops/ConnectionStatus";
 
 export interface FocusedShellProps {
@@ -151,6 +152,7 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
         ) : (
           <div className="flex items-center gap-4 shrink-0">
             <ConnectionChip size="desk" />
+            <AccountControl size="desk" />
             {contextExtra}
           </div>
         )}
@@ -158,7 +160,9 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
       {!simulated && <RemoteBanners size="desk" />}
 
       {/* Desk content. If the window is too short the desk scrolls rather than clipping controls. */}
-      <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
+      <main id="main-content" tabIndex={-1} className="flex-1 min-h-0 overflow-y-auto outline-none">
+        {children}
+      </main>
     </div>
   );
 };

@@ -1,25 +1,43 @@
 import { vi } from "vitest";
 import type { Session } from "@/contracts";
 import type { AuthorityReceipt, CommandEnvelope, RoomRead } from "@/contracts/authority";
-import { setCapability } from "@/lib/client/capability";
+import type { AuthSession, RecoveryNotice } from "@/contracts/production";
 import { applyCommand, createNextSession, createSession, type CommandBody } from "@/lib/domain";
 
 /**
- * A TEST-ONLY stand-in for the room server, speaking exactly the frozen wire contract
- * (docs/phase2/contract.md) with the shared types and the Phase 1 engine. It exists so client behaviour can be
- * exercised end to end; it is not the backend and defines nothing the contract does not.
+ * A TEST-ONLY stand-in for the production server, speaking exactly the frozen wire contracts
+ * (docs/phase2/contract.md and docs/phase3/contract.md) with the shared types and the Phase 1 engine. It exists so
+ * client behaviour can be exercised end to end; it is not the backend and defines nothing the contract does not.
  *
- * Fault injection: `offline` (nothing is reachable), `loseNextResponses` (the command is COMMITTED but the response
- * never arrives — the case the client must treat as UNKNOWN), `dropNextPosts` (the request never reaches the room, so
- * nothing is committed and no receipt exists) and `onPost` (observe the world at the moment a command arrives).
+ * Authentication is a cookie the SERVER owns: `signedIn` is "the browser holds a valid session cookie". A request is
+ * accepted only with the CSRF marker, a JSON content type on POST and the session's workspace/generation context,
+ * and any `Authorization` header is ignored (there is no bearer fallback).
+ *
+ * Fault injection: `offline` (nothing is reachable), `storageDown` / `backendDown` (503 `storage_unavailable` /
+ * `authority_unavailable`), `loseNextResponses` (the command is COMMITTED but the response never arrives — the case
+ * the client must treat as UNKNOWN), `dropNextPosts` (the request never reaches the room, so nothing is committed and
+ * no receipt exists), `onPost` (observe the world at the moment a command arrives), `restore()` (a database restore:
+ * new generation, every login session cleared) and `revokeSession()` (the cookie stops working).
  */
 
 export interface FakeRoomOptions {
   roomId?: string;
+  workspaceId?: string;
+  generation?: string;
   role?: "operator" | "viewer";
   actor?: { id: string; name: string };
   nowMs?: number;
+  /** The browser starts with a valid session cookie (default true). Pass false for the signed-out state. */
+  signedIn?: boolean;
 }
+
+export interface FakeAccount {
+  password: string;
+  actor: { id: string; name: string };
+  role: "operator" | "viewer";
+}
+
+export type FakeRequest = { method: string; path: string; body: unknown; headers: Record<string, string> };
 
 type Logged = { fingerprint: string; receipt: AuthorityReceipt };
 
@@ -40,8 +58,27 @@ function sortKeys(v: unknown): unknown {
 
 export class FakeRoom {
   roomId: string;
-  /** The one capability this room accepts, as `Authorization: Bearer <token>` (anything else is 401 `unauthorized`). */
-  token = "cap-test-token";
+  workspaceId: string;
+  generation: string;
+  /** The browser holds a valid session cookie. */
+  signedIn: boolean;
+  recoveryNotice: RecoveryNotice | null = null;
+  accounts: Record<string, FakeAccount> = {
+    mai: { password: "correct horse battery staple", actor: { id: "actor-1", name: "Mai" }, role: "operator" },
+    linh: { password: "another long passphrase here", actor: { id: "actor-2", name: "Linh" }, role: "viewer" },
+  };
+  /** Login answers 429 while set. */
+  loginThrottled = false;
+  /** Login answers 503 `storage_unavailable` while set. */
+  loginStorageDown = false;
+  /** Milliseconds the session claims to last (any value; the client never computes with it). */
+  sessionExpiresAtMs: number;
+  storageDown = false;
+  backendDown = false;
+  /** Make the session endpoint describe a different context than the room enforces (a deployment mismatch). */
+  sessionContext: { workspaceId?: string; generation?: string } | null = null;
+  /** Answer every authenticated room read with this production error (e.g. 400 `context_required`). */
+  failRoomWith: { status: number; code: string } | null = null;
   role: "operator" | "viewer";
   actor: { id: string; name: string };
   revision = 0;
@@ -52,8 +89,10 @@ export class FakeRoom {
   loseNextResponses = 0;
   dropNextPosts = 0;
   onPost: ((envelope: CommandEnvelope) => void) | null = null;
-  /** Every request seen, in order, for assertions. */
-  requests: Array<{ method: string; path: string; body: unknown; authorization: string | null }> = [];
+  /** Every room / receipt / export request seen, in order, for assertions. Header names are lower-cased. */
+  requests: FakeRequest[] = [];
+  /** Every `/api/v3/auth/*` request seen, kept apart so room-traffic assertions stay about the room. */
+  authRequests: FakeRequest[] = [];
   private log = new Map<string, Logged>();
 
   /** The room assigns session ids; never one that is already in use. */
@@ -64,18 +103,46 @@ export class FakeRoom {
 
   constructor(opts: FakeRoomOptions = {}) {
     this.roomId = opts.roomId ?? "room-1";
+    this.workspaceId = opts.workspaceId ?? "ws-1";
+    this.generation = opts.generation ?? "gen-1";
+    this.signedIn = opts.signedIn ?? true;
     this.role = opts.role ?? "operator";
     this.actor = opts.actor ?? { id: "actor-1", name: "Mai" };
     this.nowMs = opts.nowMs ?? Date.UTC(2026, 9, 6, 13, 0, 0);
+    this.sessionExpiresAtMs = this.nowMs + 12 * 3_600_000;
+  }
+
+  /** What the server tells a signed-in browser about its session. */
+  session(): AuthSession {
+    return {
+      workspaceId: this.sessionContext?.workspaceId ?? this.workspaceId,
+      roomId: this.roomId,
+      generation: this.sessionContext?.generation ?? this.generation,
+      access: { actorId: this.actor.id, name: this.actor.name, role: this.role },
+      expiresAtMs: this.sessionExpiresAtMs,
+      recoveryNotice: this.recoveryNotice,
+    };
+  }
+
+  /** The session ends server-side (expiry, revocation, a role change, a disabled account). */
+  revokeSession(): void {
+    this.signedIn = false;
+  }
+
+  /** A database restore: a NEW generation, every login session cleared, and a notice for whoever signs in next. */
+  restore(opts: { generation: string; notice?: RecoveryNotice | null; keepReceipts?: boolean }): void {
+    this.generation = opts.generation;
+    this.recoveryNotice = opts.notice ?? null;
+    this.signedIn = false;
+    if (!opts.keepReceipts) this.log.clear();
   }
 
   posts(): CommandEnvelope[] {
     return this.requests.filter((r) => r.method === "POST").map((r) => r.body as CommandEnvelope);
   }
 
-  /** Install this room as the global fetch for the duration of a test, and give the browser its capability. Returns a restore function. */
+  /** Install this room as the global fetch for the duration of a test. Returns a restore function. */
   install(): () => void {
-    setCapability(this.token);
     const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => this.handle(String(input), init));
     return () => spy.mockRestore();
   }
@@ -84,18 +151,71 @@ export class FakeRoom {
     return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   }
 
+  private err(status: number, code: string, message: string): Response {
+    return this.json({ error: { code, message } }, status);
+  }
+
   private async handle(url: string, init?: RequestInit): Promise<Response> {
     const method = (init?.method ?? "GET").toUpperCase();
     const parsed = new URL(url, "http://room.test");
     const body = init?.body ? (JSON.parse(String(init.body)) as unknown) : null;
-    const authorization = new Headers(init?.headers).get("authorization");
-    this.requests.push({ method, path: parsed.pathname + parsed.search, body, authorization });
+    const headers: Record<string, string> = {};
+    new Headers(init?.headers).forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
+    (parsed.pathname.startsWith("/api/v3/auth/") ? this.authRequests : this.requests).push({ method, path: parsed.pathname + parsed.search, body, headers });
     if (this.offline) throw new TypeError("Failed to fetch");
-    if (authorization !== `Bearer ${this.token}`) {
-      return this.json({ error: { code: "unauthorized", message: "A valid room capability is required." } }, 401);
+    const unsafe = method !== "GET" && method !== "HEAD";
+
+    // Unsafe browser requests need the marker and JSON; same-origin credentials are what carries the cookie.
+    if (unsafe && (headers["x-livelift-request"] !== "1" || !(headers["content-type"] ?? "").includes("application/json"))) {
+      return this.err(403, "csrf_failed", "Unsafe request without the required marker.");
+    }
+
+    if (method === "POST" && parsed.pathname === "/api/v3/auth/login") {
+      if (this.loginStorageDown) return this.err(503, "storage_unavailable", "Storage is unavailable.");
+      if (this.loginThrottled) return this.err(429, "rate_limited", "Too many attempts.");
+      const creds = body as { username?: string; password?: string } | null;
+      const account = creds?.username ? this.accounts[creds.username] : undefined;
+      if (!account || account.password !== creds?.password) return this.err(401, "invalid_credentials", "Invalid credentials.");
+      this.actor = account.actor;
+      this.role = account.role;
+      this.signedIn = true;
+      return this.json(this.session());
+    }
+    if (method === "POST" && parsed.pathname === "/api/v3/auth/logout") {
+      this.signedIn = false;
+      return new Response(null, { status: 204 });
+    }
+    if (method === "GET" && parsed.pathname === "/api/v3/auth/session") {
+      if (this.storageDown) return this.err(503, "storage_unavailable", "Storage is unavailable.");
+      if (this.backendDown) return this.err(503, "authority_unavailable", "Authority is unavailable.");
+      return this.signedIn ? this.json(this.session()) : this.err(401, "unauthenticated", "No valid session.");
+    }
+
+    // Everything below is authenticated and carries the deployment context.
+    if (!this.signedIn) return this.err(401, "unauthenticated", "No valid session.");
+    if (!headers["x-livelift-workspace"] || !headers["x-livelift-generation"]) return this.err(400, "context_required", "Workspace and generation are required.");
+    if (headers["x-livelift-workspace"] !== this.workspaceId) return this.err(404, "not_found", "No such workspace.");
+    if (headers["x-livelift-generation"] !== this.generation) return this.err(409, "recovery_required", "The room was restored; reload the session.");
+    if (this.storageDown) return this.err(503, "storage_unavailable", "Storage is unavailable.");
+    if (this.backendDown) return this.err(503, "authority_unavailable", "Authority is unavailable.");
+
+    if (method === "GET" && parsed.pathname === "/api/v3/workspace/export") {
+      if (this.role !== "operator") return this.err(403, "forbidden", "Operators only.");
+      return this.json({
+        workspaceId: this.workspaceId,
+        roomId: this.roomId,
+        generation: this.generation,
+        formatVersion: 1,
+        exportedAtMs: this.nowMs,
+        snapshot: { roomId: this.roomId, revision: this.revision, sessions: this.sessions },
+        receipts: [...this.log.values()].map((l) => ({ actorId: this.actor.id, recordedAtMs: this.nowMs, receipt: l.receipt })),
+      });
     }
 
     if (method === "GET" && parsed.pathname === "/api/v3/room") {
+      if (this.failRoomWith) return this.err(this.failRoomWith.status, this.failRoomWith.code, "Injected failure.");
       const after = parsed.searchParams.get("afterRevision");
       const common = {
         roomId: this.roomId,
