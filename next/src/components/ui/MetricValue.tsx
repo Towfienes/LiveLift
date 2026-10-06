@@ -1,5 +1,5 @@
 import React from "react";
-import { MetricFinality } from "@/contracts";
+export type MetricFinality = "pending" | "provisional" | "final" | "unavailable";
 
 export interface MetricValueProps {
   label: string;

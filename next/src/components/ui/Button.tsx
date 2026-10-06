@@ -1,7 +1,11 @@
 import React from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "nav";
-export type ButtonSize = "sm" | "md" | "lg";
+/**
+ * `desk` and `deskPrimary` are for the operating desk: still compact 44px targets, but with the readable
+ * 16px label (secondary actions) and 18px label (the primary, lime action) the operating screens require.
+ */
+export type ButtonSize = "sm" | "md" | "lg" | "desk" | "deskPrimary";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -30,6 +34,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       sm: "px-3 py-1.5 text-[15px]",
       md: "px-4 py-2 text-[16px]",
       lg: "px-5 py-2.5 text-[18px]",
+      desk: "px-2.5 py-1.5 text-[16px]",
+      deskPrimary: "px-3.5 py-1.5 text-[18px]",
     }[size];
 
     const variantStyles = {

@@ -29,6 +29,17 @@
     --status-danger: #FF5C5C;
     --status-success: #22C55E;
     --status-unknown: #C8CDD6;
+
+    /* Restrained signal tokens from the approved canvases: amber warns, red is controlled. */
+    --signal-warn: #F6C875;
+    --signal-warn-bg: #2A2316;
+    --signal-warn-line: #5E4822;
+    --signal-danger: #F4A4A4;
+    --signal-danger-bg: #302025;
+    --signal-danger-line: #6B2A35;
+    --simulated: #C8B2FF;
+    --simulated-bg: #211F2B;
+    --simulated-line: #44385C;
     
     --focus-ring: #DFFF00;
   }

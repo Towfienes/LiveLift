@@ -1,5 +1,7 @@
 import React from "react";
-import { SegmentState, SessionLifecycle } from "@/contracts";
+import type { SessionLifecycle } from "@/contracts";
+
+export type SegmentState = "pending" | "current" | "completed" | "skipped" | "deferred";
 
 export interface StatusLabelProps {
   status:

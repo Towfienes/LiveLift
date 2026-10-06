@@ -21,6 +21,8 @@ export const ProductSnapshotSchema = z.object({
   initials: z.string().default("PR"),
   libraryOriginId: z.string().nullable().optional(),
   asOf: z.string().optional(),
+  /** Where the facts came from. Sample data shipped with the build is never presented as the operator's catalog. */
+  source: z.enum(["sample_library", "operator_entry", "import"]).optional(),
 });
 export type ProductSnapshot = z.infer<typeof ProductSnapshotSchema>;
 
