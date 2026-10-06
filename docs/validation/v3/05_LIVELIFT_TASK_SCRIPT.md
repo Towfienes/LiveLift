@@ -197,7 +197,7 @@ The LiveLift Commerce Operations Desk (`next/src/app/live/[sessionId]/operate/pa
 #### $T = 06:30:00$ — Disturbance D1 Deficit Evaluation & Native Forecast Alert
 1. Show clock reaches `06:30`. Active Serum elapsed time = `04:30`. Host signals 1 additional minute remaining.
 2. **Canonical Scored Path:** Operator enters the prescribed remaining estimate of 1 minute (`1.0m`). LiveLift's implemented downstream forecast engine automatically evaluates the schedule: projected Serum end `07:30`, plus Toner 3.0m projects Flash Sale at `10:30`, detecting a **90-second (+1.5m) deficit** facing Hard Anchor 1 (`09:00:00`).
-   *(Note on Operator Choice Branches: If an operator instead chooses an alternative action, such as clicking `Extend +1m` without entering a remaining estimate [yielding a 60s deficit] or clicking `Extend +1m` in addition to entering a 1m estimate [yielding a 120s deficit], that trial follows an exploratory operator-choice branch and must be scored against its actual mathematical forecast rather than the canonical 90s ground truth).*
+   *(Note on Operator Choice Branches: If an operator instead chooses an alternative action, such as clicking `Extend +1m` without entering a remaining estimate [yielding a 60s deficit] or clicking `Extend +1m` in addition to entering a 1m estimate [yielding a 90s deficit, as the forecast engine prioritizes the active estimate deadline], that trial follows an exploratory operator-choice branch and must be scored against its actual mathematical forecast rather than the canonical 90s ground truth).*
 3. **Implemented Deficit Banner:** The UI displays the native schedule risk alert card:
    ```
    [CẢNH BÁO TIẾN ĐỘ: Dự phóng trễ 90s so với Flash Deal 09:00:00 (Thâm hụt: 1:30)]
