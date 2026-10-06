@@ -6,26 +6,26 @@ This document defines the independent verification matrix for the Phase 2 Remote
 
 | Check ID | Title | Owning Lane | Blocker Severity | Test Reference | Current Status |
 |---|---|---|---|---|---|
-| **CHK-01** | Sole authority | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 1) | PENDING INTEGRATION |
-| **CHK-02** | Shared room convergence | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 2) | PENDING INTEGRATION |
-| **CHK-03** | Stale revision conflict | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 3) | PENDING INTEGRATION |
-| **CHK-04** | Idempotency | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 4) | PENDING INTEGRATION |
-| **CHK-05** | ID reuse conflict | Backend | **HIGH** | `authority.acceptance.test.ts` (Check 5) | PENDING INTEGRATION |
-| **CHK-06** | Rejected command durability | Backend | **HIGH** | `authority.acceptance.test.ts` (Check 6) | PENDING INTEGRATION |
-| **CHK-07** | One active REAL show | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 7) | PENDING INTEGRATION |
-| **CHK-08** | Viewer enforcement | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 8) | PENDING INTEGRATION |
-| **CHK-09** | Wrong identity / scoping | Backend | **HIGH** | `authority.acceptance.test.ts` (Check 9) | PENDING INTEGRATION |
-| **CHK-10** | Lost acknowledgement | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 10) | PENDING INTEGRATION |
-| **CHK-11** | Reconnect & snapshot recovery | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 11) | PENDING INTEGRATION |
-| **CHK-12** | Server restart durability | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 12) | PENDING INTEGRATION |
-| **CHK-13** | Atomicity & failure isolation | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 13) | PENDING INTEGRATION |
-| **CHK-14** | Clock truth | Backend | **HIGH** | `authority.acceptance.test.ts` (Check 14) | PENDING INTEGRATION |
-| **CHK-15** | History semantics | Backend & Domain | **HIGH** | `authority.acceptance.test.ts` (Check 15) | PENDING INTEGRATION |
-| **CHK-16** | Next LIVE draft derivation | Backend & Domain | **HIGH** | `authority.acceptance.test.ts` (Check 16) | PENDING INTEGRATION |
-| **CHK-17** | Semantic invariants | Domain & Transport | **CRITICAL** | `semantic.safeguards.test.ts` | **PASS NOW** |
-| **CHK-18** | Phase 1 regression safeguard | All Lanes | **CRITICAL** | Phase 1 Suite (9 test files, 211 tests) | **PASS NOW** |
-| **CHK-19** | Recovery metadata wire lifecycle | Backend & Domain | **CRITICAL** | `authority.acceptance.test.ts` (Check 19) | PENDING INTEGRATION |
-| **CHK-20** | Sparse counter sequence & no reuse | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 20) | PENDING INTEGRATION |
+| **CHK-01** | Sole authority | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 1) | **PASS VERIFIED** |
+| **CHK-02** | Shared room convergence | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 2) | **PASS VERIFIED** |
+| **CHK-03** | Stale revision conflict | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 3) | **PASS VERIFIED** |
+| **CHK-04** | Idempotency | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 4) | **PASS VERIFIED** |
+| **CHK-05** | ID reuse conflict | Backend | **HIGH** | `authority.acceptance.test.ts` (Check 5) | **PASS VERIFIED** |
+| **CHK-06** | Rejected command durability | Backend | **HIGH** | `authority.acceptance.test.ts` (Check 6) | **PASS VERIFIED** |
+| **CHK-07** | One active REAL show | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 7) | **PASS VERIFIED** |
+| **CHK-08** | Viewer enforcement | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 8) | **PASS VERIFIED** |
+| **CHK-09** | Wrong identity / scoping | Backend | **HIGH** | `authority.acceptance.test.ts` (Check 9) | **PASS VERIFIED** |
+| **CHK-10** | Lost acknowledgement | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 10) | **PASS VERIFIED** |
+| **CHK-11** | Reconnect & snapshot recovery | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 11) | **PASS VERIFIED** |
+| **CHK-12** | Server restart durability | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 12) | **PASS VERIFIED** |
+| **CHK-13** | Atomicity & failure isolation | Backend | **CRITICAL** | `authority.acceptance.test.ts` (Check 13) | **PASS VERIFIED** |
+| **CHK-14** | Clock truth | Backend | **HIGH** | `authority.acceptance.test.ts` (Check 14) | **PASS VERIFIED** |
+| **CHK-15** | History semantics | Backend & Domain | **HIGH** | `authority.acceptance.test.ts` (Check 15) | **PASS VERIFIED** |
+| **CHK-16** | Next LIVE draft derivation | Backend & Domain | **HIGH** | `authority.acceptance.test.ts` (Check 16) | **PASS VERIFIED** |
+| **CHK-17** | Semantic invariants | Domain & Transport | **CRITICAL** | `semantic.safeguards.test.ts` | **PASS VERIFIED** |
+| **CHK-18** | Phase 1 regression safeguard | All Lanes | **CRITICAL** | Phase 1 Suite (9 test files, 211 tests) | **PASS VERIFIED** |
+| **CHK-19** | Recovery metadata wire lifecycle | Backend & Domain | **CRITICAL** | `authority.acceptance.test.ts` (Check 19) | **PASS VERIFIED** |
+| **CHK-20** | Sparse counter sequence & no reuse | Backend & UI | **CRITICAL** | `authority.acceptance.test.ts` (Check 20) | **PASS VERIFIED** |
 
 ---
 

@@ -12,10 +12,9 @@ import {
   getAuthoritativeEffectiveTime,
   sampleCreateNextEnvelope,
   sampleCreateSessionEnvelope,
+  sampleCreateSessionPayload,
   sampleEndSegmentEnvelope,
-  sampleOrdinaryShortenEnvelope,
   sampleSavePreparePayload,
-  sampleShortenWithRecoveryEnvelope,
   sampleStartLiveEnvelope,
   sampleStartSegmentEnvelope,
   TEST_INVALID_TOKEN,
@@ -64,10 +63,14 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
     // 1. Sole authority
     // -------------------------------------------------------------------------
     it("Check 1: Sole authority - REAL state must not be committed by client-local storage, forged direct runtime replacement must fail", async () => {
-      // Forged payload attempting to supply runtime state directly
+      const initial = await operatorClient.pollRoom();
+      const currentRev = initial.data?.revision ?? 0;
+
+      // Forged payload attempting to supply runtime state directly at current room revision
       const forgedEnvelope = {
         ...sampleStartLiveEnvelope,
-        commandId: "cmd-forge-001",
+        commandId: `cmd-forge-${Date.now()}`,
+        expectedRevision: currentRev,
         payload: {
           runtime: {
             startedAtMs: Date.now(),
@@ -118,17 +121,25 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
       const initial = await operatorClient.pollRoom();
       const baseRev = initial.data?.revision ?? 0;
 
-      const cmdA: CommandEnvelope = {
-        ...sampleStartSegmentEnvelope,
+      const cmdA = createCommandEnvelope("create_session", {
         commandId: `cmd-stale-A-${Date.now()}`,
+        sessionId: null,
         expectedRevision: baseRev,
-      };
+        payload: {
+          ...sampleCreateSessionPayload,
+          title: "Stale Conflict Test A",
+        },
+      });
 
-      const cmdB: CommandEnvelope = {
-        ...sampleStartSegmentEnvelope,
+      const cmdB = createCommandEnvelope("create_session", {
         commandId: `cmd-stale-B-${Date.now()}`,
+        sessionId: null,
         expectedRevision: baseRev,
-      };
+        payload: {
+          ...sampleCreateSessionPayload,
+          title: "Stale Conflict Test B",
+        },
+      });
 
       // Concurrent submission
       const [resA, resB] = await Promise.all([
@@ -152,11 +163,15 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
       const rev = initial.data?.revision ?? 0;
       const commandId = `cmd-idemp-${Date.now()}`;
 
-      const envelope: CommandEnvelope = {
-        ...sampleStartLiveEnvelope,
+      const envelope = createCommandEnvelope("create_session", {
         commandId,
+        sessionId: null,
         expectedRevision: rev,
-      };
+        payload: {
+          ...sampleCreateSessionPayload,
+          title: "Idempotency Test Session",
+        },
+      });
 
       const first = await operatorClient.sendCommand(envelope);
       expect(first.data?.receipt.outcome).toBe("committed");
@@ -182,22 +197,28 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
       const rev = initial.data?.revision ?? 0;
       const commandId = `cmd-reuse-${Date.now()}`;
 
-      const original = createCommandEnvelope("start_live", {
+      const original = createCommandEnvelope("create_session", {
         commandId,
-        sessionId: TEST_SESSION_ID,
+        sessionId: null,
         expectedRevision: rev,
-        payload: { rebaseToNow: false },
+        payload: {
+          ...sampleCreateSessionPayload,
+          title: "Initial Show Intent",
+        },
       });
 
       const first = await operatorClient.sendCommand(original);
       expect(first.data?.receipt.outcome).toBe("committed");
 
       // Reuse same commandId with different payload intent
-      const conflicting = createCommandEnvelope("start_live", {
+      const conflicting = createCommandEnvelope("create_session", {
         commandId,
-        sessionId: TEST_SESSION_ID,
+        sessionId: null,
         expectedRevision: rev,
-        payload: { rebaseToNow: true },
+        payload: {
+          ...sampleCreateSessionPayload,
+          title: "Altered Show Intent",
+        },
       });
 
       const second = await operatorClient.sendCommand(conflicting);
@@ -214,11 +235,11 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
     // -------------------------------------------------------------------------
     it("Check 6: Rejected command durability - A terminal rejected command retains original result on identical retry", async () => {
       const commandId = `cmd-term-rej-${Date.now()}`;
-      // Submit a command guaranteed to be rejected (e.g. stale revision -999)
+      // Submit a valid envelope guaranteed to be rejected (stale revision higher than room revision)
       const staleEnvelope: CommandEnvelope = {
-        ...sampleStartLiveEnvelope,
+        ...sampleCreateSessionEnvelope,
         commandId,
-        expectedRevision: -999,
+        expectedRevision: 999999,
       };
 
       const first = await operatorClient.sendCommand(staleEnvelope);
@@ -239,6 +260,24 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
     it("Check 7: One active REAL show - Concurrent starts cannot produce two active REAL shows in the room", async () => {
       const initial = await operatorClient.pollRoom();
       let rev = initial.data?.revision ?? 0;
+
+      // Clean up any existing active session from earlier test runs
+      if (initial.data?.changed) {
+        const active = initial.data.sessions.find((s) => s.lifecycle === "active");
+        if (active) {
+          const endRes = await operatorClient.sendCommand(
+            createCommandEnvelope("end_live", {
+              commandId: `cmd-cleanup-pre7-${Date.now()}`,
+              sessionId: active.id,
+              expectedRevision: rev,
+              payload: {},
+            })
+          );
+          if (endRes.data?.receipt.roomRevisionAfter) {
+            rev = endRes.data.receipt.roomRevisionAfter;
+          }
+        }
+      }
 
       // Create two sessions
       const res1 = await operatorClient.sendCommand({
@@ -281,6 +320,16 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
       );
       expect(start2.data?.receipt.outcome).toBe("rejected");
       expect(start2.data?.receipt.code).toBe("another_show_active");
+
+      // Clean up: end the active session so it does not block subsequent tests
+      await operatorClient.sendCommand(
+        createCommandEnvelope("end_live", {
+          commandId: `cmd-end-act1-${Date.now()}`,
+          sessionId: sess1,
+          expectedRevision: rev,
+          payload: {},
+        })
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -357,6 +406,9 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
     // 9. Wrong identity/scoping
     // -------------------------------------------------------------------------
     it("Check 9: Wrong identity/scoping - Wrong room, wrong session, or wrong entity must fail closed without fallback", async () => {
+      const initial = await operatorClient.pollRoom();
+      const currentRev = initial.data?.revision ?? 0;
+
       const wrongRoomClient = new AuthorityClient({
         roomId: "room-non-existent-999",
         role: "operator",
@@ -367,7 +419,7 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
           commandId: `cmd-wrong-room-${Date.now()}`,
           roomId: "room-non-existent-999",
           sessionId: "sess-any",
-          expectedRevision: 0,
+          expectedRevision: currentRev,
           payload: {},
         })
       );
@@ -377,7 +429,7 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
         createCommandEnvelope("start_live", {
           commandId: `cmd-wrong-sess-${Date.now()}`,
           sessionId: "sess-non-existent-888",
-          expectedRevision: 0,
+          expectedRevision: currentRev,
           payload: {},
         })
       );
@@ -392,11 +444,15 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
       const rev = initial.data?.revision ?? 0;
       const commandId = `cmd-lost-ack-${Date.now()}`;
 
-      const cmd: CommandEnvelope = {
-        ...sampleStartSegmentEnvelope,
+      const cmd = createCommandEnvelope("create_session", {
         commandId,
+        sessionId: null,
         expectedRevision: rev,
-      };
+        payload: {
+          ...sampleCreateSessionPayload,
+          title: "Lost Ack Reconciliation Show",
+        },
+      });
 
       // Send command (simulating client receiving network error/disconnect right as server commits)
       const sendRes = await operatorClient.sendCommand(cmd);
@@ -456,26 +512,32 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
       const rev = initial.data?.revision ?? 0;
       const cmdId = `cmd-clock-truth-${Date.now()}`;
 
-      const res = await operatorClient.sendCommand({
-        ...sampleStartLiveEnvelope,
+      // 1. Client clock spoofing attempt is rejected: clock controls (advance_clock/set_clock) rejected with wrong_environment
+      const spoofEnvelope = {
         commandId: cmdId,
+        roomId: TEST_ROOM_ID,
+        sessionId: null,
         expectedRevision: rev,
-      });
+        type: "advance_clock",
+        payload: { byMs: 60000 },
+      } as unknown as CommandEnvelope;
+      const spoofRes = await operatorClient.sendCommand(spoofEnvelope);
+      expect(spoofRes.data?.receipt.outcome).toBe("rejected");
+      expect(spoofRes.data?.receipt.code).toBe("wrong_environment");
 
-      if (res.data?.receipt.outcome === "committed") {
-        const poll = await operatorClient.pollRoom();
-        expect(poll.data?.serverNowMs).toBeGreaterThan(0);
-        expect(poll.data?.clockBehindByMs).toBeGreaterThanOrEqual(0);
+      // 2. Authoritative time comes strictly from serverNowMs
+      const poll = await operatorClient.pollRoom();
+      expect(poll.data?.serverNowMs).toBeGreaterThan(0);
+      expect(poll.data?.clockBehindByMs).toBeGreaterThanOrEqual(0);
 
-        // Authoritative effective time is serverNowMs
-        const effectiveTime = getAuthoritativeEffectiveTime(poll.data!);
-        expect(effectiveTime).toBe(poll.data!.serverNowMs);
+      // Authoritative effective time is serverNowMs
+      const effectiveTime = getAuthoritativeEffectiveTime(poll.data!);
+      expect(effectiveTime).toBe(poll.data!.serverNowMs);
 
-        // Defect guard: nonzero clockBehindByMs must NOT be added to serverNowMs twice
-        if (poll.data!.clockBehindByMs > 0) {
-          const erroneousDoubleCount = poll.data!.serverNowMs + poll.data!.clockBehindByMs;
-          expect(effectiveTime).not.toBe(erroneousDoubleCount);
-        }
+      // Defect guard: nonzero clockBehindByMs must NOT be added to serverNowMs twice
+      if (poll.data!.clockBehindByMs > 0) {
+        const erroneousDoubleCount = poll.data!.serverNowMs + poll.data!.clockBehindByMs;
+        expect(effectiveTime).not.toBe(erroneousDoubleCount);
       }
     });
 
@@ -522,66 +584,130 @@ describe("Phase 2 Authority Acceptance Matrix", () => {
       const initial = await operatorClient.pollRoom();
       let rev = initial.data?.revision ?? 0;
 
-      // 1. Ordinary command (no recoveryId/recoveryLabel) has NO recovery_selected event
-      const ordinaryCmdId = `cmd-ord-shorten-${Date.now()}`;
-      const ordRes = await operatorClient.sendCommand({
-        ...sampleOrdinaryShortenEnvelope,
-        commandId: ordinaryCmdId,
+      // Clean up any existing active session from earlier test runs
+      if (initial.data?.changed) {
+        const active = initial.data.sessions.find((s) => s.lifecycle === "active");
+        if (active) {
+          const endRes = await operatorClient.sendCommand(
+            createCommandEnvelope("end_live", {
+              commandId: `cmd-cleanup-pre19-${Date.now()}`,
+              sessionId: active.id,
+              expectedRevision: rev,
+              payload: {},
+            })
+          );
+          if (endRes.data?.receipt.roomRevisionAfter) {
+            rev = endRes.data.receipt.roomRevisionAfter;
+          }
+        }
+      }
+
+      // Create and start a test session for recovery verification
+      const createRes = await operatorClient.sendCommand({
+        ...sampleCreateSessionEnvelope,
+        commandId: `cmd-rec-create-${Date.now()}`,
         expectedRevision: rev,
       });
-      if (ordRes.data?.receipt.outcome === "committed") {
-        rev = ordRes.data.receipt.roomRevisionAfter;
-        const pollAfterOrd = await operatorClient.pollRoom();
-        if (pollAfterOrd.data?.changed) {
-          const sess = pollAfterOrd.data.sessions.find((s) => s.id === TEST_SESSION_ID);
-          const ordEvents = sess?.events.filter((e) => e.commandKey === ordinaryCmdId) ?? [];
-          expect(ordEvents.some((e) => e.type === "recovery_selected")).toBe(false);
-        }
+      expect(createRes.data?.receipt.outcome).toBe("committed");
+      rev = createRes.data!.receipt.roomRevisionAfter;
+      const testSessionId = createRes.data!.receipt.sessionId!;
+
+      const startRes = await operatorClient.sendCommand(
+        createCommandEnvelope("start_live", {
+          commandId: `cmd-rec-start-${Date.now()}`,
+          sessionId: testSessionId,
+          expectedRevision: rev,
+          payload: { rebaseToNow: false },
+        })
+      );
+      expect(startRes.data?.receipt.outcome).toBe("committed");
+      rev = startRes.data!.receipt.roomRevisionAfter;
+
+      // 1. Ordinary command (no recoveryId/recoveryLabel) has NO recovery_selected event
+      const ordinaryCmdId = `cmd-ord-shorten-${Date.now()}`;
+      const ordRes = await operatorClient.sendCommand(
+        createCommandEnvelope("shorten_segment", {
+          commandId: ordinaryCmdId,
+          sessionId: testSessionId,
+          expectedRevision: rev,
+          payload: {
+            segmentId: "seg-demo",
+            newTargetSec: 360,
+            acknowledgeBelowMinimum: false,
+          },
+        })
+      );
+      expect(ordRes.data?.receipt.outcome).toBe("committed");
+      rev = ordRes.data!.receipt.roomRevisionAfter;
+
+      const pollAfterOrd = await operatorClient.pollRoom();
+      expect(pollAfterOrd.data?.changed).toBe(true);
+      if (pollAfterOrd.data?.changed) {
+        const sess = pollAfterOrd.data.sessions.find((s) => s.id === testSessionId);
+        const ordEvents = sess?.events.filter((e) => e.commandKey === ordinaryCmdId) ?? [];
+        expect(ordEvents.some((e) => e.type === "recovery_selected")).toBe(false);
       }
 
       // 2. Command with recovery metadata survives through HTTP wire to durable recovery_selected history
       const recoveryCmdId = `cmd-rec-wire-${Date.now()}`;
-      const recEnvelope: CommandEnvelope = {
-        ...sampleShortenWithRecoveryEnvelope,
+      const recEnvelope = createCommandEnvelope("shorten_segment", {
         commandId: recoveryCmdId,
+        sessionId: testSessionId,
         expectedRevision: rev,
-      };
+        payload: {
+          segmentId: "seg-demo",
+          newTargetSec: 350,
+          acknowledgeBelowMinimum: false,
+          recoveryId: "rec-cut-demo-60s",
+          recoveryLabel: "Cut 60s from Product Showcase to recover flash sale anchor",
+        },
+      });
       const recRes = await operatorClient.sendCommand(recEnvelope);
+      expect(recRes.data?.receipt.outcome).toBe("committed");
+      rev = recRes.data!.receipt.roomRevisionAfter;
 
-      if (recRes.data?.receipt.outcome === "committed") {
-        rev = recRes.data.receipt.roomRevisionAfter;
-        const pollAfterRec = await operatorClient.pollRoom();
-        if (pollAfterRec.data?.changed) {
-          const sess = pollAfterRec.data.sessions.find((s) => s.id === TEST_SESSION_ID);
-          const recEvents = sess?.events.filter((e) => e.commandKey === recoveryCmdId) ?? [];
-          const selectedEvent = recEvents.find((e) => e.type === "recovery_selected");
-          expect(selectedEvent).toBeDefined();
-          expect(selectedEvent?.data.recoveryId).toBe("rec-cut-demo-60s");
-          expect(selectedEvent?.data.label).toBe("Cut 60s from Product Showcase to recover flash sale anchor");
+      const pollAfterRec = await operatorClient.pollRoom();
+      expect(pollAfterRec.data?.changed).toBe(true);
+      if (pollAfterRec.data?.changed) {
+        const sess = pollAfterRec.data.sessions.find((s) => s.id === testSessionId);
+        const recEvents = sess?.events.filter((e) => e.commandKey === recoveryCmdId) ?? [];
+        const selectedEvent = recEvents.find((e) => e.type === "recovery_selected");
+        expect(selectedEvent).toBeDefined();
+        expect(selectedEvent?.data.recoveryId).toBe("rec-cut-demo-60s");
+        expect(selectedEvent?.data.label).toBe("Cut 60s from Product Showcase to recover flash sale anchor");
 
-          // 3. No implied attempt/performed/platform verification on cues
-          expect(Object.values(sess!.runtime.cues).every((c) => c.state === "pending" || c.state === "performed")).toBe(true);
-          expect(Object.values(sess!.runtime.cues).some((c) => c.state === "attempted")).toBe(false);
-        }
-
-        // 4. Duplicate submission adds nothing
-        const duplicateRes = await operatorClient.sendCommand(recEnvelope);
-        expect(duplicateRes.data?.duplicate).toBe(true);
-        expect(duplicateRes.data?.receipt.commandId).toBe(recoveryCmdId);
-        expect(duplicateRes.data?.receipt.roomRevisionAfter).toBe(rev);
-
-        // 5. Changed metadata under same commandId conflicts (idempotency_conflict)
-        const conflictingEnvelope = {
-          ...recEnvelope,
-          payload: {
-            ...recEnvelope.payload,
-            recoveryId: "rec-altered-intent",
-          },
-        } as unknown as CommandEnvelope;
-        const conflictRes = await operatorClient.sendCommand(conflictingEnvelope);
-        expect(conflictRes.data?.receipt.outcome).toBe("rejected");
-        expect(conflictRes.data?.receipt.code).toBe("idempotency_conflict");
+        // 3. No implied attempt/performed/platform verification on cues
+        expect(Object.values(sess!.runtime.cues).every((c) => c.state === "pending" || c.state === "performed")).toBe(true);
+        expect(Object.values(sess!.runtime.cues).some((c) => c.state === "attempted")).toBe(false);
       }
+
+      // 4. Duplicate submission adds nothing
+      const duplicateRes = await operatorClient.sendCommand(recEnvelope);
+      expect(duplicateRes.data?.duplicate).toBe(true);
+      expect(duplicateRes.data?.receipt.commandId).toBe(recoveryCmdId);
+      expect(duplicateRes.data?.receipt.roomRevisionAfter).toBe(rev);
+
+      // 5. Changed metadata under same commandId conflicts (idempotency_conflict)
+      const conflictingEnvelope = {
+        ...recEnvelope,
+        payload: {
+          ...recEnvelope.payload,
+          recoveryId: "rec-altered-intent",
+        },
+      } as unknown as CommandEnvelope;
+      const conflictRes = await operatorClient.sendCommand(conflictingEnvelope);
+      expect(conflictRes.data?.receipt.outcome).toBe("rejected");
+      expect(conflictRes.data?.receipt.code).toBe("idempotency_conflict");
+
+      // Clean up: end test session
+      await operatorClient.sendCommand(
+        createCommandEnvelope("end_live", {
+          commandId: `cmd-cleanup-end19-${Date.now()}`,
+          sessionId: testSessionId,
+          expectedRevision: rev,
+          payload: {},
+        })
+      );
     });
 
     // -------------------------------------------------------------------------
