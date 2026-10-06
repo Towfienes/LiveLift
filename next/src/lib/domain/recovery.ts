@@ -1,6 +1,6 @@
 import type { Segment, Session } from "@/contracts";
 import { applyCommand, effectiveNowMs, type Command, type CommandBody } from "./engine";
-import { currentPlan, forecastSession, type Forecast, type SegmentForecast } from "./forecast";
+import { currentPlan, forecastSession, formatAnchorLate, isAnchorDueNow, type Forecast, type SegmentForecast } from "./forecast";
 import { effectiveMinSec, isCompressible } from "./plan";
 import { formatClock, formatDuration, formatHuman } from "./time";
 
@@ -225,9 +225,9 @@ export function describeSituation(session: Session, forecast: Forecast): Situati
         tone: "missed",
         headline: `${title} was committed for ${clock(a.committedMs)}`,
         detail:
-          a.deficitSec === 0
+          isAnchorDueNow(a)
             ? `The commitment time has arrived and it has not started. The commitment is not moved; ${cause}.`
-            : `It can start no earlier than ${clock(a.projectedStartMs)} — ${lower}${formatDuration(a.deficitSec)} late. The commitment is not moved; ${cause}.`,
+            : `It can start no earlier than ${clock(a.projectedStartMs)} — ${lower}${formatAnchorLate(a)} late. The commitment is not moved; ${cause}.`,
       };
     }
     return {

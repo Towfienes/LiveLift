@@ -3,7 +3,7 @@
 import React from "react";
 import type { ProductSnapshot, Segment } from "@/contracts";
 import type { RecoveryAnalysis, RecoveryOption, SegmentForecast, SituationTone } from "@/lib/domain";
-import { formatClock, formatDuration } from "@/lib/domain";
+import { formatClock, formatDuration, isAnchorDueNow } from "@/lib/domain";
 import { Button } from "@/components/ui";
 import { SegmentTile } from "./SegmentTile";
 import { AnchorBadge, Drift, Signal } from "./StatusChips";
@@ -170,7 +170,7 @@ export function NextPanel({
               )}
               {analysis.status === "already_missed" && (
                 <Signal tone="danger" icon="ri-time-line" size="desk">
-                  {analysis.criticalSegmentId === nextSegment.id && anchor?.deficitSec === 0
+                  {analysis.criticalSegmentId === nextSegment.id && anchor !== null && isAnchorDueNow(anchor)
                     ? "Commitment due now — options limit further delay"
                     : "Commitment missed — options limit further delay"}
                 </Signal>

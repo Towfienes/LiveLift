@@ -34,8 +34,10 @@ import {
   currentPlan,
   effectiveNowMs,
   forecastSession,
+  formatAnchorLate,
   formatClock,
   formatDuration,
+  isAnchorDueNow,
   nextPendingSegment,
   type RecoveryOption,
   type ScenarioId,
@@ -281,13 +283,13 @@ function Desk({
     if (extra > 0) return { tone: "warn" as const, text: `+${formatDuration(extra)} late`, full: `+${formatDuration(extra)} late for ${title}` };
     if (before.status === "at_risk" || before.status === "missed") {
       // At the exact anchor instant nothing is late yet: say it is due, not "0:00 late".
-      if (before.deficitSec === 0) {
+      if (isAnchorDueNow(before)) {
         return { tone: "warn" as const, text: "anchor due now", full: `${title} is due now and has not started; this does not change the forecast` };
       }
       return {
         tone: "warn" as const,
-        text: `already ${formatDuration(before.deficitSec)} late`,
-        full: `${title} is already ${formatDuration(before.deficitSec)} late; this does not change the forecast`,
+        text: `already ${formatAnchorLate(before)} late`,
+        full: `${title} is already ${formatAnchorLate(before)} late; this does not change the forecast`,
       };
     }
     if (after.bufferSec < before.bufferSec) {

@@ -7,9 +7,14 @@ import { EvidenceLabel } from "@/components/ui/EvidenceLabel";
 import { anchorSignal } from "@/components/ops/StatusChips";
 import {
   analyzeRecovery,
+  anchorLateMs,
   applyCommand,
   buildReview,
   createScenarioSession,
+  describeSituation,
+  forecastSession,
+  formatAnchorLate,
+  isAnchorDueNow,
   runScript,
   SCENARIO_START_MS,
 } from "@/lib/domain";
@@ -35,6 +40,60 @@ describe("Hard-anchor display at the exact anchor instant", () => {
     const s = anchorSignal({ ...base, status: "missed", deficitSec: 5 }, "Asia/Ho_Chi_Minh");
     expect(s.text).toBe("Missed · 0:05 late");
     expect(s.tone).toBe("danger");
+  });
+});
+
+describe("Hard-anchor lateness boundary: only exactly 0 ms is due now", () => {
+  // Buffered rehearsal: Zip Hoodie overruns with no estimate, so the flash sale (hard anchor 20:12) is
+  // projected to start at "now". Each probe is the anchor instant plus a raw lateness in ms.
+  const anchorMs = SCENARIO_START_MS + 12 * 60_000;
+  const probe = (lateMs: number) => {
+    const s = runScript(createScenarioSession("buffered"), 2);
+    const t = anchorMs + lateMs;
+    const forecast = forecastSession(s, t);
+    const flash = forecast.segments.find((x) => x.segmentId.endsWith(":flash"))!;
+    const clocked = applyCommand(s, { type: "set_clock", toMs: t, nowMs: t, key: `clk-${lateMs}` }).session;
+    return { anchor: flash.anchor!, situation: describeSituation(s, forecast), recovery: analyzeRecovery(clocked, t) };
+  };
+
+  it("forecast arithmetic is untouched: status missed, deficitSec still rounded, commitment not moved", () => {
+    for (const [lateMs, deficitSec] of [[0, 0], [1, 0], [499, 0], [500, 1], [1000, 1]] as const) {
+      const { anchor, recovery } = probe(lateMs);
+      expect(anchor.status).toBe("missed");
+      expect(anchor.committedMs).toBe(anchorMs);
+      expect(anchor.deficitSec).toBe(deficitSec);
+      expect(anchorLateMs(anchor)).toBe(lateMs);
+      expect(recovery.status).toBe("already_missed");
+      expect(recovery.deficitSec).toBe(deficitSec);
+    }
+  });
+
+  it("0 ms: due now, not started yet", () => {
+    const { anchor, situation } = probe(0);
+    expect(isAnchorDueNow(anchor)).toBe(true);
+    expect(anchorSignal(anchor, "Asia/Ho_Chi_Minh")).toMatchObject({ tone: "warn", text: "Due now · not started yet" });
+    expect(situation.detail).toMatch(/^The commitment time has arrived and it has not started\./);
+  });
+
+  it.each([
+    [1, "<1s"],
+    [499, "<1s"],
+    [500, "0:01"],
+    [1000, "0:01"],
+  ])("+%i ms: missed, %s late — never due now, never 0:00 late", (lateMs, late) => {
+    const { anchor, situation } = probe(lateMs);
+    expect(isAnchorDueNow(anchor)).toBe(false);
+    const s = anchorSignal(anchor, "Asia/Ho_Chi_Minh");
+    expect(s).toMatchObject({ tone: "danger", text: `Missed · ${late} late` });
+    expect(s.text).not.toMatch(/Due now|0:00/);
+    expect(situation.detail).toContain(`at least ${late} late`);
+    expect(situation.detail).not.toMatch(/has arrived|0:00/);
+  });
+
+  it("a start under a second late reads Met late · <1s, not 0:00", () => {
+    const met = { committedMs: anchorMs, baselineCommittedMs: anchorMs, projectedStartMs: anchorMs + 400, bufferSec: 0, deficitSec: 0, status: "met_late", lowerBound: false } as const;
+    expect(anchorSignal(met, "Asia/Ho_Chi_Minh").text).toBe("Met late · <1s");
+    expect(formatAnchorLate(met)).toBe("<1s");
   });
 });
 

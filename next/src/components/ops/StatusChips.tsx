@@ -1,6 +1,6 @@
 import React from "react";
 import type { AnchorForecast } from "@/lib/domain";
-import { formatClock, formatDuration, formatSigned } from "@/lib/domain";
+import { formatAnchorLate, formatClock, formatDuration, formatSigned, isAnchorDueNow } from "@/lib/domain";
 
 /**
  * Status signals: text + icon + colour (colour is secondary). No pill ladder.
@@ -76,7 +76,7 @@ export function anchorSignal(
   anchor: AnchorForecast,
   tz: string
 ): { tone: Tone; icon: string; text: string } {
-  const late = formatDuration(anchor.deficitSec);
+  const late = formatAnchorLate(anchor);
   switch (anchor.status) {
     case "on_track":
       return {
@@ -93,9 +93,9 @@ export function anchorSignal(
         text: `Possible risk · up to ${formatDuration(anchor.bufferSec)} buffer, end unknown`,
       };
     case "missed":
-      // At the exact anchor instant nothing is late yet (0:00). The commitment time has arrived and the
-      // segment has not started — say that, instead of "Missed · 0:00 late". The forecast itself is unchanged.
-      if (anchor.deficitSec === 0) return { tone: "warn", icon: "ri-time-line", text: "Due now · not started yet" };
+      // At the exact anchor instant nothing is late yet. The commitment time has arrived and the segment
+      // has not started — say that. Any real lateness, even under a second, is a miss. The forecast is unchanged.
+      if (isAnchorDueNow(anchor)) return { tone: "warn", icon: "ri-time-line", text: "Due now · not started yet" };
       return { tone: "danger", icon: "ri-time-line", text: `Missed · ${late} late` };
     case "met":
       return { tone: "neutral", icon: "ri-checkbox-circle-line", text: `Met at ${formatClock(anchor.projectedStartMs, tz, true)}` };

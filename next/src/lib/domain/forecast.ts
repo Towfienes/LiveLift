@@ -1,6 +1,6 @@
 import type { CueRun, PlanVersion, SegmentRun, Session } from "@/contracts";
 import { anchorMs, planCueTimeMs, schedulePlan, type Schedule } from "./plan";
-import { secToMs } from "./time";
+import { formatDuration, secToMs } from "./time";
 
 /**
  * Forecast: a linear pass over the ordered rundown (established scheduling arithmetic).
@@ -58,6 +58,25 @@ export interface AnchorForecast {
   status: AnchorStatus;
   /** true when the arrival is only a lower bound (active end unknown). */
   lowerBound: boolean;
+}
+
+/**
+ * Unrounded lateness against the commitment, in ms. `deficitSec` is rounded to whole seconds, so it
+ * reads 0 for up to 499 ms of real lateness. A pending anchor's projected start is never before now,
+ * so for a missed anchor this is the exact lateness. Presentation only: no status or deficit uses it.
+ */
+export function anchorLateMs(anchor: AnchorForecast): number {
+  return Math.max(0, anchor.projectedStartMs - anchor.committedMs);
+}
+
+/** The exact anchor instant: the commitment time has arrived, the segment has not started, nothing is late yet. */
+export function isAnchorDueNow(anchor: AnchorForecast): boolean {
+  return anchor.status === "missed" && anchor.deficitSec === 0 && anchorLateMs(anchor) === 0;
+}
+
+/** Lateness as m:ss. Real lateness under the rounded second reads "<1s", never "0:00". */
+export function formatAnchorLate(anchor: AnchorForecast): string {
+  return anchor.deficitSec === 0 && anchorLateMs(anchor) > 0 ? "<1s" : formatDuration(anchor.deficitSec);
 }
 
 export interface SegmentForecast {
