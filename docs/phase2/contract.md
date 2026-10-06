@@ -37,6 +37,11 @@ payload fields reuse Phase 1 `CommandBody`, with `type` outside `payload`. The R
 payloads; TypeScript types alone are not runtime validation. Existing Zod session/plan schemas
 remain reusable; this seed does not add a second command validator.
 
+Eligible runtime commands may include optional `recoveryId` and `recoveryLabel` metadata from
+Phase 1 `CommandBase`. These fields record which operator-selected recovery contextualized the
+command. They do not imply an attempt, a performed action, platform confirmation or automatic
+execution. Recommendation != acceptance, Acceptance != attempt, and Attempt != performed.
+
 | Additional command | Envelope sessionId | Payload and behavior |
 | --- | --- | --- |
 | `create_session` | `null` | Phase 1 creation fields: required `title`, `timezone`, `plannedStartMs`; optional `objective`, `accountLabel`, `products`, `segments`, `cues`. Server creates a REAL draft and assigns ID/time/operator. |

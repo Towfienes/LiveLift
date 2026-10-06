@@ -8,3 +8,4 @@ export * from "./ProductIdentity";
 export * from "./MetricValue";
 export * from "./InlineNotice";
 export * from "./Dialog";
+export * from "./CommandState";

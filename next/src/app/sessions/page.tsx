@@ -6,7 +6,8 @@ import type { Session } from "@/contracts";
 import { StandardShell } from "@/components/shell";
 import { Button, EnvironmentBadge, StatusLabel } from "@/components/ui";
 import { baselinePlan, formatClock, formatDay } from "@/lib/domain";
-import { useSessions } from "@/lib/store/hooks";
+import { Signal } from "@/components/ops/StatusChips";
+import { useLegacyArchive, useSessions } from "@/lib/store/hooks";
 
 function primaryAction(s: Session): { href: string; label: string; variant: "primary" | "secondary" | "ghost" } {
   if (s.lifecycle === "active") return { href: `/live/${s.id}/operate`, label: "Continue LIVE", variant: "primary" };
@@ -15,7 +16,8 @@ function primaryAction(s: Session): { href: string; label: string; variant: "pri
 }
 
 export default function SessionsPage(): React.ReactElement {
-  const { hydrated, sessions } = useSessions();
+  const { hydrated, sessions, remote } = useSessions();
+  const archive = useLegacyArchive();
   const [search, setSearch] = useState("");
   const [lifecycle, setLifecycle] = useState("all");
   const [environment, setEnvironment] = useState("all");
@@ -36,7 +38,7 @@ export default function SessionsPage(): React.ReactElement {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-[34px] font-medium tracking-tight text-[#F5F7FC]">Sessions</h1>
-            <p className="text-[16px] text-[#B7C1CE] mt-1">Find the plan, operating desk, or review you need. Shows live in this browser only.</p>
+            <p className="text-[16px] text-[#B7C1CE] mt-1">Find the plan, operating desk, or review you need. REAL shows live in the shared room; rehearsals live in this browser.</p>
           </div>
           <Link href="/live/new">
             <Button variant="primary" icon="ri-add-line">Create LIVE</Button>
@@ -78,7 +80,11 @@ export default function SessionsPage(): React.ReactElement {
             <div className="p-10 text-center" data-testid="sessions-empty">
               <i className="ri-stack-line text-[28px] text-[#8A95A5]" aria-hidden="true" />
               <h2 className="text-[22px] font-medium text-[#F5F7FC] mt-2">{sessions.length === 0 ? "Make your first rundown" : "No sessions match"}</h2>
-              <p className="text-[15px] text-[#B7C1CE] mt-1">Real shows and simulated rehearsals will appear here.</p>
+              <p className="text-[15px] text-[#B7C1CE] mt-1">
+                {remote.snapshot || remote.connection === "connecting"
+                  ? "Real shows and simulated rehearsals will appear here."
+                  : "REAL shows appear here once the room can be reached. Simulated rehearsals appear here either way."}
+              </p>
               <Link href="/live/new" className="inline-block mt-4">
                 <Button variant="primary">Create LIVE</Button>
               </Link>
@@ -138,6 +144,43 @@ export default function SessionsPage(): React.ReactElement {
             </div>
           )}
         </div>
+
+        {archive.hydrated && archive.sessions.length > 0 && (
+          <section className="rounded-[12px] bg-[#101319] overflow-hidden" aria-label="Local archive" data-testid="legacy-archive">
+            <div className="px-5 py-4 border-b border-[#202632]">
+              <h2 className="text-[20px] font-medium text-[#F5F7FC]">
+                <i className="ri-archive-line mr-2 text-[#F6C875]" aria-hidden="true" />
+                Local archive · before shared authority
+              </h2>
+              <p className="text-[14px] text-[#B7C1CE] mt-1 max-w-[860px]">
+                These REAL shows were recorded in this browser before LiveLift moved REAL shows to the shared room. They are kept as history only:
+                they are read-only, were never uploaded or merged into the room, and are not part of any room list above.
+              </p>
+            </div>
+            <ul className="divide-y divide-[#202632]">
+              {archive.sessions.map((s) => (
+                <li key={s.id} className="px-5 py-3 flex items-center justify-between gap-4" data-testid={`archive-row-${s.id}`}>
+                  <div className="min-w-0">
+                    <div className="font-medium text-[#F5F7FC] truncate">{s.title}</div>
+                    <div className="text-[13px] text-[#9AA5B5] tabular-nums">
+                      {formatDay(baselinePlan(s).plannedStartMs, s.timezone)} · {formatClock(baselinePlan(s).plannedStartMs, s.timezone)} · {s.lifecycle}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <Signal tone="warn" icon="ri-archive-line">Local archive</Signal>
+                    {s.lifecycle === "ended" ? (
+                      <Link href={`/live/${s.id}/review?archive=1`}>
+                        <Button variant="secondary" size="sm" icon="ri-arrow-right-line">View archived review</Button>
+                      </Link>
+                    ) : (
+                      <span className="text-[13px] text-[#9AA5B5]">Never ended · history only</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </StandardShell>
   );
