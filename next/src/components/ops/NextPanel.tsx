@@ -61,7 +61,7 @@ export function NextPanel({
     return (
       <section data-testid="next-panel" aria-label="Next" className="rounded-[12px] bg-[#1B1F27] p-5 flex flex-col justify-between min-h-0">
         <div>
-          <span className="text-[13px] font-semibold tracking-[1.7px] text-[#DFFF00] uppercase">NEXT</span>
+          <span className="text-[16px] leading-5 font-semibold tracking-[1.5px] text-[#DFFF00] uppercase">NEXT</span>
           <p className="text-[22px] font-medium text-[#F5F7FC] mt-3">Nothing left in the Run of Show</p>
           <p className="text-[16px] text-[#B7C1CE] mt-1">
             {activeSegment ? `${activeSegment.title} is the last segment.` : "All segments have run or been skipped."} End LIVE when the
@@ -92,16 +92,16 @@ export function NextPanel({
       : null;
 
   return (
-    <section data-testid="next-panel" aria-label="Next" className="rounded-[12px] bg-[#1B1F27] p-4 [@media(min-height:860px)]:p-5 flex flex-col min-h-0">
+    <section data-testid="next-panel" aria-label="Next" className="rounded-[12px] bg-[#1B1F27] p-3 [@media(min-height:740px)]:p-4 flex flex-col min-h-0">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[13px] font-semibold tracking-[1.7px] text-[#DFFF00] uppercase">NEXT</span>
+        <span className="text-[16px] leading-5 font-semibold tracking-[1.5px] text-[#DFFF00] uppercase">NEXT</span>
         {startMs !== null && (
           <span className="inline-flex items-center gap-3">
-            <Signal tone="neutral" icon="ri-time-line" className="tabular-nums">
+            <Signal tone="neutral" icon="ri-time-line" className="tabular-nums" size="desk">
               Starts {nextForecast?.lowerBound ? "≥ " : "≈ "}
               {clock(startMs)}
             </Signal>
-            <Drift seconds={nextForecast?.driftSec ?? null} lowerBound={nextForecast?.lowerBound} />
+            <Drift seconds={nextForecast?.driftSec ?? null} lowerBound={nextForecast?.lowerBound} size="desk" />
           </span>
         )}
       </div>
@@ -113,9 +113,9 @@ export function NextPanel({
             {nextSegment.title}
           </h2>
           <div className="flex items-center gap-3 flex-wrap">
-            {anchor && <AnchorBadge committedMs={anchor.committedMs} tz={tz} />}
+            {anchor && <AnchorBadge committedMs={anchor.committedMs} tz={tz} size="desk" />}
             {nextSegment.targetSec !== null && (
-              <Signal tone="muted" className="tabular-nums">
+              <Signal tone="muted" className="tabular-nums" size="desk">
                 {formatDuration(nextSegment.targetSec)}
                 {nextSegment.optional ? " · optional" : ""}
               </Signal>
@@ -128,28 +128,29 @@ export function NextPanel({
         data-testid="why-box"
         role="status"
         aria-live="polite"
-        className={`mt-3 [@media(max-height:800px)]:mt-2 rounded-[8px] border-l-[3px] px-3 py-2 [@media(max-height:800px)]:py-1.5 ${WHY_STYLE[tone]}`}
+        className={`mt-2 rounded-[8px] border-l-[3px] px-3 py-1.5 ${WHY_STYLE[tone]}`}
       >
-        <p className="text-[15px] leading-snug text-[#F5F7FC]">
+        <p className="text-[16px] leading-snug text-[#F5F7FC]">
           <i className={`${WHY_ICON[tone]} mr-1.5 ${tone === "missed" ? "text-[#F4A4A4]" : tone === "ok" ? "text-[#9AA5B5]" : "text-[#F6C875]"}`} aria-hidden="true" />
           <span className="font-semibold">WHY · </span>
           <span className="font-medium">{analysis.situation.headline}</span>
         </p>
         {analysis.situation.detail && (
-          <p className="text-[14px] leading-snug text-[#CAD0DA] mt-0.5">{analysis.situation.detail}</p>
+          <p className="text-[16px] leading-snug text-[#CAD0DA] mt-0.5">{analysis.situation.detail}</p>
         )}
       </div>
 
-      <div className="mt-3 [@media(max-height:800px)]:mt-2 flex-1 min-h-0">
+      <div className="mt-2 flex-1 min-h-0">
         {showRecovery ? (
           <div data-testid="recovery-list">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[12px] font-semibold tracking-[1.5px] text-[#AEB7C5] uppercase">Action</span>
+              <span className="text-[16px] leading-5 font-semibold tracking-[1.5px] text-[#AEB7C5] uppercase">Action</span>
               {analysis.status === "no_feasible_recovery" && (
                 <Signal
                   tone="warn"
                   icon="ri-error-warning-line"
                   className="font-medium"
+                  size="desk"
                   title={
                     analysis.exceptionProtects
                       ? "Only an exception (below a minimum or dropping required coverage) or a commitment change protects it."
@@ -160,23 +161,23 @@ export function NextPanel({
                 </Signal>
               )}
               {analysis.status === "recoverable" && analysis.cleanPlan.length > 1 && (
-                <Signal tone="neutral" icon="ri-checkbox-circle-line" className="truncate" title={analysis.cleanPlan.join(" + ")}>
+                <Signal tone="neutral" icon="ri-checkbox-circle-line" className="truncate" size="desk" title={analysis.cleanPlan.join(" + ")}>
                   <span data-testid="clean-plan">Together: {analysis.cleanPlan.join(" + ")}</span>
                 </Signal>
               )}
               {analysis.status === "already_missed" && (
-                <Signal tone="danger" icon="ri-time-line">Commitment missed — options limit further delay</Signal>
+                <Signal tone="danger" icon="ri-time-line" size="desk">Commitment missed — options limit further delay</Signal>
               )}
               {analysis.status === "possible_risk" && (
-                <Signal tone="warn" icon="ri-question-line">End unknown</Signal>
+                <Signal tone="warn" icon="ri-question-line" size="desk">End unknown</Signal>
               )}
             </div>
             <ul className="mt-1 divide-y divide-[#262C38]">
               {visible.map((o, i) => (
-                <li key={o.id} className={`flex items-center gap-3 py-1.5 ${i > 0 ? "[@media(max-height:800px)]:hidden" : ""}`} data-testid={`recovery-option-${o.kind}`}>
+                <li key={o.id} className={`flex items-center gap-3 py-1.5 [@media(max-height:800px)]:py-1 ${i > 0 ? "[@media(max-height:800px)]:hidden" : ""}`} data-testid={`recovery-option-${o.kind}`}>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[16px] font-medium text-[#F5F7FC] truncate">{o.label}</p>
-                    <p className={`text-[13px] leading-snug text-[#B7C1CE] ${i === 0 ? "truncate [@media(min-height:860px)]:whitespace-normal [@media(min-height:860px)]:line-clamp-2" : "truncate"}`} title={o.detail}>
+                    <p className="text-[16px] leading-5 font-medium text-[#F5F7FC] truncate">{o.label}</p>
+                    <p className={`text-[16px] leading-snug text-[#B7C1CE] ${i === 0 ? "truncate [@media(min-height:860px)]:whitespace-normal [@media(min-height:860px)]:line-clamp-2" : "truncate"}`} title={o.detail}>
                       {o.exception && (
                         <span className={`mr-1.5 font-medium ${o.exception.code === "commitment_change" ? "text-[#CAD0DA]" : "text-[#F6C875]"}`}>
                           {o.exception.code === "commitment_change" ? "Commitment change ·" : "Exception ·"}
@@ -186,7 +187,7 @@ export function NextPanel({
                     </p>
                   </div>
                   <Button
-                    size="sm"
+                    size={o.clean && o.protects && i === 0 ? "deskPrimary" : "desk"}
                     variant={o.clean && o.protects && i === 0 ? "primary" : "secondary"}
                     onClick={() => onApply(o)}
                     data-testid={`apply-${o.kind}`}
@@ -198,30 +199,30 @@ export function NextPanel({
                 </li>
               ))}
             </ul>
-            <div className="flex items-center justify-between gap-3 mt-1.5">
+            <div className="flex items-center justify-between gap-3 mt-0.5">
               <div className="flex items-center gap-4">
                 <button
                   type="button"
                   onClick={onShowAll}
-                  className="min-h-[44px] px-1 text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap"
+                  className="min-h-[44px] px-1 text-[16px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap"
                   data-testid="all-options-btn"
                 >
                   {analysis.options.length > 1 ? `All options (${analysis.options.length})` : "Explain options"}
                 </button>
                 {anchor && analysis.status !== "possible_risk" && (
-                  <button type="button" onClick={onReanchorNext} className="min-h-[44px] px-1 text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap">
+                  <button type="button" onClick={onReanchorNext} className="min-h-[44px] px-1 text-[16px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap">
                     Re-anchor…
                   </button>
                 )}
               </div>
-              <Button variant="secondary" size="sm" onClick={onAdvance} disabled={waitingForAnchor} data-testid="advance-btn" title={primaryHint ?? undefined}>
+              <Button variant="secondary" size="desk" onClick={onAdvance} disabled={waitingForAnchor} data-testid="advance-btn" title={primaryHint ?? undefined}>
                 {primaryLabel}
               </Button>
             </div>
           </div>
         ) : (
           <div>
-            <span className="text-[12px] font-semibold tracking-[1.5px] text-[#AEB7C5] uppercase">Action</span>
+            <span className="text-[16px] leading-5 font-semibold tracking-[1.5px] text-[#AEB7C5] uppercase">Action</span>
             <Button
               variant="primary"
               size="lg"
@@ -233,9 +234,9 @@ export function NextPanel({
               {primaryLabel}
             </Button>
             <div className="flex items-center justify-between gap-3 mt-1.5 min-h-[20px]">
-              {primaryHint && <p className="text-[13px] text-[#B7C1CE]">{primaryHint}</p>}
+              {primaryHint && <p className="text-[16px] leading-5 text-[#B7C1CE]">{primaryHint}</p>}
               {waitingForAnchor && (
-                <button type="button" onClick={onReanchorNext} className="min-h-[44px] px-1 text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap">
+                <button type="button" onClick={onReanchorNext} className="min-h-[44px] px-1 text-[16px] text-[#CAD0DA] hover:text-[#DFFF00] cursor-pointer whitespace-nowrap">
                   Re-anchor…
                 </button>
               )}

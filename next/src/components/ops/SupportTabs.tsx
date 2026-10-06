@@ -63,7 +63,7 @@ export function SupportTabs({
             aria-controls={`panel-${t.id}`}
             onClick={() => setTab(t.id)}
             data-testid={`support-tab-${t.id}`}
-            className={`min-h-[44px] px-3 rounded-[8px] text-[15px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+            className={`min-h-[44px] px-3 rounded-[8px] text-[16px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
               tab === t.id ? "bg-[#252A34] text-[#DFFF00]" : "text-[#AFB8C7] hover:text-white"
             }`}
           >
@@ -76,20 +76,20 @@ export function SupportTabs({
       <div className="flex-1 min-h-0 overflow-y-auto pt-2" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "history" && (
           <ol className="divide-y divide-[#1F2530]" data-testid="history-list">
-            {events.length === 0 && <li className="py-3 text-[14px] text-[#9AA5B5]">Nothing has been recorded yet.</li>}
+            {events.length === 0 && <li className="py-3 text-[16px] text-[#9AA5B5]">Nothing has been recorded yet.</li>}
             {events.map((e) => (
               <li key={e.id} className="py-2 flex gap-3 items-start">
-                <span className="text-[13px] tabular-nums font-mono text-[#AEB7C5] w-[64px] shrink-0 pt-0.5">
+                <span className="text-[16px] leading-snug tabular-nums font-mono text-[#AEB7C5] w-[84px] shrink-0">
                   {formatClock(e.occurredAtMs, tz, true)}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] leading-snug text-[#F5F7FC]">{e.summary}</p>
+                  <p className="text-[16px] leading-snug text-[#F5F7FC]">{e.summary}</p>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    <Signal tone={EVENT_TONE[e.type] ?? "muted"} icon={EVENT_ICON[e.type] ?? "ri-information-line"} className="text-[13px]">
+                    <Signal tone={EVENT_TONE[e.type] ?? "muted"} icon={EVENT_ICON[e.type] ?? "ri-information-line"} size="desk">
                       {e.actor} · {e.source === "simulator" ? "Simulator" : "Operator"}
                     </Signal>
                     {Math.abs(e.recordedAtMs - e.occurredAtMs) >= 1000 && (
-                      <Signal tone="violet" icon="ri-history-line" className="text-[13px]">
+                      <Signal tone="violet" icon="ri-history-line" size="desk">
                         recorded {formatClock(e.recordedAtMs, tz, true)}
                       </Signal>
                     )}
@@ -123,17 +123,17 @@ export function SupportTabs({
                 return (
                   <li key={s.id} className="py-2 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[15px] text-[#F5F7FC] truncate">
-                        {product ? <span className="font-mono text-[13px] text-[#AEB7C5] mr-2">{product.code}</span> : null}
+                      <p className="text-[16px] text-[#F5F7FC] truncate">
+                        {product ? <span className="font-mono text-[16px] text-[#AEB7C5] mr-2">{product.code}</span> : null}
                         {s.title}
                       </p>
-                      <p className="text-[13px] text-[#9AA5B5]">{s.optional ? "Optional" : "Required coverage"}</p>
+                      <p className="text-[16px] text-[#9AA5B5]">{s.optional ? "Optional" : "Required coverage"}</p>
                     </div>
-                    <Signal tone={status.tone}>{status.text}</Signal>
+                    <Signal tone={status.tone} size="desk">{status.text}</Signal>
                   </li>
                 );
               })}
-            <li className="py-2 text-[13px] text-[#9AA5B5]">
+            <li className="py-2 text-[16px] text-[#9AA5B5]">
               Coverage comes from what actually ran in the Run of Show. It is not a separate queue.
             </li>
           </ul>
@@ -141,18 +141,18 @@ export function SupportTabs({
 
         {tab === "changes" && (
           <div data-testid="changes-list">
-            <p className="text-[13px] text-[#9AA5B5] pb-2">
+            <p className="text-[16px] text-[#9AA5B5] pb-2">
               Baseline locked {formatClock(session.runtime.startedAtMs ?? baselinePlan(session).createdAtMs, tz, true)} — the original
               commitments are never rewritten. Changes below are explicit plan versions.
             </p>
             <ol className="divide-y divide-[#1F2530]">
-              {session.plans.length === 1 && <li className="py-2 text-[14px] text-[#9AA5B5]">No changes since the baseline.</li>}
+              {session.plans.length === 1 && <li className="py-2 text-[16px] text-[#9AA5B5]">No changes since the baseline.</li>}
               {session.plans.slice(1).map((p) => (
                 <li key={p.id} className="py-2 flex gap-3">
-                  <span className="text-[13px] tabular-nums font-mono text-[#AEB7C5] w-[64px] shrink-0">{formatClock(p.createdAtMs, tz, true)}</span>
+                  <span className="text-[16px] tabular-nums font-mono text-[#AEB7C5] w-[84px] shrink-0">{formatClock(p.createdAtMs, tz, true)}</span>
                   <div>
-                    <p className="text-[14px] text-[#F5F7FC]">{p.reason ?? "Plan revision"}</p>
-                    <p className="text-[13px] text-[#9AA5B5]">Plan version {p.version}</p>
+                    <p className="text-[16px] leading-snug text-[#F5F7FC]">{p.reason ?? "Plan revision"}</p>
+                    <p className="text-[16px] text-[#9AA5B5]">Plan version {p.version}</p>
                   </div>
                 </li>
               ))}

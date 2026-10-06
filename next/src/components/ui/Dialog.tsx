@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useId, useRef } from "react";
-import { Button } from "./Button";
+import { Button, type ButtonSize } from "./Button";
 
 export interface DialogProps {
   isOpen: boolean;
@@ -11,6 +11,8 @@ export interface DialogProps {
   confirmText?: string;
   cancelText?: string;
   confirmVariant?: "primary" | "danger";
+  /** Operating-desk dialogs pass "lg" so the primary action label is 18px. Other screens keep the default. */
+  confirmSize?: ButtonSize;
   onConfirm?: () => void;
   confirmDisabled?: boolean;
   isLoading?: boolean;
@@ -31,6 +33,7 @@ export const Dialog: React.FC<DialogProps> = ({
   confirmText = "Confirm",
   cancelText = "Cancel",
   confirmVariant = "primary",
+  confirmSize = "md",
   onConfirm,
   confirmDisabled = false,
   isLoading = false,
@@ -123,7 +126,7 @@ export const Dialog: React.FC<DialogProps> = ({
             {cancelText}
           </Button>
           {onConfirm && (
-            <Button variant={confirmVariant} onClick={onConfirm} disabled={isLoading || confirmDisabled}>
+            <Button variant={confirmVariant} size={confirmSize} onClick={onConfirm} disabled={isLoading || confirmDisabled}>
               {isLoading ? "Processing..." : confirmText}
             </Button>
           )}

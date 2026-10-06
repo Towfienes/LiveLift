@@ -21,6 +21,9 @@ export type ReportTarget = { kind: "cue"; id: string } | { kind: "action"; id: s
  * LiveLift records what the operator reports; it never executes or confirms the action.
  * An earlier attempt whose outcome is unknown stays unresolved but never blocks reporting the next cue:
  * the bar moves on to the next unreported cue, and unresolved attempts stay one click away.
+ *
+ * Sizing: every control is a 44px target; labels are 16px (the lime "I performed this" is 18px at all times,
+ * so nothing moves when a cue becomes urgent). From 1280px wide the bar never wraps: the cue text yields first.
  */
 export function CueBar({
   cues,
@@ -63,7 +66,7 @@ export function CueBar({
         type="button"
         onClick={() => onReport(firstUnresolved)}
         data-testid="cue-unresolved-btn"
-        className="min-h-[44px] px-2 rounded-[8px] text-[15px] font-medium text-[#F6C875] hover:bg-[#1F1B12] cursor-pointer whitespace-nowrap"
+        className="min-h-[44px] px-2 rounded-[8px] text-[16px] font-medium text-[#F6C875] hover:bg-[#1F1B12] cursor-pointer whitespace-nowrap shrink-0"
       >
         <i className="ri-question-line mr-1" aria-hidden="true" />
         {unresolved} attempt{unresolved === 1 ? "" : "s"} unresolved
@@ -71,15 +74,21 @@ export function CueBar({
     ) : null;
 
   const reportButton = (
-    <Button size="sm" variant="ghost" onClick={() => onReport(first ? { kind: "cue", id: first.cue.id } : { kind: "new" })} data-testid="cue-report-btn">
+    <Button
+      size="desk"
+      variant="ghost"
+      onClick={() => onReport(first ? { kind: "cue", id: first.cue.id } : { kind: "new" })}
+      data-testid="cue-report-btn"
+      className="shrink-0"
+    >
       Report…
     </Button>
   );
 
   if (!first) {
     return (
-      <div data-testid="cue-bar" className="flex items-center gap-2 min-h-[44px] min-w-0">
-        <Signal tone="muted" icon="ri-checkbox-multiple-line" className="text-[15px]">
+      <div data-testid="cue-bar" className="flex items-center gap-2 min-h-[44px] min-w-0 flex-1">
+        <Signal tone="muted" icon="ri-checkbox-multiple-line" size="desk">
           No operator cues waiting
         </Signal>
         {unresolvedButton}
@@ -94,14 +103,14 @@ export function CueBar({
   const overdue = due !== null && due < 0;
 
   return (
-    <div data-testid="cue-bar" className="flex items-center gap-3 min-w-0 flex-wrap">
-      <div className="min-w-0 max-w-[460px]">
-        <p className="text-[16px] font-medium text-[#F5F7FC] truncate" title={cue.title}>
+    <div data-testid="cue-bar" className="flex items-center gap-3 min-w-0 flex-1 flex-wrap xl:flex-nowrap">
+      <div className="min-w-0 flex-1 basis-[200px]">
+        <p className="text-[16px] leading-5 font-medium text-[#F5F7FC] truncate" title={`${cue.title} · cue, no host time`}>
           <i className="ri-focus-3-line mr-1.5 text-[#AEB7C5]" aria-hidden="true" />
           <span data-testid="cue-title">{cue.title}</span>
-          <span className="ml-2 text-[14px] font-normal text-[#9AA5B5]">cue · no host time</span>
+          <span className="sr-only"> · cue, no host time</span>
         </p>
-        <p className="text-[15px] tabular-nums text-[#B7C1CE] truncate">
+        <p className="text-[16px] leading-5 tabular-nums text-[#B7C1CE] truncate">
           {fc!.timeMs !== null ? (
             <>
               {fc!.lowerBound ? "Due ≥ " : "Due "}
@@ -119,9 +128,9 @@ export function CueBar({
           {pending.length > 1 && ` · +${pending.length - 1} more`}
         </p>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-1 shrink-0">
         <Button
-          size="sm"
+          size="deskPrimary"
           variant={urgent ? "primary" : "secondary"}
           onClick={() => onPerformed(cue.id)}
           data-testid="cue-performed-btn"
@@ -129,7 +138,7 @@ export function CueBar({
         >
           I performed this
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => onAttempted(cue.id)} data-testid="cue-attempted-btn" aria-label={`Attempted: ${cue.title}`}>
+        <Button size="desk" variant="secondary" onClick={() => onAttempted(cue.id)} data-testid="cue-attempted-btn" aria-label={`Attempted: ${cue.title}`}>
           Attempted
         </Button>
         {reportButton}

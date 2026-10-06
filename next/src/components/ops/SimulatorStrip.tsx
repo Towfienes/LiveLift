@@ -6,6 +6,9 @@ import { formatClock } from "@/lib/domain";
 /**
  * Rehearsal controls. Visibly SIMULATED. The clock only moves through recorded commands, so the
  * same scenario and the same actions always produce the same outcomes.
+ *
+ * Every control is a 44px target with a 16px label. The strip has no vertical padding of its own, so the
+ * operator line stays exactly one 44px row and the controls cost the desk no extra height.
  */
 export function SimulatorStrip({
   virtualNowMs,
@@ -34,9 +37,12 @@ export function SimulatorStrip({
   message?: string | null;
 }): React.ReactElement {
   const btn =
-    "min-h-[36px] px-3 rounded-[8px] text-[15px] font-medium bg-[#2A2540] text-[#E4DAFF] hover:bg-[#363052] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap";
+    "min-h-[44px] min-w-[44px] px-2.5 rounded-[8px] text-[16px] font-medium bg-[#2A2540] text-[#E4DAFF] hover:bg-[#363052] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap shrink-0";
   return (
-    <div data-testid="simulator-strip" className="flex items-center gap-x-3 gap-y-1 min-w-0 flex-wrap xl:flex-nowrap justify-end py-1">
+    <div
+      data-testid="simulator-strip"
+      className="flex items-center gap-x-3 min-w-0 flex-1 flex-wrap xl:flex-nowrap justify-end text-[16px]"
+    >
       <span className="inline-flex items-center gap-1.5 font-semibold text-[#C8B2FF] whitespace-nowrap">
         <i className="ri-flask-line" aria-hidden="true" />
         SIMULATED
@@ -70,14 +76,20 @@ export function SimulatorStrip({
         </button>
       </span>
       {scripted && step && (
-        <span className="inline-flex items-center gap-1.5 min-w-0">
+        <span className="inline-flex items-center gap-2 min-w-0 flex-1 justify-end">
           <span className="text-[#C8B2FF] whitespace-nowrap tabular-nums">
             {step.index + 1}/{step.total}
           </span>
-          <span className="truncate max-w-[230px] text-[#E4DAFF]" title={step.label} data-testid="sim-step-label">
+          <span className="truncate min-w-0 text-[#E4DAFF]" title={step.label} data-testid="sim-step-label">
             {step.label}
           </span>
-          <button type="button" className={`${btn} !bg-[#C8B2FF] !text-[#1A1726] hover:!bg-[#D8C8FF]`} disabled={disabled} onClick={onApplyStep} data-testid="sim-apply-step">
+          <button
+            type="button"
+            className={`${btn} !bg-[#C8B2FF] !text-[#1A1726] hover:!bg-[#D8C8FF]`}
+            disabled={disabled}
+            onClick={onApplyStep}
+            data-testid="sim-apply-step"
+          >
             Apply step
           </button>
           <button type="button" className={btn} disabled={disabled} onClick={onSkipStep} data-testid="sim-skip-step">
@@ -87,7 +99,7 @@ export function SimulatorStrip({
       )}
       {scripted && !step && <span className="text-[#C8B2FF] whitespace-nowrap">Script finished</span>}
       {message && (
-        <span role="status" className="basis-full text-right text-[#F6C875] text-[13px]" title={message}>
+        <span role="status" className="basis-full text-right text-[#F6C875] text-[16px]" title={message}>
           {message}
         </span>
       )}

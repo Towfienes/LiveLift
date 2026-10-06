@@ -46,10 +46,10 @@ export function NowPanel({
   if (!segment || !run || run.startedAtMs === null) {
     const waitingFor = nextSegment && nextForecast?.anchor && nextForecast.startMs !== null && nextForecast.startMs > nowMs;
     return (
-      <section data-testid="now-panel" aria-label="Now" className="rounded-[12px] bg-[#13161C] p-5 flex flex-col min-h-0">
+      <section data-testid="now-panel" aria-label="Now" className="rounded-[12px] bg-[#13161C] p-3 [@media(min-height:740px)]:p-4 flex flex-col min-h-0">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] font-semibold tracking-[1.7px] text-[#DFFF00] uppercase">NOW</span>
-          <Signal tone="muted" icon="ri-time-line">Between segments</Signal>
+          <span className="text-[16px] leading-5 font-semibold tracking-[1.5px] text-[#DFFF00] uppercase">NOW</span>
+          <Signal tone="muted" icon="ri-time-line" size="desk">Between segments</Signal>
         </div>
         {nextSegment ? (
           <div className="mt-4 flex-1 flex flex-col justify-center">
@@ -116,10 +116,10 @@ export function NowPanel({
   };
 
   return (
-    <section data-testid="now-panel" aria-label="Now" className="rounded-[12px] bg-[#13161C] p-4 [@media(min-height:860px)]:p-5 flex flex-col min-h-0">
+    <section data-testid="now-panel" aria-label="Now" className="rounded-[12px] bg-[#13161C] p-3 [@media(min-height:740px)]:p-4 flex flex-col min-h-0">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[13px] font-semibold tracking-[1.7px] text-[#DFFF00] uppercase">NOW</span>
-        <Signal tone="lime" icon="ri-record-circle-line">
+        <span className="text-[16px] leading-5 font-semibold tracking-[1.5px] text-[#DFFF00] uppercase">NOW</span>
+        <Signal tone="lime" icon="ri-record-circle-line" size="desk">
           Segment {position.index} of {position.total} · started {clock(startedAt)}
         </Signal>
       </div>
@@ -130,13 +130,13 @@ export function NowPanel({
           <h2 className="text-[24px] leading-tight font-medium tracking-tight text-[#F5F7FC] truncate" data-testid="now-title">
             {segment.title}
           </h2>
-          {segment.cue && <p className="text-[15px] text-[#B7C1CE] truncate mt-0.5">Cue: {segment.cue}</p>}
+          {segment.cue && <p className="text-[16px] leading-6 text-[#B7C1CE] truncate">Cue: {segment.cue}</p>}
         </div>
       </div>
 
       <div className="mt-3 [@media(max-height:800px)]:mt-2 flex items-end justify-between gap-4">
         <div>
-          <p className="text-[12px] tracking-[1.2px] uppercase text-[#AEB7C5]">Actual elapsed</p>
+          <p className="text-[16px] leading-5 text-[#AEB7C5]">Actual elapsed</p>
           <p
             data-testid="now-actual-elapsed"
             className={`text-[44px] leading-none font-medium tabular-nums tracking-tight mt-1 ${over > 0 ? "text-[#F6C875]" : "text-[#F5F7FC]"}`}
@@ -148,7 +148,7 @@ export function NowPanel({
           <p className="text-[16px] font-medium tabular-nums text-[#F5F7FC]">
             {over > 0 ? `${formatDuration(over)} over target` : `${formatDuration(-over)} to target`}
           </p>
-          <p className="text-[14px] text-[#B7C1CE] tabular-nums">
+          <p className="text-[16px] leading-6 text-[#B7C1CE] tabular-nums">
             Target {formatDuration(targetSec)}
             {minSec !== null ? ` · min ${formatDuration(minSec)}` : " · no minimum set"}
           </p>
@@ -175,7 +175,7 @@ export function NowPanel({
       <div className="mt-1.5 space-y-0.5">
         {editing ? (
           <div className="flex items-center gap-2 min-h-[44px]">
-            <label htmlFor="host-estimate" className="text-[14px] text-[#CAD0DA] whitespace-nowrap">
+            <label htmlFor="host-estimate" className="text-[16px] text-[#CAD0DA] whitespace-nowrap">
               Host needs
             </label>
             <input
@@ -191,14 +191,14 @@ export function NowPanel({
                 if (e.key === "Enter") submitEstimate();
               }}
               data-autofocus
-              className="w-[72px] h-10 bg-[#13161C] border border-[#39414D] rounded-[8px] px-2 text-[16px] text-[#F5F7FC] tabular-nums"
+              className="w-[76px] h-11 bg-[#13161C] border border-[#39414D] rounded-[8px] px-2 text-[16px] text-[#F5F7FC] tabular-nums"
             />
-            <span className="text-[15px] text-[#CAD0DA]">more min</span>
-            <Button size="sm" variant="primary" onClick={submitEstimate} data-testid="estimate-set-btn" disabled={minutes.trim() === ""}>
+            <span className="text-[16px] text-[#CAD0DA]">more min</span>
+            <Button size="deskPrimary" variant="primary" onClick={submitEstimate} data-testid="estimate-set-btn" disabled={minutes.trim() === ""}>
               Set
             </Button>
             <Button
-              size="sm"
+              size="desk"
               variant="secondary"
               onClick={() => {
                 onMarkUnknown();
@@ -209,13 +209,13 @@ export function NowPanel({
             >
               Unknown
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+            <Button size="desk" variant="ghost" onClick={() => setEditing(false)}>
               Cancel
             </Button>
           </div>
         ) : (
           <div className="flex items-center justify-between gap-2 min-h-[44px]">
-            <Signal tone={endLine.tone} icon={endLine.tone === "warn" ? "ri-question-line" : "ri-flag-line"} className="tabular-nums text-[15px]" title={endLine.text}>
+            <Signal tone={endLine.tone} icon={endLine.tone === "warn" ? "ri-question-line" : "ri-flag-line"} className="tabular-nums" size="desk" title={endLine.text}>
               <span data-testid="now-end-line">{`${endLine.text}${run.remainingEstimate && run.remainingEstimate.endsAtMs !== run.remainingEstimate.reportedAtMs ? ` (set ${clock(run.remainingEstimate.reportedAtMs)})` : ""}`}</span>
             </Signal>
             <span className="flex items-center shrink-0">
@@ -223,7 +223,7 @@ export function NowPanel({
                 type="button"
                 onClick={() => setEditing(true)}
                 data-testid="estimate-open-btn"
-                className="min-h-[44px] px-2.5 rounded-[8px] text-[15px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
+                className="min-h-[44px] px-2.5 rounded-[8px] text-[16px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
               >
                 {hasHostInput ? "Update estimate" : "Host estimate"}
               </button>
@@ -232,7 +232,7 @@ export function NowPanel({
                   type="button"
                   onClick={() => onSetEstimate(null)}
                   data-testid="estimate-clear-btn"
-                  className="min-h-[44px] px-2.5 rounded-[8px] text-[15px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
+                  className="min-h-[44px] px-2.5 rounded-[8px] text-[16px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
                 >
                   Clear
                 </button>
@@ -241,7 +241,7 @@ export function NowPanel({
           </div>
         )}
         {guard && guard.latestFreeMs !== null && (
-          <Signal tone="neutral" icon="ri-lock-2-line" className="tabular-nums">
+          <Signal tone="neutral" icon="ri-lock-2-line" className="tabular-nums" size="desk">
             Must end by {clock(guard.latestFreeMs)} to keep its {clock(guard.committedMs)} commitment
           </Signal>
         )}

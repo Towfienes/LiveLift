@@ -50,12 +50,12 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
           <h1 className="text-[20px] font-medium tracking-[-0.4px] text-[#F5F7FC] truncate max-w-[34vw]">
             {sessionTitle}
           </h1>
-          <EnvironmentBadge environment={environment} size="sm" />
+          <EnvironmentBadge environment={environment} size="md" />
         </div>
 
         <div className="flex items-center gap-4 shrink-0">
           <span
-            className={`inline-flex items-center gap-2 text-[15px] font-medium ${
+            className={`inline-flex items-center gap-2 text-[16px] font-medium ${
               tracking === "active" ? "text-[#DFFF00]" : "text-[#CAD0DA]"
             }`}
           >
@@ -76,7 +76,7 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
 
           <Link
             href="/"
-            className="min-h-[44px] px-3 rounded-[8px] text-[15px] text-[#CAD0DA] hover:text-white hover:bg-[#1E232B] inline-flex items-center gap-1.5 transition-colors"
+            className="min-h-[44px] px-3 rounded-[8px] text-[16px] text-[#CAD0DA] hover:text-white hover:bg-[#1E232B] inline-flex items-center gap-1.5 transition-colors"
           >
             <i className="ri-logout-box-r-line" aria-hidden="true" />
             <span>Leave desk</span>
@@ -97,7 +97,7 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
 
       {/* Operator and room context line */}
       <div
-        className={`min-h-[36px] px-5 border-b flex items-center justify-between gap-4 text-[15px] shrink-0 ${
+        className={`min-h-[36px] px-5 border-b flex items-center justify-between gap-4 text-[16px] shrink-0 ${
           simulated
             ? "bg-[#1A1726] border-[#2E2745] text-[#C8B2FF]"
             : "bg-[#0C0E14] border-[#1A1F27] text-[#B7C1CE]"

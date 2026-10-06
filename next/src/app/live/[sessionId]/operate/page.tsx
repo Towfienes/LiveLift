@@ -356,17 +356,17 @@ function Desk({
           <div
             role="alert"
             data-testid="unsaved-banner"
-            className="rounded-[8px] px-3 py-1.5 text-[15px] flex items-center justify-between gap-3 shrink-0 bg-[#302025] text-[#F4A4A4]"
+            className="rounded-[8px] px-3 py-1 text-[16px] flex items-center justify-between gap-3 shrink-0 bg-[#302025] text-[#F4A4A4]"
           >
             <span className="flex items-center gap-2 min-w-0">
               <i className="ri-error-warning-line" aria-hidden="true" />
               <span className="truncate" title={unsaved.message}>{unsaved.message}</span>
             </span>
             <span className="flex items-center gap-2 shrink-0">
-              <Button size="sm" variant="secondary" onClick={retryUnsaved} data-testid="unsaved-retry-btn">
+              <Button size="desk" variant="secondary" onClick={retryUnsaved} data-testid="unsaved-retry-btn">
                 Retry
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setUnsaved(null)} data-testid="unsaved-discard-btn">
+              <Button size="desk" variant="ghost" onClick={() => setUnsaved(null)} data-testid="unsaved-discard-btn">
                 Discard
               </Button>
             </span>
@@ -377,7 +377,7 @@ function Desk({
           <div
             role="alert"
             data-testid="clock-discontinuity"
-            className="rounded-[8px] px-3 py-1.5 text-[15px] flex items-center justify-between gap-3 shrink-0 bg-[#2A2316] text-[#F6C875]"
+            className="rounded-[8px] px-3 py-1 text-[16px] flex items-center justify-between gap-3 shrink-0 bg-[#2A2316] text-[#F6C875]"
           >
             <span className="min-w-0">
               <i className="ri-time-line mr-1.5" aria-hidden="true" />
@@ -386,7 +386,7 @@ function Desk({
               alignment is uncertain until the clock catches up. Anchors and recorded times are unchanged.
             </span>
             <Button
-              size="sm"
+              size="desk"
               variant="secondary"
               onClick={() =>
                 run({ type: "acknowledge_clock_discontinuity", deviceNowMs: discontinuity.deviceNowMs, keptNowMs: discontinuity.keptNowMs })
@@ -402,7 +402,7 @@ function Desk({
           <div
             role="status"
             data-testid="command-ack-banner"
-            className={`rounded-[8px] px-3 py-1 text-[15px] flex items-center justify-between gap-3 shrink-0 ${
+            className={`rounded-[8px] px-3 py-1 text-[16px] flex items-center justify-between gap-3 shrink-0 ${
               notice.tone === "ok"
                 ? "fixed bottom-4 right-4 z-40 max-w-[min(560px,calc(100vw-2rem))] bg-[#161B22] text-[#DFFF00] border border-[#2B3324] shadow-2xl"
                 : "bg-[#302025] text-[#F4A4A4]"
@@ -415,7 +415,7 @@ function Desk({
             <button
               type="button"
               onClick={() => setNotice(null)}
-              className="min-h-[40px] min-w-[40px] text-[#CAD0DA] hover:text-white cursor-pointer"
+              className="min-h-[44px] min-w-[44px] text-[#CAD0DA] hover:text-white cursor-pointer"
               aria-label="Dismiss"
             >
               <i className="ri-close-line" aria-hidden="true" />
@@ -460,7 +460,7 @@ function Desk({
         </div>
 
         {/* Operator toolbar: the next cue, then routine runtime actions */}
-        <div className="flex items-center justify-between gap-x-3 gap-y-1 flex-wrap shrink-0 px-1 min-h-[44px]" data-testid="operator-toolbar">
+        <div className="flex items-center justify-between gap-x-3 gap-y-1 flex-wrap xl:flex-nowrap shrink-0 px-1 min-h-[44px]" data-testid="operator-toolbar">
           <CueBar
             cues={plan.cues}
             forecasts={forecast.cues}
@@ -471,10 +471,10 @@ function Desk({
             onAttempted={(id) => run({ type: "report_cue", cueId: id, report: "attempted" })}
             onReport={openReport}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="secondary"
-              size="sm"
+              size="desk"
               disabled={!active}
               onClick={() => active && run({ type: "extend_segment", segmentId: active.id, deltaSec: 60 })}
               data-testid="extend-plus-one-btn"
@@ -483,18 +483,18 @@ function Desk({
             >
               <span>Extend +1m</span>
               {extendHint && (
-                <span className={`text-[13px] font-normal max-w-[170px] truncate ${extendHint.tone === "warn" ? "text-[#F6C875]" : "text-[#AEB7C5]"}`} data-testid="extend-hint" title={extendHint.full}>
+                <span className={`text-[16px] font-normal max-w-[230px] truncate ${extendHint.tone === "warn" ? "text-[#F6C875]" : "text-[#AEB7C5]"}`} data-testid="extend-hint" title={extendHint.full}>
                   {extendHint.text}
                 </span>
               )}
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setDialog("choose")} data-testid="choose-next-btn">
+            <Button variant="secondary" size="desk" onClick={() => setDialog("choose")} data-testid="choose-next-btn">
               Choose next
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setDialog("skip")} data-testid="skip-segment-btn">
+            <Button variant="secondary" size="desk" onClick={() => setDialog("skip")} data-testid="skip-segment-btn">
               Skip…
             </Button>
-            <Button variant="ghost" size="sm" icon="ri-edit-line" onClick={() => setDialog("note")} data-testid="quick-add-note-btn">
+            <Button variant="ghost" size="desk" icon="ri-edit-line" onClick={() => setDialog("note")} data-testid="quick-add-note-btn">
               Note
             </Button>
           </div>
@@ -505,7 +505,7 @@ function Desk({
           <section className="rounded-[12px] bg-[#13161C] p-3 pb-1 flex flex-col min-h-0" aria-label="Run of Show panel">
             <div className="flex items-center justify-between gap-3 pb-1 shrink-0 flex-wrap">
               <h2 className="text-[18px] font-medium text-[#F5F7FC]">Run of Show</h2>
-              <div className="flex items-center gap-3 text-[15px]">
+              <div className="flex items-center gap-3 text-[16px]">
                 {forecast.finishMs !== null && (
                   <span className="text-[#CAD0DA] tabular-nums" data-testid="projected-finish">
                     Projected finish {forecast.finishLowerBound ? "≥ " : ""}
@@ -514,10 +514,10 @@ function Desk({
                 )}
                 {forecast.baselineFinishMs !== null && (
                   <span className="inline-flex items-center gap-1.5 text-[#AEB7C5]" title={`Downstream drift against the immutable baseline (finish ${formatClock(forecast.baselineFinishMs, tz, true)})`}>
-                    drift <Drift seconds={forecast.finishDriftSec} lowerBound={forecast.finishLowerBound} />
+                    drift <Drift seconds={forecast.finishDriftSec} lowerBound={forecast.finishLowerBound} size="desk" />
                   </span>
                 )}
-                <Button variant="ghost" size="sm" icon="ri-focus-3-line" onClick={() => scrollCurrentRowIntoView()}>
+                <Button variant="ghost" size="desk" icon="ri-focus-3-line" onClick={() => scrollCurrentRowIntoView()}>
                   Return to current
                 </Button>
               </div>

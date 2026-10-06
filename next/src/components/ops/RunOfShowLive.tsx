@@ -91,43 +91,51 @@ export function RunOfShowLive({
           const cue = item.cue;
           const fc = forecast.cues.find((f) => f.cueId === cue.id);
           const run = session.runtime.cues[cue.id] ?? emptyCueRun();
+          const reportable = cue.audience === "operator" && (run.state === "pending" || run.state === "attempted") && Boolean(onReportCue);
+          const tag =
+            cue.audience !== "operator" ? "Presenter cue" : cue.action !== "none" ? CUE_ACTION_LABEL[cue.action] : "Operator cue";
           return (
-            <li key={cue.id} className="flex items-center gap-3 py-1.5 pl-[96px] pr-3 text-[14px]" data-testid={`ros-cue-${cue.id}`}>
-              <i className="ri-focus-3-line text-[#8A95A5]" aria-hidden="true" />
-              <span className="text-[#B7C1CE] truncate flex-1 min-w-0">
-                <span className="text-[#9AA5B5]">{cue.audience === "operator" ? "Operator cue" : "Presenter cue"} · </span>
-                <span className="text-[#E4E8F0]">{cue.title}</span>
-                {cue.action !== "none" && <span className="text-[#9AA5B5]"> · {CUE_ACTION_LABEL[cue.action]}</span>}
-              </span>
-              <span className="tabular-nums text-[#9AA5B5] whitespace-nowrap">
-                {fc?.orphaned ? "segment skipped" : fc?.timeMs != null ? `${fc.lowerBound ? "≥ " : ""}${formatClock(fc.timeMs, tz, true)}` : "—"}
-              </span>
-              <span className="w-[210px] text-right flex items-center justify-end gap-2">
-                {cue.audience === "operator" && (run.state === "pending" || run.state === "attempted") && onReportCue && (
-                  <button
-                    type="button"
-                    onClick={() => onReportCue(cue.id)}
-                    data-testid={`ros-cue-report-${cue.id}`}
-                    aria-label={`Report ${cue.title}`}
-                    className="min-h-[36px] px-2 rounded-[6px] text-[14px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer"
-                  >
-                    Report
-                  </button>
-                )}
-                {cue.audience !== "operator" ? (
-                  <Signal tone="muted">informational</Signal>
-                ) : run.state === "performed" ? (
-                  <Signal tone="neutral" icon="ri-hand-heart-line">Reported performed · unverified</Signal>
-                ) : run.state === "attempted" ? (
-                  <Signal tone="warn" icon="ri-cursor-line">Attempted · outcome unknown</Signal>
-                ) : run.state === "cancelled" ? (
-                  <Signal tone="muted" icon="ri-close-circle-line">Cancelled</Signal>
-                ) : fc?.dueInSec != null && fc.dueInSec < 0 ? (
-                  <Signal tone="warn" icon="ri-time-line">Not reported · {formatDuration(-fc.dueInSec)} overdue</Signal>
-                ) : (
-                  <Signal tone="muted">Not reported</Signal>
-                )}
-              </span>
+            <li key={cue.id} className="flex items-center gap-3 py-1 pl-[88px] pr-2" data-testid={`ros-cue-${cue.id}`}>
+              <i className="ri-focus-3-line text-[18px] text-[#8A95A5] shrink-0" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[16px] leading-6 text-[#E4E8F0] truncate" title={cue.title}>
+                  {cue.title}
+                </p>
+                <p className="flex items-center gap-x-3 min-w-0 text-[16px] leading-5 text-[#9AA5B5]">
+                  <span className="truncate min-w-0" title={`${tag} · no host time`}>
+                    {tag}
+                  </span>
+                  <span className="tabular-nums whitespace-nowrap shrink-0">
+                    {fc?.orphaned ? "segment skipped" : fc?.timeMs != null ? `${fc.lowerBound ? "≥ " : ""}${formatClock(fc.timeMs, tz, true)}` : "—"}
+                  </span>
+                  <span className="shrink-0">
+                    {cue.audience !== "operator" ? (
+                      <Signal tone="muted" size="desk">informational</Signal>
+                    ) : run.state === "performed" ? (
+                      <Signal tone="neutral" icon="ri-hand-heart-line" size="desk">Reported performed · unverified</Signal>
+                    ) : run.state === "attempted" ? (
+                      <Signal tone="warn" icon="ri-cursor-line" size="desk">Attempted · outcome unknown</Signal>
+                    ) : run.state === "cancelled" ? (
+                      <Signal tone="muted" icon="ri-close-circle-line" size="desk">Cancelled</Signal>
+                    ) : fc?.dueInSec != null && fc.dueInSec < 0 ? (
+                      <Signal tone="warn" icon="ri-time-line" size="desk">Not reported · {formatDuration(-fc.dueInSec)} overdue</Signal>
+                    ) : (
+                      <Signal tone="muted" size="desk">Not reported</Signal>
+                    )}
+                  </span>
+                </p>
+              </div>
+              {reportable && (
+                <button
+                  type="button"
+                  onClick={() => onReportCue?.(cue.id)}
+                  data-testid={`ros-cue-report-${cue.id}`}
+                  aria-label={`Report ${cue.title}`}
+                  className="min-h-[44px] min-w-[44px] px-3 rounded-[8px] text-[16px] font-medium text-[#CAD0DA] hover:text-[#DFFF00] hover:bg-[#1B2028] cursor-pointer shrink-0"
+                >
+                  Report
+                </button>
+              )}
             </li>
           );
         }
@@ -155,9 +163,9 @@ export function RunOfShowLive({
               run.state === "skipped" ? "opacity-60" : ""
             }`}
           >
-            <div className="w-[72px] shrink-0">
-              <span className="text-[12px] font-mono text-[#AEB7C5]">{String(index + 1).padStart(2, "0")}</span>
-              <p className="text-[14px] tabular-nums text-[#E4E8F0]">
+            <div className="w-[100px] shrink-0">
+              <span className="block text-[16px] leading-5 font-mono text-[#AEB7C5]">{String(index + 1).padStart(2, "0")}</span>
+              <p className="text-[16px] leading-6 tabular-nums text-[#E4E8F0]">
                 {fc.startMs !== null ? `${fc.lowerBound && run.state === "pending" ? "≥ " : ""}${formatClock(fc.startMs, tz, true)}` : "—"}
               </p>
             </div>
@@ -167,44 +175,44 @@ export function RunOfShowLive({
               <div className="flex items-center gap-3 flex-wrap">
                 {fc.anchor && run.state !== "skipped" && (
                   <>
-                    <AnchorBadge committedMs={fc.anchor.committedMs} tz={tz} />
-                    <AnchorStatus anchor={fc.anchor} tz={tz} />
+                    <AnchorBadge committedMs={fc.anchor.committedMs} tz={tz} size="desk" />
+                    <AnchorStatus anchor={fc.anchor} tz={tz} size="desk" />
                   </>
                 )}
-                {fc.anchor && run.state === "skipped" && <Signal tone="warn" icon="ri-lock-2-line">Commitment cancelled</Signal>}
-                {segment.optional && <Signal tone="muted">optional</Signal>}
-                {run.deferred && run.state === "pending" && <Signal tone="muted" icon="ri-arrow-down-line">deferred</Signal>}
-                {run.belowMinimum && <Signal tone="warn">below minimum</Signal>}
-                {run.coverage === "partial" && <Signal tone="warn">coverage partial</Signal>}
+                {fc.anchor && run.state === "skipped" && <Signal tone="warn" icon="ri-lock-2-line" size="desk">Commitment cancelled</Signal>}
+                {segment.optional && <Signal tone="muted" size="desk">optional</Signal>}
+                {run.deferred && run.state === "pending" && <Signal tone="muted" icon="ri-arrow-down-line" size="desk">deferred</Signal>}
+                {run.belowMinimum && <Signal tone="warn" size="desk">below minimum</Signal>}
+                {run.coverage === "partial" && <Signal tone="warn" size="desk">coverage partial</Signal>}
                 {!fc.anchor && !segment.optional && segment.cue && (
-                  <span className="text-[13px] text-[#9AA5B5] truncate">{segment.cue}</span>
+                  <span className="text-[16px] leading-6 text-[#9AA5B5] truncate">{segment.cue}</span>
                 )}
               </div>
             </div>
             <div className="w-[150px] shrink-0 text-right">
               {run.state === "completed" && actualSec !== null && (
-                <p className="text-[15px] font-medium tabular-nums text-[#F5F7FC]">
+                <p className="text-[16px] leading-6 font-medium tabular-nums text-[#F5F7FC]">
                   {formatDuration(actualSec)}
                   {baseTarget !== null && actualSec - baseTarget !== 0 && (
-                    <span className={`ml-1.5 text-[13px] ${actualSec - baseTarget > 0 ? "text-[#F6C875]" : "text-[#9AA5B5]"}`}>
+                    <span className={`ml-1.5 text-[16px] ${actualSec - baseTarget > 0 ? "text-[#F6C875]" : "text-[#9AA5B5]"}`}>
                       {formatSigned(actualSec - baseTarget)}
                     </span>
                   )}
                 </p>
               )}
               {run.state === "active" && (
-                <p className="text-[15px] font-medium tabular-nums text-[#F5F7FC]">
+                <p className="text-[16px] leading-6 font-medium tabular-nums text-[#F5F7FC]">
                   {segment.targetSec !== null ? formatDuration(segment.targetSec) : "—"}
-                  <span className="text-[13px] text-[#9AA5B5]"> target</span>
+                  <span className="text-[16px] font-normal text-[#9AA5B5]"> target</span>
                 </p>
               )}
               {run.state === "pending" && (
-                <p className="text-[15px] font-medium tabular-nums text-[#F5F7FC]">
+                <p className="text-[16px] leading-6 font-medium tabular-nums text-[#F5F7FC]">
                   {segment.targetSec !== null ? formatDuration(segment.targetSec) : "Not entered"}
-                  <Drift seconds={fc.driftSec} lowerBound={fc.lowerBound} className="ml-1.5 text-[13px]" />
+                  <Drift seconds={fc.driftSec} lowerBound={fc.lowerBound} className="ml-1.5" size="desk" />
                 </p>
               )}
-              <Signal tone={state.tone} icon={state.icon} className="justify-end">
+              <Signal tone={state.tone} icon={state.icon} className="justify-end" size="desk">
                 {state.text}
               </Signal>
             </div>

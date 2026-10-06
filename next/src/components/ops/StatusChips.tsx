@@ -9,6 +9,18 @@ import { formatClock, formatDuration, formatSigned } from "@/lib/domain";
 
 export type Tone = "neutral" | "lime" | "warn" | "danger" | "violet" | "muted";
 
+/**
+ * `desk` is the operating-desk reading size: operational status and metadata are 16px there, on a
+ * 20px line so single-line chips stay compact. Other screens keep the compact default.
+ * Desk callers must not add their own text-size class: two `text-[Npx]` utilities on one element
+ * resolve by stylesheet order, not by their order in the class list.
+ */
+export type SignalSize = "default" | "desk";
+const SIGNAL_SIZE: Record<SignalSize, string> = {
+  default: "text-[14px] leading-5",
+  desk: "text-[16px] leading-5",
+};
+
 const TONE: Record<Tone, string> = {
   neutral: "text-[#CAD0DA]",
   lime: "text-[#DFFF00]",
@@ -24,15 +36,17 @@ export function Signal({
   children,
   className = "",
   title,
+  size = "default",
 }: {
   tone?: Tone;
   icon?: string;
   children: React.ReactNode;
   className?: string;
   title?: string;
+  size?: SignalSize;
 }): React.ReactElement {
   return (
-    <span title={title} className={`inline-flex items-center gap-1.5 text-[14px] leading-5 ${TONE[tone]} ${className}`}>
+    <span title={title} className={`inline-flex items-center gap-1.5 ${SIGNAL_SIZE[size]} ${TONE[tone]} ${className}`}>
       {icon && <i className={icon} aria-hidden="true" />}
       <span>{children}</span>
     </span>
@@ -44,13 +58,15 @@ export function AnchorBadge({
   committedMs,
   tz,
   className = "",
+  size = "default",
 }: {
   committedMs: number;
   tz: string;
   className?: string;
+  size?: SignalSize;
 }): React.ReactElement {
   return (
-    <Signal tone="neutral" icon="ri-lock-2-line" className={className} title="Hard anchor: this commitment does not move unless you re-anchor it explicitly">
+    <Signal tone="neutral" icon="ri-lock-2-line" className={className} size={size} title="Hard anchor: this commitment does not move unless you re-anchor it explicitly">
       <span className="tabular-nums">Hard anchor {formatClock(committedMs, tz, true)}</span>
     </Signal>
   );
@@ -85,10 +101,10 @@ export function anchorSignal(
   }
 }
 
-export function AnchorStatus({ anchor, tz }: { anchor: AnchorForecast; tz: string }): React.ReactElement {
+export function AnchorStatus({ anchor, tz, size = "default" }: { anchor: AnchorForecast; tz: string; size?: SignalSize }): React.ReactElement {
   const s = anchorSignal(anchor, tz);
   return (
-    <Signal tone={s.tone} icon={s.icon}>
+    <Signal tone={s.tone} icon={s.icon} size={size}>
       {s.text}
     </Signal>
   );
@@ -99,15 +115,17 @@ export function Drift({
   seconds,
   lowerBound = false,
   className = "",
+  size = "default",
 }: {
   seconds: number | null;
   lowerBound?: boolean;
   className?: string;
+  size?: SignalSize;
 }): React.ReactElement | null {
   if (seconds === null) return null;
-  if (seconds === 0) return <Signal tone="muted" className={className}>on plan</Signal>;
+  if (seconds === 0) return <Signal tone="muted" className={className} size={size}>on plan</Signal>;
   return (
-    <Signal tone={seconds > 0 ? "warn" : "neutral"} className={`tabular-nums ${className}`}>
+    <Signal tone={seconds > 0 ? "warn" : "neutral"} className={`tabular-nums ${className}`} size={size}>
       {lowerBound && seconds > 0 ? "≥ " : ""}
       {formatSigned(seconds)}
     </Signal>

@@ -57,15 +57,16 @@ export function EndLiveDialog({
       onClose={onClose}
       title="End LIVE tracking?"
       confirmText="End tracking"
+      confirmSize="lg"
       cancelText="Keep operating"
       onConfirm={onConfirm}
     >
-      <div className="space-y-3 text-[15px] leading-relaxed text-[#CAD0DA]" data-testid="end-live-dialog">
+      <div className="space-y-3 text-[16px] leading-relaxed text-[#CAD0DA]" data-testid="end-live-dialog">
         <p>
           This stops <strong className="text-[#F5F7FC]">LiveLift tracking</strong>. It does not stop your platform broadcast — end that in
           TikTok LIVE Manager separately.
         </p>
-        <ul className="space-y-1.5 text-[14px]">
+        <ul className="space-y-1.5 text-[16px]">
           {running && <li>The running segment will be closed with the show; its coverage stays undeclared.</li>}
           <li>
             {notReached.length === 0
@@ -83,7 +84,7 @@ export function EndLiveDialog({
             </li>
           )}
         </ul>
-        <p className="text-[14px] text-[#9AA5B5]">After ending, the runtime is frozen. Review can append notes and corrections but never rewrites what happened.</p>
+        <p className="text-[16px] text-[#9AA5B5]">After ending, the runtime is frozen. Review can append notes and corrections but never rewrites what happened.</p>
       </div>
     </Dialog>
   );
@@ -107,11 +108,11 @@ export function AckDialog({
   onConfirm: () => void;
 }): React.ReactElement {
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title={title} confirmText={confirmText} onConfirm={onConfirm} size="sm">
-      <p className="text-[15px] leading-relaxed text-[#CAD0DA]" data-testid="ack-message">
+    <Dialog isOpen={isOpen} onClose={onClose} title={title} confirmText={confirmText} confirmSize="lg" onConfirm={onConfirm} size="sm">
+      <p className="text-[16px] leading-relaxed text-[#CAD0DA]" data-testid="ack-message">
         {message}
       </p>
-      <p className="text-[13px] text-[#9AA5B5] mt-3">The exception is recorded in the history. Nothing is hidden or rewritten.</p>
+      <p className="text-[16px] text-[#9AA5B5] mt-3">The exception is recorded in the history. Nothing is hidden or rewritten.</p>
     </Dialog>
   );
 }
@@ -184,17 +185,18 @@ export function ReanchorDialog({
       onClose={onClose}
       title={`Re-anchor ${segment.title}`}
       confirmText="Record new commitment"
+      confirmSize="lg"
       onConfirm={() => offset !== null && onConfirm({ segmentId: segment.id, anchorOffsetSec: offset, reason: reason.trim() })}
       confirmDisabled={!valid}
     >
       <div className="space-y-4" data-testid="reanchor-dialog">
-        <p className="text-[14px] text-[#CAD0DA] leading-relaxed">
+        <p className="text-[16px] text-[#CAD0DA] leading-relaxed">
           A hard anchor is a commitment. Changing it is a <strong className="text-[#F5F7FC]">new plan version</strong>, not a recovery:
           the original <span className="tabular-nums">{formatClock(baselinePlanAnchor(session, segment.id) ?? committed, tz, true)}</span>{" "}
           stays in the baseline and in Review.
         </p>
         <div>
-          <label htmlFor="reanchor-time" className="block text-[14px] text-[#CAD0DA] mb-1">
+          <label htmlFor="reanchor-time" className="block text-[16px] text-[#CAD0DA] mb-1">
             New committed start ({tz})
           </label>
           <input
@@ -207,12 +209,12 @@ export function ReanchorDialog({
             onChange={(e) => setTimeText(e.target.value)}
             className={INPUT}
           />
-          <p className="text-[13px] text-[#9AA5B5] mt-1">
+          <p className="text-[16px] text-[#9AA5B5] mt-1">
             Currently {formatClock(committed, tz, true)} · earliest projected arrival {formatClock(projected, tz, true)}
           </p>
         </div>
         <div>
-          <label htmlFor="reanchor-reason" className="block text-[14px] text-[#CAD0DA] mb-1">
+          <label htmlFor="reanchor-reason" className="block text-[16px] text-[#CAD0DA] mb-1">
             Reason (recorded with the change)
           </label>
           <input
@@ -227,7 +229,7 @@ export function ReanchorDialog({
         </div>
         {preview?.error && <Signal tone="danger" icon="ri-error-warning-line">{preview.error}</Signal>}
         {preview && !preview.error && (
-          <div className="text-[14px] text-[#CAD0DA]" data-testid="reanchor-preview">
+          <div className="text-[16px] text-[#CAD0DA]" data-testid="reanchor-preview">
             {preview.stillBroken.length === 0 ? (
               <Signal tone="neutral" icon="ri-checkbox-circle-line">After this change no other commitment is at risk.</Signal>
             ) : (
@@ -288,25 +290,25 @@ export function ChooseNextDialog({
           <li key={seg.id} className="p-3 rounded-[8px] bg-[#14171E] flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[16px] font-medium text-[#F5F7FC] truncate">{seg.title}</p>
-              <p className="text-[13px] text-[#9AA5B5]">
+              <p className="text-[16px] text-[#9AA5B5]">
                 {seg.targetSec !== null ? formatDuration(seg.targetSec) : "no duration"}
                 {seg.anchorOffsetSec !== null ? " · hard anchor" : ""}
                 {seg.optional ? " · optional" : ""}
               </p>
-              {blocked && blocked !== "Already next" && <p className="text-[13px] text-[#F6C875] mt-0.5">{blocked}</p>}
+              {blocked && blocked !== "Already next" && <p className="text-[16px] text-[#F6C875] mt-0.5">{blocked}</p>}
             </div>
             <button
               type="button"
               disabled={blocked !== null}
               onClick={() => onChoose(seg.id)}
               data-testid={`choose-next-${seg.id}`}
-              className="min-h-[44px] px-3 rounded-[8px] text-[15px] font-medium bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+              className="min-h-[44px] px-3 rounded-[8px] text-[16px] font-medium bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
             >
               {blocked === "Already next" ? "Already next" : "Run next"}
             </button>
           </li>
         ))}
-        {rows.length === 0 && <li className="text-[14px] text-[#9AA5B5]">No pending segments.</li>}
+        {rows.length === 0 && <li className="text-[16px] text-[#9AA5B5]">No pending segments.</li>}
       </ul>
     </Dialog>
   );
@@ -335,7 +337,7 @@ export function SkipDialog({
           <li key={seg.id} className="p-3 rounded-[8px] bg-[#14171E] flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[16px] font-medium text-[#F5F7FC] truncate">{seg.title}</p>
-              <p className="text-[13px] text-[#9AA5B5]">
+              <p className="text-[16px] text-[#9AA5B5]">
                 {seg.optional ? "Optional" : "Required coverage"}
                 {seg.anchorOffsetSec !== null ? " · hard anchor (a commitment)" : ""}
                 {seg.targetSec !== null ? ` · frees ${formatDuration(seg.targetSec)}` : ""}
@@ -345,13 +347,13 @@ export function SkipDialog({
               type="button"
               onClick={() => onSkip(seg.id)}
               data-testid={`skip-${seg.id}`}
-              className="min-h-[44px] px-3 rounded-[8px] text-[15px] font-medium bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944] cursor-pointer whitespace-nowrap"
+              className="min-h-[44px] px-3 rounded-[8px] text-[16px] font-medium bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944] cursor-pointer whitespace-nowrap"
             >
               Skip
             </button>
           </li>
         ))}
-        {pending.length === 0 && <li className="text-[14px] text-[#9AA5B5]">No pending segments.</li>}
+        {pending.length === 0 && <li className="text-[16px] text-[#9AA5B5]">No pending segments.</li>}
       </ul>
     </Dialog>
   );
@@ -447,6 +449,7 @@ export function ReportActionDialog({
       onClose={onClose}
       title="Report an action"
       confirmText="Record report"
+      confirmSize="lg"
       onConfirm={() => {
         const body = build();
         if (body) onConfirm(body);
@@ -455,7 +458,7 @@ export function ReportActionDialog({
     >
       <div className="space-y-4" data-testid="cue-report-dialog">
         <div>
-          <label htmlFor="report-target" className="block text-[15px] text-[#CAD0DA] mb-1">
+          <label htmlFor="report-target" className="block text-[16px] text-[#CAD0DA] mb-1">
             What are you reporting?
           </label>
           <select id="report-target" data-testid="report-target" value={choice} onChange={(e) => setChoice(e.target.value)} className={INPUT}>
@@ -480,7 +483,7 @@ export function ReportActionDialog({
         {isNew && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-testid="unplanned-fields">
             <div>
-              <label htmlFor="report-action" className="block text-[15px] text-[#CAD0DA] mb-1">Action</label>
+              <label htmlFor="report-action" className="block text-[16px] text-[#CAD0DA] mb-1">Action</label>
               <select id="report-action" value={action} onChange={(e) => setAction(e.target.value as ManualActionKind)} className={INPUT}>
                 <option value="pin_product">Pin product</option>
                 <option value="unpin_product">Unpin product</option>
@@ -489,7 +492,7 @@ export function ReportActionDialog({
               </select>
             </div>
             <div>
-              <label htmlFor="report-product" className="block text-[15px] text-[#CAD0DA] mb-1">
+              <label htmlFor="report-product" className="block text-[16px] text-[#CAD0DA] mb-1">
                 Product{needsProduct ? "" : " (optional)"}
               </label>
               <select id="report-product" value={productId} onChange={(e) => setProductId(e.target.value)} className={INPUT}>
@@ -503,7 +506,7 @@ export function ReportActionDialog({
             </div>
             {!needsProduct && (
               <div className="sm:col-span-2">
-                <label htmlFor="report-label" className="block text-[15px] text-[#CAD0DA] mb-1">Target (e.g. the promotion name)</label>
+                <label htmlFor="report-label" className="block text-[16px] text-[#CAD0DA] mb-1">Target (e.g. the promotion name)</label>
                 <input id="report-label" data-testid="report-label" value={label} onChange={(e) => setLabel(e.target.value)} className={INPUT} />
               </div>
             )}
@@ -511,10 +514,10 @@ export function ReportActionDialog({
         )}
 
         <fieldset>
-          <legend className="text-[15px] text-[#CAD0DA] mb-1.5">What happened?</legend>
+          <legend className="text-[16px] text-[#CAD0DA] mb-1.5">What happened?</legend>
           <div className="space-y-1">
             {kinds.map(([value, text]) => (
-              <label key={value} className="flex items-center gap-2 min-h-[36px] cursor-pointer text-[16px] text-[#F5F7FC]">
+              <label key={value} className="flex items-center gap-2 min-h-[44px] cursor-pointer text-[16px] text-[#F5F7FC]">
                 <input type="radio" name="report-kind" checked={effectiveReport === value} onChange={() => setReport(value)} className="w-5 h-5 accent-[#DFFF00]" />
                 {text}
               </label>
@@ -523,7 +526,7 @@ export function ReportActionDialog({
         </fieldset>
         {effectiveReport !== "cancelled" ? (
           <div>
-            <label htmlFor="cue-when" className="block text-[15px] text-[#CAD0DA] mb-1">
+            <label htmlFor="cue-when" className="block text-[16px] text-[#CAD0DA] mb-1">
               It happened
             </label>
             <select id="cue-when" value={secondsAgo} onChange={(e) => setSecondsAgo(Number(e.target.value))} className={INPUT}>
@@ -537,13 +540,13 @@ export function ReportActionDialog({
           </div>
         ) : (
           <div>
-            <label htmlFor="cue-reason" className="block text-[15px] text-[#CAD0DA] mb-1">
+            <label htmlFor="cue-reason" className="block text-[16px] text-[#CAD0DA] mb-1">
               Reason (recorded; never relabelled as performed)
             </label>
             <input id="cue-reason" data-testid="cue-reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} className={INPUT} />
           </div>
         )}
-        <p className="text-[14px] text-[#9AA5B5]">
+        <p className="text-[16px] text-[#9AA5B5]">
           A report records what you say happened. It is not platform confirmation; verification stays unknown. Other unresolved attempts stay unresolved.
         </p>
       </div>
@@ -576,6 +579,7 @@ export function CoverageDialog({
       onClose={onClose}
       title={`Did the host cover everything in ${segmentTitle}?`}
       confirmText="Record and continue"
+      confirmSize="lg"
       onConfirm={() => onConfirm({ coverage: coverage === "unknown" ? null : coverage, followUp: coverage === "partial" ? followUp.trim() : "" })}
     >
       <div className="space-y-3" data-testid="coverage-dialog">
@@ -588,7 +592,7 @@ export function CoverageDialog({
               ["unknown", "Not sure — leave coverage undeclared"],
             ] as const
           ).map(([value, text]) => (
-            <label key={value} className="flex items-center gap-2 min-h-[40px] cursor-pointer text-[16px] text-[#F5F7FC]">
+            <label key={value} className="flex items-center gap-2 min-h-[44px] cursor-pointer text-[16px] text-[#F5F7FC]">
               <input
                 type="radio"
                 name="coverage"
@@ -603,13 +607,13 @@ export function CoverageDialog({
         </fieldset>
         {coverage === "partial" && (
           <div>
-            <label htmlFor="coverage-followup" className="block text-[15px] text-[#CAD0DA] mb-1">
+            <label htmlFor="coverage-followup" className="block text-[16px] text-[#CAD0DA] mb-1">
               What still needs covering? (optional, kept as a follow-up)
             </label>
             <input id="coverage-followup" data-testid="coverage-followup" value={followUp} onChange={(e) => setFollowUp(e.target.value)} className={INPUT} />
           </div>
         )}
-        <p className="text-[14px] text-[#9AA5B5]">LiveLift does not move unfinished points anywhere automatically. A follow-up is a note for you, shown in Coverage and Review.</p>
+        <p className="text-[16px] text-[#9AA5B5]">LiveLift does not move unfinished points anywhere automatically. A follow-up is a note for you, shown in Coverage and Review.</p>
       </div>
     </Dialog>
   );
@@ -633,6 +637,7 @@ export function NoteDialog({
       onClose={onClose}
       title="Add a note"
       confirmText="Save note"
+      confirmSize="lg"
       onConfirm={() => {
         onSave(text);
         setText("");
@@ -647,9 +652,9 @@ export function NoteDialog({
         onChange={(e) => setText(e.target.value)}
         maxLength={500}
         placeholder="e.g. Viewers keep asking about waist sizing."
-        className="w-full bg-[#13161C] border border-[#39414D] rounded-[8px] p-3 text-[15px] text-[#F5F7FC]"
+        className="w-full bg-[#13161C] border border-[#39414D] rounded-[8px] p-3 text-[16px] text-[#F5F7FC]"
       />
-      <p className="text-[13px] text-[#9AA5B5] mt-2">Notes are timestamped and attributed. They never change the plan.</p>
+      <p className="text-[16px] text-[#9AA5B5] mt-2">Notes are timestamped and attributed. They never change the plan.</p>
     </Dialog>
   );
 }
@@ -672,7 +677,7 @@ export function AllOptionsDialog({
       description="Each option shows what it frees and what it costs. Nothing runs until you choose it, and a hard anchor never moves unless you re-anchor it.">
       <div className="pb-1" data-testid="all-options-dialog">
         {analysis.status === "no_feasible_recovery" && (
-          <p className="mb-3 text-[15px] font-medium text-[#F6C875]" data-testid="all-options-infeasible">
+          <p className="mb-3 text-[16px] font-medium text-[#F6C875]" data-testid="all-options-infeasible">
             <i className="ri-error-warning-line mr-1.5" aria-hidden="true" />
             No feasible recovery under current constraints. The best compatible combination of clean options frees{" "}
             {formatDuration(analysis.maxCleanSavingsSec)}; the deficit is {formatDuration(analysis.deficitSec)}.{" "}
@@ -682,18 +687,18 @@ export function AllOptionsDialog({
           </p>
         )}
         {analysis.status === "recoverable" && analysis.cleanPlan.length > 1 && (
-          <p className="mb-3 text-[15px] text-[#CAD0DA]" data-testid="all-options-clean-plan">
+          <p className="mb-3 text-[16px] text-[#CAD0DA]" data-testid="all-options-clean-plan">
             <i className="ri-checkbox-circle-line mr-1.5 text-[#DFFF00]" aria-hidden="true" />
             No single change protects it, but these clean changes together do: {analysis.cleanPlan.join(" + ")}. Apply them one at a time.
           </p>
         )}
         <ul className="divide-y divide-[#262C38]">
           {analysis.options.map((o) => (
-            <li key={o.id} className="py-3 flex items-start justify-between gap-4">
+            <li key={o.id} className="py-3 [@media(max-height:800px)]:py-2 flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[16px] font-medium text-[#F5F7FC]">{o.label}</p>
-                <p className="text-[14px] text-[#B7C1CE] mt-0.5">{o.detail}</p>
-                <p className="text-[13px] mt-1 text-[#9AA5B5] tabular-nums">
+                <p className="text-[16px] text-[#B7C1CE] mt-0.5">{o.detail}</p>
+                <p className="text-[16px] mt-1 text-[#9AA5B5] tabular-nums">
                   Frees {formatDuration(o.savesSec)} · leaves {formatDuration(o.resultingDeficitSec)} late ·{" "}
                   {o.exception ? (o.exception.code === "commitment_change" ? "commitment change" : "needs an exception") : "respects minimums and required coverage"}
                 </p>
@@ -701,13 +706,13 @@ export function AllOptionsDialog({
               <button
                 type="button"
                 onClick={() => onApply(o)}
-                className="min-h-[44px] px-3 rounded-[8px] text-[15px] font-medium bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944] cursor-pointer whitespace-nowrap"
+                className="min-h-[44px] px-3 rounded-[8px] text-[16px] font-medium bg-[#292D35] text-[#F5F7FC] hover:bg-[#343944] cursor-pointer whitespace-nowrap"
               >
                 {o.exception?.code === "commitment_change" ? "Review" : "Apply"}
               </button>
             </li>
           ))}
-          {analysis.options.length === 0 && <li className="py-3 text-[14px] text-[#9AA5B5]">Nothing needs recovering.</li>}
+          {analysis.options.length === 0 && <li className="py-3 text-[16px] text-[#9AA5B5]">Nothing needs recovering.</li>}
         </ul>
       </div>
     </Dialog>
