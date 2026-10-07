@@ -4,6 +4,9 @@ import type {
   CommandResponse,
   RoomRead,
 } from "@/contracts/authority";
+import type { AuthSession, LoginRequest } from "@/contracts/production";
+
+export const SESSION_COOKIE_NAME = "__Host-livelift_session";
 
 export interface AuthorityClientConfig {
   baseUrl: string;
@@ -13,6 +16,14 @@ export interface AuthorityClientConfig {
   role: "operator" | "viewer";
   token?: string | null;
   extraHeaders?: Record<string, string>;
+  // Phase 3 adaptations:
+  workspaceId?: string;
+  generation?: string;
+  origin?: string;
+  cookie?: string | null;
+  username?: string;
+  password?: string;
+  authMode?: "bearer" | "cookie";
 }
 
 export interface SendCommandResult {
@@ -35,8 +46,9 @@ export interface PollRoomResult {
 
 /**
  * Black-box HTTP client for Phase 2 Remote Room Authority.
- * Communicates strictly over the frozen wire contract defined in docs/phase2/contract.md.
- * Configured with real Bearer capabilities matching backend test configuration.
+ * Communicates strictly over the frozen wire contract defined in docs/phase2/contract.md
+ * and adapted to Phase 3 cookie/context contract per docs/phase3/contract.md.
+ * Supports both Phase 2 Bearer capabilities and Phase 3 __Host-livelift_session cookie authentication.
  */
 export class AuthorityClient {
   readonly config: AuthorityClientConfig;
@@ -48,15 +60,77 @@ export class AuthorityClient {
         ? (process.env.LIVELIFT_OPERATOR_TOKEN || "test-operator-token")
         : (process.env.LIVELIFT_VIEWER_TOKEN || "test-viewer-token");
 
+    const defaultUsername =
+      role === "operator"
+        ? (process.env.LIVELIFT_OPERATOR_USERNAME || "test_operator")
+        : (process.env.LIVELIFT_VIEWER_USERNAME || "test_viewer");
+
+    const defaultPassword =
+      role === "operator"
+        ? (process.env.LIVELIFT_OPERATOR_PASSWORD || "TestOperatorPassword123!")
+        : (process.env.LIVELIFT_VIEWER_PASSWORD || "TestViewerPassword123!");
+
+    const baseUrl = config.baseUrl ?? (process.env.LIVELIFT_TEST_SERVER_URL || "http://localhost:3130");
+    const origin = config.origin ?? (process.env.LIVELIFT_APP_ORIGIN || (baseUrl.startsWith("http://") ? baseUrl.replace("http://", "https://") : baseUrl));
+    const workspaceId = config.workspaceId ?? (process.env.LIVELIFT_WORKSPACE_ID || "00000000-0000-4000-8000-000000000001");
+    const generation = config.generation ?? (process.env.LIVELIFT_GENERATION || "11111111-1111-4111-8111-111111111111");
+    const authMode = config.authMode ?? (process.env.LIVELIFT_AUTH_MODE === "bearer" ? "bearer" : "cookie");
+
     this.config = {
-      baseUrl: config.baseUrl ?? (process.env.LIVELIFT_TEST_SERVER_URL || "http://localhost:3130"),
+      baseUrl,
       roomId: config.roomId ?? "room-default",
       actorId: config.actorId ?? (role === "operator" ? "actor-op-1" : "actor-vw-1"),
       actorName: config.actorName ?? (role === "operator" ? "Lead Operator" : "Guest Viewer"),
       role,
       token: config.token === undefined ? defaultToken : config.token,
       extraHeaders: config.extraHeaders,
+      workspaceId,
+      generation,
+      origin,
+      cookie: config.cookie ?? null,
+      username: config.username ?? defaultUsername,
+      password: config.password ?? defaultPassword,
+      authMode,
     };
+  }
+
+  /** Phase 3 production login to acquire session cookie */
+  async login(username?: string, password?: string): Promise<{ ok: boolean; status: number; cookie?: string }> {
+    const creds: LoginRequest = {
+      username: username ?? this.config.username ?? "operator",
+      password: password ?? this.config.password ?? "TestOperatorPassword123!",
+    };
+    try {
+      const res = await fetch(`${this.config.baseUrl}/api/v3/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-LiveLift-Request": "1",
+          Origin: this.config.origin ?? this.config.baseUrl,
+        },
+        body: JSON.stringify(creds),
+      });
+
+      if (res.ok) {
+        const setCookie = res.headers.get("set-cookie");
+        if (setCookie) {
+          const match = setCookie.match(new RegExp(`${SESSION_COOKIE_NAME}=([^;]+)`));
+          if (match) {
+            this.config.cookie = match[1];
+          }
+        }
+        const data = (await res.json().catch(() => null)) as AuthSession | null;
+        if (data) {
+          if (data.workspaceId) this.config.workspaceId = data.workspaceId;
+          if (data.generation) this.config.generation = data.generation;
+          if (data.roomId) this.config.roomId = data.roomId;
+        }
+        return { ok: true, status: res.status, cookie: this.config.cookie ?? undefined };
+      }
+      return { ok: false, status: res.status };
+    } catch {
+      return { ok: false, status: 0 };
+    }
   }
 
   private getHeaders(overrideHeaders?: Record<string, string>): Record<string, string> {
@@ -64,9 +138,27 @@ export class AuthorityClient {
       "Content-Type": "application/json",
       "X-LiveLift-Room": this.config.roomId,
     };
-    if (this.config.token) {
+
+    if (this.config.authMode === "cookie" || this.config.cookie) {
+      if (this.config.cookie) {
+        headers.Cookie = this.config.cookie.startsWith("__Host-")
+          ? this.config.cookie
+          : `${SESSION_COOKIE_NAME}=${this.config.cookie}`;
+      }
+      headers["X-LiveLift-Request"] = "1";
+      if (this.config.origin) {
+        headers.Origin = this.config.origin;
+      }
+      if (this.config.workspaceId) {
+        headers["X-LiveLift-Workspace"] = this.config.workspaceId;
+      }
+      if (this.config.generation) {
+        headers["X-LiveLift-Generation"] = this.config.generation;
+      }
+    } else if (this.config.token) {
       headers.Authorization = `Bearer ${this.config.token}`;
     }
+
     if (this.config.extraHeaders) {
       Object.assign(headers, this.config.extraHeaders);
     }
