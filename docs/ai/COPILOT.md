@@ -127,7 +127,7 @@ response**:
 | --- | --- |
 | Only supplied evidence | it may cite only fact ids that exist and name only listed option / change aliases |
 | No invented numbers | every number in its text must appear in the evidence it was given |
-| No platform or audience claims | LiveLift has no analytics: "performed poorly", "viewers dropped", "caused sales" etc. are refused. *"Product D04 had no confirmed platform outcome"* is allowed. |
+| No platform or audience claims | LiveLift has no TikTok performance analytics: "performed poorly", "viewers dropped", "caused sales" etc. are refused. *"Product D04 had no confirmed platform outcome"* is allowed. |
 | No action presented as done | "I have applied...", "was already applied" are refused |
 | No links or markup | URLs, HTML and code fences are refused |
 | No extra fields | an unexpected key (an attempt to smuggle a command) fails the schema |

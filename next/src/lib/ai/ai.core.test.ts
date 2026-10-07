@@ -155,7 +155,7 @@ describe("the typed context: Review", () => {
   it("unknown platform evidence: no performance claim is possible, only 'not established' (observation != causation)", () => {
     const { context } = buildReviewContext(asReal(ENDED()))!;
     expect(fact(context, "platform_limits")).toMatchObject({ kind: "gap" });
-    expect(fact(context, "platform_limits")!.text).toContain("no platform confirmation, viewer, sales or analytics data");
+    expect(fact(context, "platform_limits")!.text).toContain("no platform confirmation, viewer, sales or analytics data from TikTok");
     const products = context.facts.filter((f) => f.topic === "product_platform");
     expect(products.length).toBeGreaterThan(0);
     for (const p of products) {

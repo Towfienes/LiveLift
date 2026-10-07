@@ -408,7 +408,7 @@ export function buildReviewFacts(session: Session, review: Review, priors: AiPri
     f.add("product_platform", "gap", `Product ${code}: ${entries.join("; ")}. The platform outcome is not established: LiveLift has no platform confirmation for it.`);
   }
 
-  f.add("platform_limits", "gap", "LiveLift holds no platform confirmation, viewer, sales or analytics data for this show. Cue and action reports are operator statements, and observation is not causation.");
+  f.add("platform_limits", "gap", "LiveLift holds no platform confirmation, viewer, sales or analytics data from TikTok for this show. Cue and action reports are operator statements, and observation is not causation.");
   if (s.planRevisions > 0) f.add("plan_revisions", "recorded", `${plural(s.planRevisions, "plan revision")} ${s.planRevisions === 1 ? "was" : "were"} recorded during the show; the baseline is unchanged.`, { planRevisions: s.planRevisions });
 
   // Recurrence is only claimed from recorded, same-environment shows.

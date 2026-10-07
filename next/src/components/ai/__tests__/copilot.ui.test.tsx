@@ -261,7 +261,7 @@ describe("Review Copilot", () => {
   it("not configured: product-logic facts only, labelled not AI, with the platform limit stated", () => {
     renderReview(ended(), copilot({ phase: "not_configured", canAsk: false, configIssues: ["LIVELIFT_AI_MODEL"] }));
     expect(screen.getByTestId("layer-product")).toHaveTextContent("not AI");
-    expect(screen.getByTestId("fact-platform_limits")).toHaveTextContent("no platform confirmation, viewer, sales or analytics data");
+    expect(screen.getByTestId("fact-platform_limits")).toHaveTextContent("no platform confirmation, viewer, sales or analytics data from TikTok");
     expect(screen.queryByTestId("ai-summary")).toBeNull();
   });
 
