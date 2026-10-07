@@ -245,6 +245,7 @@ describe("P3-BACKUP, P3-RESTORE & P3-RESTORE-CONTEXT: Backup & Restore Drill", (
     () => {
       it("restored server requires full resnapshot and rejects old generation commands with 409 recovery_required", async () => {
         const client = new ProductionClient();
+        await client.login();
         // Request with old generation prior to restore
         const headers = client.getHeaders();
         headers.set("X-LiveLift-Generation", TEST_GENERATION);

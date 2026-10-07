@@ -94,7 +94,7 @@ describe("P3-SECURITY: Rate Limiting, Security Boundaries & Canary Secret Scanni
       it("repeated failed logins trigger 429 rate_limited with Retry-After header", async () => {
         for (let i = 0; i < 20; i++) {
           const res = await client.login({
-            username: "test_operator",
+            username: "rate_test_user",
             password: `WrongPassword_${i}_12345!`,
           });
           if (res.status === 429) {

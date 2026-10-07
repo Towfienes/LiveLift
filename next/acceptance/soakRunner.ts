@@ -1,5 +1,5 @@
 import { ProductionClient, isBackendAvailable } from "./productionClient";
-import type { CommandEnvelope } from "@/contracts/authority";
+import type { AuthorityReceipt, CommandEnvelope } from "@/contracts/authority";
 
 export interface SoakConfig {
   mode: "smoke" | "rehearsal_48h";
@@ -121,6 +121,10 @@ export class SoakRunner {
       for (const v of viewers) {
         await v.login().catch(() => {});
       }
+      const initial = await operator.pollRoom().catch(() => null);
+      if (initial?.status === 200 && initial.data?.revision !== undefined) {
+        lastRevision = initial.data.revision;
+      }
     }
 
     while (this.isRunning && Date.now() < endTime) {
@@ -190,19 +194,36 @@ export class SoakRunner {
           // Simulate network interruption:
           // Client drops connection before seeing response, then queries receipt for reconciliation
           if (hasLive) {
-            // Send command
-            void operator.sendCommand(envelope);
-            // Reconcile via receipt lookup
-            await new Promise((r) => setTimeout(r, 100));
-            const receipt = await operator.getReceipt(commandId);
-            if (receipt.status === 200 && receipt.data) {
+            const sendPromise = operator.sendCommand(envelope);
+            // Reconcile via receipt lookup with polling
+            let receipt: AuthorityReceipt | null = null;
+            for (let attempt = 0; attempt < 5; attempt++) {
+              await new Promise((r) => setTimeout(r, 100));
+              const res = await operator.getReceipt(commandId);
+              if (res.status === 200 && res.data) {
+                receipt = res.data;
+                break;
+              }
+            }
+            if (!receipt) {
+              const res = await sendPromise;
+              if (res.data?.receipt) {
+                receipt = res.data.receipt;
+              }
+            }
+            if (receipt) {
               this.metrics.commandsReconciled++;
-              if (receipt.data.outcome === "committed") {
+              if (receipt.outcome === "committed") {
                 this.metrics.commandsCommitted++;
-                lastRevision = receipt.data.roomRevisionAfter;
+                lastRevision = receipt.roomRevisionAfter;
               } else {
                 this.metrics.commandsRejected++;
+                if (typeof receipt.roomRevisionAfter === "number") {
+                  lastRevision = receipt.roomRevisionAfter;
+                }
               }
+            } else {
+              this.metrics.commandsRejected++;
             }
           } else {
             // Simulated reconciliation
@@ -219,9 +240,15 @@ export class SoakRunner {
                 lastRevision = res.data.receipt.roomRevisionAfter;
               } else {
                 this.metrics.commandsRejected++;
+                if (typeof res.data.receipt.roomRevisionAfter === "number") {
+                  lastRevision = res.data.receipt.roomRevisionAfter;
+                }
               }
             } else {
               this.metrics.commandsRejected++;
+              if (res.data?.receipt?.roomRevisionAfter !== undefined) {
+                lastRevision = res.data.receipt.roomRevisionAfter;
+              }
             }
           } else {
             this.metrics.commandsCommitted++;

@@ -106,8 +106,12 @@ describe("P3-ISOLATION: Deployment Isolation & Context Binding Acceptance", () =
         expect(res.status).toBe(404);
         const data = res.data as Record<string, unknown> | null;
         // Verify authority state is NOT revealed
-        expect(data).not.toHaveProperty("sessions");
-        expect(data).not.toHaveProperty("revision");
+        if (data) {
+          expect(data).not.toHaveProperty("sessions");
+          expect(data).not.toHaveProperty("revision");
+        } else {
+          expect(data).toBeNull();
+        }
         if (res.error) {
           expect(res.error.code).toBe("not_found");
         }

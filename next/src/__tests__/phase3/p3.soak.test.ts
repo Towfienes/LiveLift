@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { SoakRunner, DEFAULT_48H_CONFIG } from "../../../acceptance/soakRunner";
+import { isBackendAvailable } from "../../../acceptance/productionClient";
 
 describe("P3-SOAK: 48-Hour Production Rehearsal & Smoke Soak Matrix", () => {
   describe("Executable Soak Runner Specifications", () => {
@@ -16,7 +17,7 @@ describe("P3-SOAK: 48-Hour Production Rehearsal & Smoke Soak Matrix", () => {
     it("executes short smoke mode and collects metrics without invariant violations", async () => {
       const runner = new SoakRunner({
         mode: "smoke",
-        durationMs: 800, // Fast 800ms smoke run for automated test execution
+        durationMs: isBackendAvailable() ? 3500 : 800, // Account for scrypt login time when live backend is active
         pollIntervalMs: 100,
         commandIntervalMs: 200,
         healthIntervalMs: 300,
