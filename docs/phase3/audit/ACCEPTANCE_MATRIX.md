@@ -36,12 +36,12 @@ This document defines the independent verification matrix for the LiveLift V3 Ph
   1. Named accounts with `operator` and `viewer` roles. Passwords 15–128 characters, hashed with scrypt (`N=131072, r=8, p=1`, random salt >= 16 bytes).
   2. Login issues random token; stores only SHA-256 hash. Sets `__Host-livelift_session` cookie with `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/`, and no `Domain`.
   3. Absolute 12-hour session expiry, no silent renewal.
-  4. Revocation on logout, password reset, role change, account disable, and account deletion.
+  4. Revocation on logout (`POST /api/v3/auth/logout` with body `{}`), password reset, role change, account disable, and account deletion.
   5. Production bearer capability authorization removed; bearer-only requests fail closed with 401 `unauthenticated`.
   6. Client role or actor spoof headers never elevate permissions.
 - **Harness & Verification:** `next/src/__tests__/phase3/p3.auth.test.ts`
 - **Current State:**
-  - In-process schema, password bounds, username regex, and cookie contracts: **PASS NOW**
+  - In-process schema, password bounds, username regex, logout request format (`body: {}`), and cookie contracts: **PASS NOW**
   - Live HTTP adversarial authentication tests: **PENDING INTEGRATION**
 
 ---
@@ -50,12 +50,14 @@ This document defines the independent verification matrix for the LiveLift V3 Ph
 - **Contract Reference:** `docs/phase3/contract.md` § Deployment isolation and errors
 - **Requirements:**
   1. Immutable deployment binding `(workspaceId, roomId)`. Configuration differing from database fails closed at startup.
-  2. Authenticated requests carry `X-LiveLift-Workspace` and `X-LiveLift-Generation`. Server validates against authoritative DB metadata.
-  3. Missing context returns 400 `context_required`. Wrong workspace returns 404 `not_found`. Outdated generation returns 409 `recovery_required`. Wrong room returns 404 `not_found`.
-  4. Cookies and contexts do not cross-authorize across separate installations.
+  2. Authenticated requests carry `X-LiveLift-Workspace` and `X-LiveLift-Generation`. Server validates against authoritative DB metadata. Context headers do NOT include `X-LiveLift-Room` (per frozen Phase 3 contract).
+  3. Missing context returns 400 `context_required`. Wrong workspace returns 404 `not_found`. Outdated generation returns 409 `recovery_required`.
+  4. Wrong room targeted through supported identity mechanisms (query target `?roomId=...` or command envelope `envelope.roomId`) fails closed with 404 `not_found` without revealing authority state.
+  5. Cookies and contexts do not cross-authorize across separate installations.
 - **Harness & Verification:** `next/src/__tests__/phase3/p3.isolation.test.ts`
+- **Room Identity Contract Note:** The previous server failure to reject an arbitrary `X-LiveLift-Room` header was a harness assumption, NOT a production defect. `docs/phase3/contract.md` specifies `X-LiveLift-Workspace` and `X-LiveLift-Generation` as the context headers. Supported room identity enforcement is validated strictly via supported mechanisms (`?roomId=<id>` on reads/receipts and `envelope.roomId` on command dispatch), which correctly fail closed with 404 `not_found`.
 - **Current State:**
-  - In-process wire contracts and context header generators: **PASS NOW**
+  - In-process wire contracts, context header generators, and supported wrong-room enforcement: **PASS NOW**
   - Live HTTP header validation and cross-tenant isolation: **PENDING INTEGRATION**
 
 ---

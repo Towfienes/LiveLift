@@ -62,6 +62,39 @@ describe("P3-AUTH & P3-AUTHZ: Authentication Adversarial & Authorization Matrix"
       expect(TEST_VIEWER_AUTH_SESSION.access.role).toBe("viewer");
       expect(TEST_VIEWER_AUTH_SESSION.access.actorId).toBe("actor-vw-1");
     });
+
+    it("verifies ProductionClient.logout sends exact required request with empty JSON body and CSRF markers", async () => {
+      const client = new ProductionClient();
+      client.setSessionToken("test-active-session-token");
+
+      let capturedUrl = "";
+      let capturedInit: RequestInit | undefined;
+      const originalFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+          capturedUrl = String(input);
+          capturedInit = init;
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }) as typeof globalThis.fetch;
+
+        const res = await client.logout();
+        expect(res.status).toBe(200);
+        expect(capturedUrl).toBe(`${client.config.baseUrl}/api/v3/auth/logout`);
+        expect(capturedInit?.method).toBe("POST");
+        const headers = capturedInit?.headers as Headers;
+        expect(headers.get("Content-Type")).toBe("application/json");
+        expect(headers.get("X-LiveLift-Request")).toBe("1");
+        expect(headers.get("Origin")).toBe(client.config.origin);
+        expect(headers.get("Cookie")).toBe("__Host-livelift_session=test-active-session-token");
+        expect(capturedInit?.body).toBe("{}");
+        expect(client.getSessionCookie()).toBeNull();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
   });
 
   describe.skipIf(!hasLiveServer)(
@@ -125,7 +158,6 @@ describe("P3-AUTH & P3-AUTHZ: Authentication Adversarial & Authorization Matrix"
             Authorization: "Bearer test-operator-token",
             "X-LiveLift-Workspace": client.config.workspaceId,
             "X-LiveLift-Generation": client.config.generation,
-            "X-LiveLift-Room": client.config.roomId,
           },
         });
         expect(res.status).toBe(401);

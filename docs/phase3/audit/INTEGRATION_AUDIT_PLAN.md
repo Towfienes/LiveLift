@@ -169,6 +169,22 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:3130/api/v3/ro
   -H "Cookie: __Host-livelift_session=..." \
   -d '{}'
 # Expected: 403
+
+# Valid Logout -> 200 (requires body: {})
+curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:3130/api/v3/auth/logout \
+  -H "Content-Type: application/json" \
+  -H "Origin: http://localhost:3130" \
+  -H "X-LiveLift-Request: 1" \
+  -H "Cookie: __Host-livelift_session=..." \
+  -d '{}'
+# Expected: 200
+
+# Supported Wrong Room Query Target -> 404 not_found
+curl -s -o /dev/null -w "%{http_code}\n" -X GET "http://localhost:3130/api/v3/room?roomId=room-unconfigured-foreign" \
+  -H "Cookie: __Host-livelift_session=..." \
+  -H "X-LiveLift-Workspace: 00000000-0000-4000-8000-000000000001" \
+  -H "X-LiveLift-Generation: 11111111-1111-4111-8111-111111111111"
+# Expected: 404 (Note: context headers are Workspace and Generation; room enforcement uses query/envelope targets)
 ```
 
 ### Step 3.5: Execute Automated Acceptance Suites

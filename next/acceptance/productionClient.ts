@@ -130,7 +130,6 @@ export class ProductionClient {
     if (options.includeContext !== false) {
       headers.set("X-LiveLift-Workspace", this.config.workspaceId);
       headers.set("X-LiveLift-Generation", this.config.generation);
-      headers.set("X-LiveLift-Room", this.config.roomId);
     }
 
     if (options.includeCsrf !== false) {
@@ -274,6 +273,7 @@ export class ProductionClient {
       const res = await fetch(`${this.config.baseUrl}/api/v3/auth/logout`, {
         method: "POST",
         headers,
+        body: JSON.stringify({}),
       });
 
       const parsed = await this.parseResponse<{ success: boolean }>(res);
@@ -329,11 +329,15 @@ export class ProductionClient {
   /** GET /api/v3/room */
   async pollRoom(
     afterRevision?: number,
-    overrideHeaders?: Record<string, string>
+    overrideHeaders?: Record<string, string>,
+    roomId?: string
   ): Promise<HttpResponse<RoomRead>> {
     const url = new URL(`${this.config.baseUrl}/api/v3/room`);
     if (afterRevision !== undefined) {
       url.searchParams.set("afterRevision", String(afterRevision));
+    }
+    if (roomId !== undefined) {
+      url.searchParams.set("roomId", roomId);
     }
 
     const headers = this.getHeaders({
@@ -393,8 +397,16 @@ export class ProductionClient {
   /** GET /api/v3/room/commands/:commandId */
   async getReceipt(
     commandId: string,
-    overrideHeaders?: Record<string, string>
+    overrideHeaders?: Record<string, string>,
+    roomId?: string
   ): Promise<HttpResponse<AuthorityReceipt>> {
+    const url = new URL(
+      `${this.config.baseUrl}/api/v3/room/commands/${encodeURIComponent(commandId)}`
+    );
+    if (roomId !== undefined) {
+      url.searchParams.set("roomId", roomId);
+    }
+
     const headers = this.getHeaders({
       includeContext: true,
       includeCookie: true,
@@ -404,7 +416,7 @@ export class ProductionClient {
 
     try {
       const res = await fetch(
-        `${this.config.baseUrl}/api/v3/room/commands/${encodeURIComponent(commandId)}`,
+        url.toString(),
         {
           method: "GET",
           headers,
