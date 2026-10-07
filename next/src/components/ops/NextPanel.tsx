@@ -217,7 +217,7 @@ export function NextPanel({
                 </li>
               ))}
             </ul>
-            <div className="flex items-center justify-between gap-3 mt-0.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-0.5">
               <div className="flex items-center gap-4">
                 <button
                   type="button"
@@ -233,9 +233,10 @@ export function NextPanel({
                   </button>
                 )}
               </div>
-              <Button variant="secondary" size="desk" onClick={onAdvance} disabled={waitingForAnchor} data-testid="advance-btn" title={primaryHint ?? undefined}>
+              <Button variant="secondary" size="desk" onClick={onAdvance} disabled={waitingForAnchor} data-testid="advance-btn" title={primaryHint ?? undefined} className="max-w-full !whitespace-normal">
                 {primaryLabel}
               </Button>
+              {primaryHint && <p className="text-[16px] leading-5 text-[#B7C1CE]">{primaryHint}</p>}
             </div>
           </div>
         ) : (
@@ -247,7 +248,7 @@ export function NextPanel({
               onClick={onAdvance}
               disabled={waitingForAnchor}
               data-testid="advance-btn"
-              className="w-full mt-1.5"
+              className="w-full mt-1.5 !whitespace-normal"
             >
               {primaryLabel}
             </Button>

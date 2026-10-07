@@ -26,7 +26,7 @@ function ToReview({ session }: { session: Session }): React.ReactElement {
   }, [router, session.id, step]);
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#090B0F] text-[#9AA5B5]" role="status">
-      Wrap now lives in Review. Opening {step}…
+      {step === "review" ? "Show ended. Opening Review…" : step === "operate" ? "Show is still active. Opening Operate…" : "Show has not started. Opening Prepare…"}
     </div>
   );
 }

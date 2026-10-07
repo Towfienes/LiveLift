@@ -84,7 +84,7 @@ export function ReviewSummary({ review, tz }: { review: Review; tz: string }): R
       </p>
       <p className="text-[13px] text-[#9AA5B5] mt-0.5" data-testid="review-reading-note">
         How to read this: “reported” is the operator&apos;s word, not platform confirmation, and an attempt is not a performed action.
-        Unknown, no report and unverified mean nothing was recorded — they are not failures.
+        Unknown or unverified means the outcome lacks confirmation. A report or attempt may still be recorded; no report means no operator report was recorded. These are not failures.
       </p>
       <div className="mt-2 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
         {groups.map((g) => (

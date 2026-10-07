@@ -472,7 +472,7 @@ function Desk({
     >
       <CommandStateContext.Provider value={{ busy, error: cmdError }}>
       <div className="h-full flex flex-col gap-2 p-3 [@media(min-height:860px)]:gap-3 [@media(min-height:860px)]:lg:p-4 max-w-[1720px] w-full mx-auto">
-        {isRemote && commands.role === "viewer" && commands.blockedReason && (
+        {isRemote && locked && commands.blockedReason && (
           <p className="text-[16px] text-[#F6C875] shrink-0 px-1" data-testid="desk-readonly-note">
             <i className="ri-lock-line mr-1.5" aria-hidden="true" />
             {commands.blockedReason}
@@ -561,7 +561,7 @@ function Desk({
         )}
 
         {/* NOW · NEXT · WHY · ACTION */}
-        <fieldset disabled={locked} className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)] gap-3 shrink-0 border-0 p-0 m-0 min-w-0">
+        <fieldset disabled={locked} className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)] gap-3 shrink-0 border-0 p-0 m-0 min-w-0">
           <NowPanel
             segment={active}
             run={activeRun}
@@ -609,11 +609,12 @@ function Desk({
             onAttempted={(id) => void run({ type: "report_cue", cueId: id, report: "attempted" })}
             onReport={openReport}
           />
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="secondary"
               size="desk"
               disabled={!active}
+              aria-describedby={!active ? "extend-disabled-reason" : undefined}
               onClick={() => active && void run({ type: "extend_segment", segmentId: active.id, deltaSec: 60 })}
               data-testid="extend-plus-one-btn"
               className="!py-0.5 flex-col !gap-0 leading-tight"
@@ -626,6 +627,7 @@ function Desk({
                 </span>
               )}
             </Button>
+            {!active && <span id="extend-disabled-reason" className="text-[16px] text-[#AEB7C5]">Start a segment before extending its target.</span>}
             <Button variant="secondary" size="desk" onClick={() => setDialog("choose")} data-testid="choose-next-btn">
               Choose next
             </Button>
@@ -639,7 +641,7 @@ function Desk({
         </fieldset>
 
         {/* Run of Show owns scroll; one support region beside it */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] gap-3 flex-1 min-h-[200px]">
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] gap-3 flex-1 min-h-[200px]">
           <section className="rounded-[12px] bg-[#13161C] p-3 pb-1 flex flex-col min-h-0" aria-label="Run of Show panel">
             <div className="flex items-center justify-between gap-3 pb-1 shrink-0 flex-wrap">
               <h2 className="text-[18px] font-medium text-[#F5F7FC]">Run of Show</h2>

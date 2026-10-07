@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import React, { Suspense } from "react";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const nav = vi.hoisted(() => ({
   push: vi.fn(),
@@ -187,12 +187,193 @@ describe("Create LIVE", () => {
   });
 
   it("copying a previous session is limited to the same environment", async () => {
+    openRoom(); // Only a loaded room can establish that there are no REAL shows to copy.
     nav.search = new URLSearchParams("from=sim-buffered");
     await renderPlain(<CreateLivePage />);
     await screen.findByTestId("previous-picker");
     expect(screen.getByTestId("simulated-toggle")).toBeChecked();
     fireEvent.click(screen.getByTestId("simulated-toggle")); // switch to REAL
     expect(await screen.findByText(/no REAL session to copy/i)).toBeInTheDocument();
+  });
+});
+
+describe("Competition workflow polish", () => {
+  it("copying a completed REAL show explains inherited details and uses its timezone", async () => {
+    const room = openRoom();
+    let source = templateShow(room, "real-1", "Completed source", "UTC");
+    source = applyCommand(source, { type: "start_live", nowMs: room.nowMs }).session;
+    source = applyCommand(source, { type: "end_live", nowMs: room.nowMs + 60_000 }).session;
+    room.seed(source);
+    nav.search = new URLSearchParams("from=real-1");
+    await renderPlain(<CreateLivePage />);
+    await screen.findByTestId("previous-picker");
+    expect(screen.getByLabelText("Timezone")).toBeDisabled();
+    expect(screen.getByLabelText("Timezone")).toHaveValue("UTC");
+    expect(screen.getByText(/timezone, objective and account label carry forward/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Planned date"), { target: { value: "2026-10-10" } });
+    fireEvent.change(screen.getByLabelText("Planned start"), { target: { value: "21:00" } });
+    await act(async () => { fireEvent.click(screen.getByTestId("submit-create-live-btn")); });
+    await waitFor(() => expect(room.sessions.length).toBe(2));
+    expect(room.sessions[1].timezone).toBe("UTC");
+    expect(room.sessions[1].plans[0].plannedStartMs).toBe(Date.parse("2026-10-10T21:00:00Z"));
+    expect(room.posts().at(-1)!.type).toBe("create_next");
+  });
+
+  it("explains missing Create fields and selects the sample pack linked from Products", async () => {
+    nav.search = new URLSearchParams("env=sim&pack=pack_02");
+    await renderPlain(<CreateLivePage />);
+    expect(screen.getByTestId("start-pack")).toBeChecked();
+    expect(screen.getByLabelText("Pack")).toHaveValue("pack_02");
+    fireEvent.change(screen.getByLabelText(/Session title/), { target: { value: " " } });
+    expect(screen.getByTestId("submit-create-live-btn")).toBeDisabled();
+    expect(screen.getByText("Enter a title, planned date and valid start time to create this LIVE.")).toBeInTheDocument();
+  });
+
+  it("does not describe unavailable previous REAL shows as an empty catalog", async () => {
+    const room = openRoom();
+    room.offline = true;
+    await renderPlain(<CreateLivePage />);
+    fireEvent.click(screen.getByTestId("start-previous"));
+    expect(screen.getByTestId("previous-picker")).toHaveTextContent("Previous REAL shows have not loaded");
+    expect(screen.getByTestId("previous-picker")).not.toHaveTextContent("There is no REAL session");
+  });
+
+  it("clears all Sessions filters and ignores spaces around a search", async () => {
+    openRoom();
+    await renderPlain(<SessionsPage />);
+    fireEvent.change(screen.getByLabelText("Find a session"), { target: { value: "  Fall collection  " } });
+    expect(screen.getByTestId("session-row-sim-buffered")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Show state"), { target: { value: "ended" } });
+    expect(screen.getByTestId("sessions-empty")).toHaveTextContent("No sessions match");
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getByLabelText("Find a session")).toHaveValue("");
+    expect(screen.getByLabelText("Show state")).toHaveValue("all");
+    expect(screen.getByTestId("session-row-sim-buffered")).toBeInTheDocument();
+  });
+
+  it.each([["", null], ["0", 0]])("edits a linked product with price %s while preserving references and sample origin", async (input, expected) => {
+    const before = structuredClone(sessionStore.getSession("sim-buffered")!);
+    await renderPage(PreparePage as PageComponent, before.id);
+    fireEvent.click(within(screen.getByTestId("prepare-product-list")).getByText("Cargo Pants"));
+    fireEvent.change(screen.getByLabelText("Product name"), { target: { value: "Updated cargo" } });
+    fireEvent.change(screen.getByLabelText("Price (optional)"), { target: { value: input } });
+    fireEvent.change(screen.getByLabelText("Operator notes"), { target: { value: "Explain sizing" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save product details" }));
+    const after = sessionStore.getSession(before.id)!;
+    expect(after.products.find((p) => p.code === "M03")).toMatchObject({ name: "Updated cargo", price: expected, notes: "Explain sizing", source: "sample_library" });
+    expect(after.plans[0].segments).toEqual(before.plans[0].segments);
+    expect(after.plans[0].cues).toEqual(before.plans[0].cues);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Change saved to this rehearsal's plan");
+  });
+
+  it("validates product details and retains the input when browser storage refuses a save", async () => {
+    await renderPage(PreparePage as PageComponent, "sim-buffered");
+    fireEvent.click(within(screen.getByTestId("prepare-product-list")).getByText("Cargo Pants"));
+    const save = screen.getByRole("button", { name: "Save product details" });
+    fireEvent.change(screen.getByLabelText("Product name"), { target: { value: " " } });
+    expect(save).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Product name"), { target: { value: "My cargo" } });
+    fireEvent.change(screen.getByLabelText("Price (optional)"), { target: { value: "-1" } });
+    expect(save).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Price (optional)"), { target: { value: "42" } });
+    const spy = vi.spyOn(localStorage, "setItem").mockImplementation(() => { throw new DOMException("QuotaExceededError"); });
+    fireEvent.click(save);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("Product name")).toHaveValue("My cargo");
+    expect(screen.getByTestId("dialog-command-error")).toBeInTheDocument();
+    expect(sessionStore.getSession("sim-buffered")!.products.find((p) => p.code === "M03")!.name).toBe("Cargo Pants");
+    spy.mockRestore();
+    fireEvent.click(save);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(sessionStore.getSession("sim-buffered")!.products.find((p) => p.code === "M03")!.name).toBe("My cargo");
+  });
+
+  it("saves REAL product details through save_prepare and does not claim an unknown outcome was saved", async () => {
+    const room = openRoom();
+    room.seed(templateShow(room, "real-1", "Real products"));
+    await renderPage(PreparePage as PageComponent, "real-1");
+    fireEvent.click(within(await screen.findByTestId("prepare-product-list")).getByText("Cargo Pants"));
+    fireEvent.change(screen.getByLabelText("Product name"), { target: { value: "Real cargo" } });
+    room.loseNextResponses = 1;
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save product details" })); });
+    expect(room.posts().at(-1)!.type).toBe("save_prepare");
+    expect(room.sessions[0].products.find((p) => p.code === "M03")!.name).toBe("Real cargo");
+    expect(screen.getByTestId("save-status")).toHaveTextContent("Action outcome unknown");
+    expect(document.body.textContent).not.toContain("Change saved to this show's plan");
+    await act(async () => { await remoteRoomStore.refreshNow(); });
+    await waitFor(() => expect(screen.getByTestId("save-status")).toHaveTextContent("Saved to the room"));
+  });
+
+  it("shows a pending REAL save and disables product inputs until confirmation", async () => {
+    const room = openRoom();
+    room.seed(templateShow(room, "real-1", "Pending product edit"));
+    await renderPage(PreparePage as PageComponent, "real-1");
+    fireEvent.click(within(await screen.findByTestId("prepare-product-list")).getByText("Cargo Pants"));
+    fireEvent.change(screen.getByLabelText("Product name"), { target: { value: "Confirmed cargo" } });
+    const fetchRoom = globalThis.fetch;
+    let release: (() => Promise<void>) | undefined;
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (init?.method === "POST") return new Promise<Response>((resolve) => {
+        release = async () => resolve(await fetchRoom(input, init));
+      });
+      return fetchRoom(input, init);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save product details" }));
+    await waitFor(() => expect(screen.getByTestId("save-status")).toHaveTextContent("Waiting for confirmation"));
+    expect(screen.getByLabelText("Product name")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Waiting for confirmation…" })).toBeDisabled();
+    expect(room.sessions[0].products.find((p) => p.code === "M03")!.name).toBe("Cargo Pants");
+    await act(async () => { await release!(); });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(room.sessions[0].products.find((p) => p.code === "M03")!.name).toBe("Confirmed cargo");
+    spy.mockRestore();
+  });
+
+  it("keeps the operating history scroll region reachable by keyboard", async () => {
+    advanceRehearsal("sim-buffered", 2);
+    await renderPage(OperatePage as PageComponent, "sim-buffered");
+    const history = screen.getByRole("tabpanel", { name: "History" });
+    expect(history).toHaveAttribute("tabindex", "0");
+    history.focus();
+    expect(history).toHaveFocus();
+  });
+
+  it("previews Next LIVE at the selected start and creates exactly that schedule without changing history", async () => {
+    nav.search = new URLSearchParams("view=next");
+    await renderPage(ReviewPage as PageComponent, "sim-buffered-done");
+    const before = JSON.stringify(sessionStore.getSession("sim-buffered-done"));
+    fireEvent.change(screen.getByLabelText("Planned date"), { target: { value: "2026-10-08" } });
+    fireEvent.change(screen.getByLabelText("Start"), { target: { value: "21:00" } });
+    expect(screen.getByTestId("next-plan-start")).toHaveTextContent("Oct 8 · 21:00:00 · Asia/Ho_Chi_Minh");
+    expect(screen.getByTestId("clone-preview")).toHaveTextContent("21:12:00");
+    expect(screen.getByTestId("clone-preview")).not.toHaveTextContent("20:12:00");
+    fireEvent.click(screen.getByTestId("create-next-live-cta-btn"));
+    const created = sessionStore.list("SIMULATED").find((s) => s.derivedFrom?.sessionId === "sim-buffered-done")!;
+    expect(created.plans[0].plannedStartMs).toBe(Date.parse("2026-10-08T21:00:00+07:00"));
+    expect(created.plans[0].segments.find((s) => s.title === "Flash Sale announcement")!.anchorOffsetSec).toBe(720);
+    expect(created.events).toEqual([]);
+    expect(JSON.stringify(sessionStore.getSession("sim-buffered-done"))).toBe(before);
+  });
+
+  it("explains an invalid Next LIVE date instead of silently disabling Create", async () => {
+    nav.search = new URLSearchParams("view=next");
+    await renderPage(ReviewPage as PageComponent, "sim-buffered-done");
+    fireEvent.change(screen.getByLabelText("Planned date"), { target: { value: "" } });
+    expect(screen.getByTestId("create-next-live-cta-btn")).toBeDisabled();
+    expect(screen.getByTestId("next-plan-start")).toHaveTextContent("Choose a valid date");
+    expect(screen.getByText("Enter a title, planned date and valid start time to create the next LIVE.")).toBeInTheDocument();
+  });
+
+  it("Review distinguishes recorded reports from missing confirmation and Products offers a pack handoff", async () => {
+    await renderPage(ReviewPage as PageComponent, "sim-buffered-done");
+    expect(screen.getByTestId("review-reading-note")).toHaveTextContent("A report or attempt may still be recorded");
+    expect(screen.getByTestId("review-reading-note")).not.toHaveTextContent("mean nothing was recorded");
+    cleanup();
+    await renderPlain(<ProductsPage />);
+    fireEvent.click(screen.getByRole("tab", { name: /Packs/ }));
+    fireEvent.click(screen.getByTestId("inspect-pack-pack_02"));
+    expect(screen.getByRole("link", { name: "Create LIVE with this sample pack" })).toHaveAttribute("href", "/live/new?pack=pack_02");
   });
 });
 

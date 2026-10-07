@@ -52,7 +52,7 @@ export function SupportTabs({
 
   return (
     <section className="rounded-[12px] bg-[#13161C] p-3 flex flex-col min-h-0" aria-label="Support">
-      <div className="flex gap-1 items-center pb-2 border-b border-[#232935] shrink-0" role="tablist">
+      <div className="flex flex-wrap gap-1 items-center pb-2 border-b border-[#232935] shrink-0" role="tablist" aria-label="Supporting information">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -73,7 +73,7 @@ export function SupportTabs({
         ))}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto pt-2" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+      <div tabIndex={0} className="flex-1 min-h-0 overflow-y-auto pt-2" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "history" && (
           <ol className="divide-y divide-[#1F2530]" data-testid="history-list">
             {events.length === 0 && <li className="py-3 text-[16px] text-[#9AA5B5]">Nothing has been recorded yet.</li>}

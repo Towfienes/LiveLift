@@ -22,7 +22,7 @@ interface PageProps {
 export default function ReviewPage({ params }: PageProps): React.ReactElement {
   const { sessionId } = use(params);
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<StandardShell><p className="p-8 text-[#CAD0DA]" role="status">Loading Review…</p></StandardShell>}>
       <SessionGate id={sessionId} allowArchive>
         {(session, ctx) => <ReviewRoot session={session} ctx={ctx} />}
       </SessionGate>
@@ -71,9 +71,10 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
   if (!review) {
     return (
       <StandardShell>
-        <p className="p-8 text-[#F4A4A4]" role="alert">
-          This show ended without a recorded start, so there is nothing to review.
-        </p>
+        <div className="p-8 space-y-4">
+          <p className="text-[#F4A4A4]" role="alert">This show ended without a recorded start. A plan vs actual comparison is unavailable.</p>
+          <Link href="/sessions" className="text-[#DFFF00] underline">Return to Sessions</Link>
+        </div>
       </StandardShell>
     );
   }

@@ -41,7 +41,7 @@ export function SimulatorStrip({
   return (
     <div
       data-testid="simulator-strip"
-      className="flex items-center gap-x-3 min-w-0 flex-1 flex-wrap xl:flex-nowrap justify-end text-[16px]"
+      className="flex items-center gap-x-3 min-w-0 flex-1 basis-full xl:basis-auto flex-wrap xl:flex-nowrap justify-end text-[16px]"
     >
       <span className="inline-flex items-center gap-1.5 font-semibold text-[#C8B2FF] whitespace-nowrap">
         <i className="ri-flask-line" aria-hidden="true" />
@@ -54,7 +54,7 @@ export function SimulatorStrip({
       >
         virtual clock {formatClock(virtualNowMs, tz, true)}
       </span>
-      <span className="inline-flex items-center gap-1" role="group" aria-label="Move the virtual clock">
+      <span className="inline-flex flex-wrap max-w-full items-center gap-1" role="group" aria-label="Move the virtual clock">
         <button type="button" className={btn} disabled={disabled} onClick={() => onAdvance(30)} data-testid="sim-plus-30s">
           +30s
         </button>
@@ -70,13 +70,13 @@ export function SimulatorStrip({
           disabled={disabled || nextAnchorMs === null || nextAnchorMs - 60_000 <= virtualNowMs}
           onClick={onToAnchor}
           data-testid="sim-to-anchor"
-          title="Jump to one minute before the next hard anchor"
+          title={nextAnchorMs === null ? "No upcoming hard anchor to jump to" : nextAnchorMs - 60_000 <= virtualNowMs ? "Already within one minute of the next anchor; use +30s or +1m to move forward" : "Jump to one minute before the next hard anchor"}
         >
           To anchor
         </button>
       </span>
       {scripted && step && (
-        <span className="inline-flex items-center gap-2 min-w-0 flex-1 justify-end">
+        <span className="inline-flex items-center gap-2 min-w-0 flex-1 basis-full xl:basis-auto justify-end">
           <span className="text-[#C8B2FF] whitespace-nowrap tabular-nums">
             {step.index + 1}/{step.total}
           </span>

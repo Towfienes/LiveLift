@@ -20,7 +20,7 @@ const INPUT =
 
 export default function CreateLivePage(): React.ReactElement {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<StandardShell><p className="p-8 text-[#CAD0DA]" role="status">Loading Create LIVE…</p></StandardShell>}>
       <CreateLiveForm />
     </Suspense>
   );
@@ -32,10 +32,11 @@ function CreateLiveForm(): React.ReactElement {
   const fromId = params.get("from");
   const { hydrated, sessions, remote } = useSessions();
   const commands = useRemoteCommands();
+  const requestedPack = PACK_LIBRARY.find((p) => p.id === params.get("pack"));
 
   const [title, setTitle] = useState("October collection · Evening LIVE");
-  const [startType, setStartType] = useState<StartType>("blank");
-  const [packId, setPackId] = useState(PACK_LIBRARY[0].id);
+  const [startType, setStartType] = useState<StartType>(requestedPack ? "pack" : "blank");
+  const [packId, setPackId] = useState(requestedPack?.id ?? PACK_LIBRARY[0].id);
   const [sourceId, setSourceId] = useState("");
   const [simulated, setSimulated] = useState(params.get("env") === "sim");
   const [date, setDate] = useState("");
@@ -72,8 +73,11 @@ function CreateLiveForm(): React.ReactElement {
   const environment = simulated ? "SIMULATED" : "REAL";
   const sources = useMemo(() => sessions.filter((s) => s.environment === environment), [sessions, environment]);
   const effectiveSourceId = sources.some((s) => s.id === sourceId) ? sourceId : (sources[0]?.id ?? "");
-  const plannedStartMs = date ? zonedTimeToMs(date, time, timezone) : null;
-  const ready = title.trim() !== "" && plannedStartMs !== null && (startType !== "previous" || effectiveSourceId !== "");
+  const copySource = startType === "previous" ? sources.find((s) => s.id === effectiveSourceId) : undefined;
+  const inheritsDetails = !simulated && copySource?.lifecycle === "ended";
+  const planTimezone = inheritsDetails ? copySource.timezone : timezone;
+  const plannedStartMs = date ? zonedTimeToMs(date, time, planTimezone) : null;
+  const ready = hydrated && title.trim() !== "" && plannedStartMs !== null && (startType !== "previous" || effectiveSourceId !== "");
 
   /** REAL shows are created by the room: the server assigns the id, time and operator. */
   const createRemote = async (start: StartingPoint, at: number): Promise<void> => {
@@ -158,7 +162,7 @@ function CreateLiveForm(): React.ReactElement {
   const cards: Array<{ type: StartType; icon: string; name: string; hint: string }> = [
     { type: "blank", icon: "ri-file-add-line", name: "Blank", hint: "A clean rundown" },
     { type: "template", icon: "ri-time-line", name: "30-minute show", hint: "Opening, two products, a Flash Sale anchor, Q&A, Closing" },
-    { type: "pack", icon: "ri-shopping-bag-3-line", name: "Saved pack", hint: "Reuse a product lineup" },
+    { type: "pack", icon: "ri-shopping-bag-3-line", name: "Sample pack", hint: "Start with an example lineup" },
     { type: "previous", icon: "ri-file-copy-line", name: "Previous session", hint: "Copy a baseline plan" },
   ];
 
@@ -219,7 +223,11 @@ function CreateLiveForm(): React.ReactElement {
                   Copy the baseline plan of ({environment} sessions only)
                 </label>
                 {sources.length === 0 ? (
-                  <p className="text-[14px] text-[#F6C875]">There is no {environment} session to copy yet.</p>
+                  <p className="text-[14px] text-[#F6C875]">
+                    {!hydrated || (!simulated && !remote.snapshot)
+                      ? `Previous ${environment} shows have not loaded. Check the connection above, or choose Blank or 30-minute show.`
+                      : `There is no ${environment} session to copy yet. Choose Blank or 30-minute show to get started.`}
+                  </p>
                 ) : (
                   <select id="previous" className={INPUT} value={effectiveSourceId} onChange={(e) => setSourceId(e.target.value)}>
                     {sources.map((s) => (
@@ -228,6 +236,7 @@ function CreateLiveForm(): React.ReactElement {
                   </select>
                 )}
                 <p className="text-[13px] text-[#9AA5B5] mt-1">Runtime, reports and history are never copied.</p>
+                {inheritsDetails && <p className="text-[14px] text-[#CAD0DA] mt-1">This completed REAL show's timezone, objective and account label carry forward. Edit the new show's objective in Prepare.</p>}
               </div>
             )}
           </fieldset>
@@ -243,7 +252,8 @@ function CreateLiveForm(): React.ReactElement {
             </div>
             <div>
               <label htmlFor="session-tz" className="block text-[15px] font-medium text-[#CAD0DA] mb-2">Timezone</label>
-              <select id="session-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} className={INPUT}>
+              <select id="session-tz" value={planTimezone} disabled={inheritsDetails} onChange={(e) => setTimezone(e.target.value)} className={INPUT}>
+                {!TIMEZONES.includes(planTimezone) && <option value={planTimezone}>{planTimezone}</option>}
                 {TIMEZONES.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
@@ -252,26 +262,26 @@ function CreateLiveForm(): React.ReactElement {
           </div>
 
           <div className="flex flex-wrap gap-4">
-            {!showObjective && (
+            {!showObjective && !inheritsDetails && (
               <button type="button" onClick={() => setShowObjective(true)} className="text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1.5 cursor-pointer">
                 <i className="ri-add-line" aria-hidden="true" />
                 <span>Add an objective</span>
               </button>
             )}
-            {!showAccount && (
+            {!showAccount && !inheritsDetails && (
               <button type="button" onClick={() => setShowAccount(true)} className="text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1.5 cursor-pointer">
                 <i className="ri-add-line" aria-hidden="true" />
                 <span>Add an account label (optional)</span>
               </button>
             )}
           </div>
-          {showObjective && (
+          {showObjective && !inheritsDetails && (
             <div>
               <label htmlFor="session-obj" className="block text-[15px] font-medium text-[#CAD0DA] mb-2">Objective</label>
               <input id="session-obj" value={objective} onChange={(e) => setObjective(e.target.value)} className={INPUT} placeholder="e.g. Launch the fall line and test the sizing cue" />
             </div>
           )}
-          {showAccount && (
+          {showAccount && !inheritsDetails && (
             <div>
               <label htmlFor="session-acc" className="block text-[15px] font-medium text-[#CAD0DA] mb-2">Account label</label>
               <input id="session-acc" value={account} onChange={(e) => setAccount(e.target.value)} className={INPUT} placeholder="e.g. @livelift.shop · Room 8412" />
@@ -308,12 +318,15 @@ function CreateLiveForm(): React.ReactElement {
               <span className="text-[16px] font-medium text-[#F5F7FC]">Create as SIMULATED rehearsal</span>
             </label>
             <p className="text-[14px] text-[#B7C1CE] mt-1.5 ml-8">
-              REAL is the default: it lives in the shared room and uses the room&apos;s clock. A SIMULATED show stays in this browser on a virtual
-              clock and is never mixed with real history.
+              REAL records your show operations in the shared room. SIMULATED is a rehearsal saved in this browser; use the clock buttons to advance time. Neither option starts a TikTok broadcast.
             </p>
           </div>
 
           {error && <p role="alert" className="text-[14px] text-[#F4A4A4]">{error}</p>}
+          {!hydrated && <p role="status" className="text-[14px] text-[#CAD0DA]">Loading saved shows and rehearsals…</p>}
+          {hydrated && (title.trim() === "" || plannedStartMs === null) && (
+            <p className="text-[14px] text-[#F6C875]">Enter a title, planned date and valid start time to create this LIVE.</p>
+          )}
           {!simulated && !commands.canWrite && commands.blockedReason && !submitting && (
             <p className="text-[14px] text-[#F6C875]" data-testid="create-blocked">
               <i className="ri-lock-line mr-1.5" aria-hidden="true" />

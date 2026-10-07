@@ -87,7 +87,7 @@ export function CueBar({
 
   if (!first) {
     return (
-      <div data-testid="cue-bar" className="flex items-center gap-2 min-h-[44px] min-w-0 flex-1">
+        <div data-testid="cue-bar" className="flex flex-wrap items-center gap-2 min-h-[44px] min-w-0 flex-1">
         <Signal tone="muted" icon="ri-checkbox-multiple-line" size="desk">
           No operator cues waiting
         </Signal>
@@ -128,7 +128,7 @@ export function CueBar({
           {pending.length > 1 && ` · +${pending.length - 1} more`}
         </p>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex flex-wrap items-center gap-1">
         <Button
           size="deskPrimary"
           variant={urgent ? "primary" : "secondary"}
