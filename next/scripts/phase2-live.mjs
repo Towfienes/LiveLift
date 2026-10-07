@@ -25,7 +25,7 @@ const server = createServer(async (incoming, outgoing) => {
 try {
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const port = server.address().port;
-  const tests = spawn(process.execPath, ["node_modules/vitest/vitest.mjs", "run", "src/__tests__/phase2/authority.acceptance.test.ts"], { env: { ...process.env, NODE_ENV: "test", LIVELIFT_TEST_SERVER_URL: `http://127.0.0.1:${port}` }, stdio: "inherit" });
+  const tests = spawn(process.execPath, ["node_modules/vitest/vitest.mjs", "run", "src/__tests__/phase2/authority.acceptance.test.ts"], { env: { ...process.env, NODE_ENV: "test", LIVELIFT_AUTH_MODE: "bearer", LIVELIFT_TEST_SERVER_URL: `http://127.0.0.1:${port}` }, stdio: "inherit" });
   process.exitCode = await new Promise((r) => tests.once("exit", r));
 } finally {
   server.closeAllConnections(); await new Promise((r) => server.close(r));
