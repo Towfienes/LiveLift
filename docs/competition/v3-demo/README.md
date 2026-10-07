@@ -1,5 +1,9 @@
 # LiveLift V3 — competition demo (3 to 5 minutes)
 
+> Written for the V3 freeze (`v3.0.0-competition`). Since then the product gained TikTok Login Kit (V4), Insights and
+> the AI Copilot (V5) and LIVE Intelligence with labelled fixture provider evidence (V7). The flow below still works;
+> for current status see the [root README](../../../README.md#demo).
+
 Each step below was clicked through on this build in a browser before it was written down.
 Where a step was **not** exercised, it says so.
 

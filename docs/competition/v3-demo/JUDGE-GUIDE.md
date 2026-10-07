@@ -1,5 +1,8 @@
 # LiveLift in one minute (for judges)
 
+> Written for the V3 freeze. TikTok Login Kit identity (V4) and LIVE Intelligence (V7) came later; current status is in
+> the [root README](../../../README.md).
+
 ## What it is
 
 The operating desk around a LIVE. Not a TikTok replacement, and not connected to TikTok.

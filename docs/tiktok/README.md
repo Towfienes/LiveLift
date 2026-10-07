@@ -1,5 +1,9 @@
 # TikTok provider integration (V1)
 
+> Scope note: this page documents the V1 Login Kit integration. The later TikTok Shop analytics provider (V7) is
+> documented in [LIVE-INTELLIGENCE-IMPLEMENTATION.md](LIVE-INTELLIGENCE-IMPLEMENTATION.md); real Shop analytics access
+> is not currently granted to the project's seller account. Current status: [root README](../../README.md#tiktok-integration).
+
 Status: **Login Kit connection + profile read.** Nothing else. See `FEASIBILITY.md` for why, and `SANDBOX-SETUP.md` to run it.
 
 ## What a connection means
