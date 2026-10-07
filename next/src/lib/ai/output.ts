@@ -7,7 +7,7 @@ import { OperateModelOutputSchema, ReviewModelOutputSchema, type AiContext, type
  *   schema             exactly the expected keys and bounded lengths
  *   unknown_reference  it may cite only fact ids, and name only option / change aliases, that LiveLift supplied
  *   unsafe_content     no links, markup or code blocks
- *   unsupported_claim  no audience/sales/performance claims (LiveLift has no such data), no "already applied"
+ *   unsupported_claim  Review provider numbers require exact cited facts; no causation or "already applied"
  *   ungrounded_number  every number it writes must appear in the evidence it was given
  *
  * Any failure rejects the whole answer as "invalid response". Nothing is repaired, guessed or half-shown.
@@ -21,6 +21,8 @@ export interface OutputAllowlist {
   aliases: ReadonlySet<string>;
   /** The evidence the model was given (see groundingCorpus); numbers in the answer must come from it. */
   evidence: string;
+  /** Review-only exact sentences and fact ids; quantitative provider claims cannot be paraphrased. */
+  providerFacts?: ReadonlyArray<{ id: string; text: string }>;
 }
 
 // Control characters never belong in advice shown to an operator.
@@ -29,6 +31,8 @@ const CONTROL = /[\u0000-\u0008\u000B-\u001F]/;
 const UNSAFE = /https?:\/\/|\bwww\.|<\/?[a-z!][^>]*>|\]\(|```|javascript:|data:text|mailto:/i;
 
 const UNSUPPORTED_CLAIMS: RegExp[] = [
+  /\b(?:platform|tiktok)[- ]+(?:has\s+)?(?:confirmed|verified)\b|\b(?:platform_confirmed|verified on stream|broadcast verified)\b/i,
+  /\b(?:caus(?:ed|es)|drove|drives?|led to|resulted in|responsible for|generated|boosted|yielded|produced)\b[^.]{0,100}\b(?:sales|viewers?|revenue|conversions?|orders?|engagement|clicks?|gmv|impressions?)\b/i,
   // How something "performed" with the audience or the platform.
   /\b(?:perform(?:s|ed|ing)?|sold|sells?|converted|converts?|did|doing)\s+(?:very\s+|really\s+|so\s+)?(?:well|poorly|badly|great|strongly|weakly|better|worse)\b/i,
   /\b(?:under|over)[- ]?perform/i,
@@ -114,7 +118,26 @@ export function validateModelOutput(task: AiTask, raw: string, allow: OutputAllo
   }
   const prose = proseOf(output);
   if (prose.some((s) => UNSAFE.test(s) || CONTROL.test(s))) return { ok: false, reason: "unsafe_content" };
-  if (prose.some((s) => UNSUPPORTED_CLAIMS.some((re) => re.test(s)))) return { ok: false, reason: "unsupported_claim" };
+  const providerFacts = task === "review" ? allow.providerFacts ?? [] : [];
+  const providerTexts = new Set(providerFacts.map((f) => f.text));
+  if (prose.some((s) => UNSUPPORTED_CLAIMS.slice(0, 2).some((re) => re.test(s)) || !providerTexts.has(s) && UNSUPPORTED_CLAIMS.slice(2).some((re) => re.test(s)))) return { ok: false, reason: "unsupported_claim" };
+  // Grounded numbers still cannot move between metrics, windows, or evidence perspectives.
+  {
+    let invalidProvider = false;
+    const visit = (v: unknown): void => {
+      if (!v || typeof v !== "object") return;
+      if (Array.isArray(v)) { v.forEach(visit); return; }
+      const row = v as Record<string, unknown>;
+      for (const [key, value] of Object.entries(row)) {
+        if (key !== "cites" && typeof value === "string" && (/provider[- ]observed/i.test(value) || /\b(?:viewers?|visitors?|audience|clicks?|orders?|gmv|impressions?|sales|revenue|comments?|likes?|shares?)\b/i.test(value) && /\d|\b(?:zero|higher|lower|more|less)\b/i.test(value))) {
+          const fact = providerFacts.find((f) => f.text === value);
+          if (!fact || !Array.isArray(row.cites) || !row.cites.includes(fact.id)) invalidProvider = true;
+        } else if (typeof value === "object") visit(value);
+      }
+    };
+    visit(output);
+    if (invalidProvider) return { ok: false, reason: "unsupported_claim" };
+  }
   const known = new Set(numbersIn(allow.evidence));
   if (prose.some((s) => numbersIn(s).some((n) => !known.has(n)))) return { ok: false, reason: "ungrounded_number" };
   return { ok: true, output };

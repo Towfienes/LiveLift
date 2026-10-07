@@ -21,6 +21,8 @@ import {
   VARIANCE_TOLERANCE_SEC,
 } from "@/lib/domain";
 import { sanitizeUntrusted } from "./redact";
+import type { LiveIntelligenceSnapshot } from "@/contracts/liveIntelligence";
+import { laterEvidenceFacts } from "./providerFacts";
 
 /**
  * The AI context contract: the ONLY evidence a model is given.
@@ -433,7 +435,7 @@ export interface ReviewBuild {
   review: Review;
 }
 
-export function buildReviewContext(session: Session, opts: { priors?: AiPriorSession[] } = {}): ReviewBuild | null {
+export function buildReviewContext(session: Session, opts: { priors?: AiPriorSession[]; laterEvidence?: LiveIntelligenceSnapshot | null } = {}): ReviewBuild | null {
   const review = buildReview(session);
   if (!review) return null;
   const priors = opts.priors ?? [];
@@ -456,5 +458,11 @@ export function buildReviewContext(session: Session, opts: { priors?: AiPriorSes
     priorSessions: priors,
     platform: PLATFORM_EVIDENCE,
   };
+  const later = opts.laterEvidence;
+  if (later && later.sessionId === session.id && later.mode === session.environment && later.sessionRevision === session.revision && (later.mode !== "REAL" || later.provider === "tiktok_shop")) {
+    context.facts = context.facts.filter((f) => f.topic !== "platform_limits").slice(0, 36);
+    context.facts.push(...laterEvidenceFacts(later, Math.max(0, ...context.facts.map((f) => Number(f.id.slice(1)))) + 1));
+    context.laterEvidence = { snapshotId: later.snapshotId, fetchedAt: later.fetchedAt, perspective: "later_evidence", source: later.provider, evidenceTier: "provider_observed" };
+  }
   return { context, changeByAlias, review };
 }

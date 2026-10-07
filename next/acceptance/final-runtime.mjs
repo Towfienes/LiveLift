@@ -34,7 +34,7 @@ async function listen(server) {
   return server.address().port;
 }
 
-export async function startRuntime(mode, evidence) {
+export async function startRuntime(mode, evidence, options = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'livelift-cert-runtime-'));
   const log = path.join(evidence, `${mode}-server.log`);
   fs.writeFileSync(log, '', { mode: 0o600 });
@@ -72,6 +72,8 @@ export async function startRuntime(mode, evidence) {
     const origin = `https://127.0.0.1:${await listen(proxy)}`;
     Object.assign(env, { LIVELIFT_WORKSPACE_ID: randomUUID(), LIVELIFT_ROOM_ID: 'final-cert', LIVELIFT_DB_PATH: path.join(directory, 'data', 'room.sqlite'),
       LIVELIFT_BACKUP_DIR: path.join(directory, 'backups'), LIVELIFT_APP_ORIGIN: origin });
+    if (options.intelligenceFixture) Object.assign(env, { LIVELIFT_INTELLIGENCE_MODE: 'fixture',
+      LIVELIFT_TIKTOK_SHOP_INTERVAL_POLICY: 'unverified', LIVELIFT_PROVIDER_EVIDENCE_DB_PATH: path.join(directory, 'data', 'provider-evidence.sqlite') });
     // Build the existing ops tooling in a private copy; never leave .ops or edit app source.
     const tooling = path.join(directory, 'tooling');
     for (const relative of ['src/contracts', 'src/fixtures', 'src/lib/domain', 'src/lib/server', 'src/lib/ai', 'src/app/api', 'scripts']) {
@@ -106,7 +108,8 @@ export async function startRuntime(mode, evidence) {
       if (spawnError || child.exitCode !== null) throw new Error(`App exited before readiness; see ${log}`);
       try {
         const response = await fetch(`http://127.0.0.1:${upstreamPort}/api/readyz`, { signal: AbortSignal.timeout(2000) });
-        if (response.status === 200 && (await response.json()).ready === true) return { origin, credentials, stop };
+        if (response.status === 200 && (await response.json()).ready === true) return { origin, credentials, stop,
+          fixtureTools: path.join(tooling, '.ops/src') };
       } catch { /* Wait for this child only. */ }
       await new Promise(resolve => setTimeout(resolve, 250));
     }

@@ -1,4 +1,3 @@
-import { vi } from "vitest";
 import type { Session } from "@/contracts";
 import type { AuthorityReceipt, CommandEnvelope, RoomRead } from "@/contracts/authority";
 import type { AuthSession, RecoveryNotice } from "@/contracts/production";
@@ -143,8 +142,10 @@ export class FakeRoom {
 
   /** Install this room as the global fetch for the duration of a test. Returns a restore function. */
   install(): () => void {
-    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => this.handle(String(input), init));
-    return () => spy.mockRestore();
+    // A fresh callable lets tests independently spy on pending requests (Vitest 4 reuses existing spies).
+    const previous = globalThis.fetch;
+    globalThis.fetch = async (input, init) => this.handle(String(input), init);
+    return () => { globalThis.fetch = previous; };
   }
 
   private json(body: unknown, status = 200): Response {

@@ -9,6 +9,8 @@ import { assertNotRetired, beginMaintenance, finishMaintenance, markerPath, reti
 import { pruneOffHostWorkspace } from "./offhost";
 import { providerStorePath } from "./tiktok/config";
 import { removeProviderStoreFiles } from "./tiktok/store";
+import { loadIntelligenceConfig } from "./liveIntelligence/config";
+import { EvidenceStore } from "./liveIntelligence/store";
 import { log } from "./log";
 
 export function initialize(config: ProductionConfig): void {
@@ -75,6 +77,13 @@ export function deleteWorkspace(config: ProductionConfig, confirmation: string, 
         if (manifest.workspaceId === config.workspaceId) rmSync(artifact, { recursive: true });
       }
       if (existsSync(config.backupDir)) syncDirectory(config.backupDir);
+    }
+    const evidence = loadIntelligenceConfig(config.dbPath);
+    if (evidence.issues.includes("LIVELIFT_PROVIDER_EVIDENCE_DB_PATH")) throw new Error("Unsafe provider evidence path");
+    if (existsSync(evidence.config.dbPath)) {
+      // Verify workspace/room ownership before the existing explicit administrator erase.
+      new EvidenceStore(evidence.config.dbPath, { workspaceId: config.workspaceId, roomId: config.roomId, generation: "delete" }).close();
+      removeDatabase(evidence.config.dbPath);
     }
     removeDatabase(config.dbPath);
     // Provider credentials belong to the workspace and are never backed up, so deletion must erase them here.
