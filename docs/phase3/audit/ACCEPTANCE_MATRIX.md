@@ -24,7 +24,7 @@ This document defines the independent verification matrix for the LiveLift V3 Ph
 | **P3-A11Y** | Accessibility & ARIA Semantics | UI | **HIGH** | `p3.a11y.test.tsx` | JSDOM + Manual Assistive Tech | **PASS NOW** (Structural ARIA) / **PENDING MANUAL** / **PENDING INTEGRATION** (axe-core) |
 | **P3-DEPLOY** | Production Topology & Docker | Platform | **CRITICAL** | `p3.deploy.test.ts` | Static Host Config & Docker Engine | **PASS NOW** (Static Specs) / **PENDING INTEGRATION** (Compose Run) |
 | **P3-REGRESSION** | Phase 1 & Phase 2 Safeguards | All Lanes | **CRITICAL** | `p3.regression.test.ts`, `phase2/*` | In-Process Suite (28 files, 340 tests) | **PASS NOW** |
-| **P3-SOAK** | 48-Hour Rehearsal Endurance | All Lanes | **CRITICAL** | `p3.soak.test.ts`, `acceptance/soakRunner.ts` | Live Deployment Host | **PASS NOW** (Smoke Mode) / **PENDING 48H SOAK** (Full Release Gate) |
+| **P3-SOAK** | 48-Hour Rehearsal Endurance | All Lanes | **CRITICAL** | `p3.soak.test.ts`, `acceptance/soak.mjs`, `acceptance/liveSoak.ts` | Live Deployment Host | **PASS NOW** (Live CLI + Short Live Soak) / **PENDING 48H SOAK** (Full Release Gate) |
 
 ---
 
@@ -267,9 +267,17 @@ This document defines the independent verification matrix for the LiveLift V3 Ph
 - **Contract Reference:** `docs/phase3/contract.md` § Acceptance IDs
 - **Requirements:**
   1. Exercised over sustained production workloads: concurrent polling clients, operator commands, viewer clients, simulated network interruptions, and receipt reconciliations.
-  2. Short smoke mode (~1-5 seconds) for automated CI and test execution.
+  2. Preserve the short simulated CI smoke; separately certify the live CLI with a 30–120 second staging run.
   3. Full 48-hour mode (`rehearsal_48h`) as the final integrated release gate.
-- **Harness & Verification:** `next/src/__tests__/phase3/p3.soak.test.ts`, `next/acceptance/soakRunner.ts`
+- **Harness & Verification:** `next/src/__tests__/phase3/p3.soak.test.ts`,
+  `next/acceptance/soak.mjs`, `next/acceptance/liveSoak.ts`. The legacy
+  `acceptance/soakRunner.ts` simulation is test evidence only and is not the release CLI.
+- **Commands (from `next/` with protected live configuration):**
+  `npm run soak:smoke -- --duration 60s`; `npm run soak:48h -- --duration 48h`.
+  Configuration, credential permissions, metrics, exit codes and optional ops integration
+  are specified in [the platform runbook](../platform/runbook.md#live-production-soak).
 - **Current State:**
-  - Smoke mode execution and metric collection: **PASS NOW**
+  - Simulated smoke and focused CLI regression checks: **PASS NOW**
+  - Live HTTP smoke and short rehearsal-mode entry point: **PASS NOW**;
+    [recorded staging evidence](LIVE_SOAK_CERTIFICATION.md).
   - Full 48-hour endurance run: **PENDING 48H SOAK** (Release gate)

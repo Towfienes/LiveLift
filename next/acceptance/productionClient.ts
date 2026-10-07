@@ -25,6 +25,7 @@ export interface ProductionClientConfig {
   password?: string;
   sessionToken?: string | null;
   extraHeaders?: Record<string, string>;
+  requestTimeoutMs?: number;
 }
 
 export interface HttpResponse<T> {
@@ -85,6 +86,7 @@ export class ProductionClient {
           : (process.env.LIVELIFT_VIEWER_PASSWORD || "TestViewerPassword123!")),
       sessionToken: config.sessionToken ?? null,
       extraHeaders: config.extraHeaders,
+      requestTimeoutMs: config.requestTimeoutMs,
     };
 
     if (this.config.sessionToken) {
@@ -109,6 +111,14 @@ export class ProductionClient {
 
   getCurrentSession(): AuthSession | null {
     return this.currentSession;
+  }
+
+  private request(input: string, init?: RequestInit): Promise<Response> {
+    return fetch(input, this.config.requestTimeoutMs === undefined ? init : {
+      ...init,
+      signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(this.config.requestTimeoutMs)]) : AbortSignal.timeout(this.config.requestTimeoutMs),
+      redirect: "error",
+    });
   }
 
   /**
@@ -188,7 +198,7 @@ export class ProductionClient {
   ): Promise<HttpResponse<unknown>> {
     const url = path.startsWith("http") ? path : `${this.config.baseUrl}${path}`;
     try {
-      const res = await fetch(url, init);
+      const res = await this.request(url, init);
       return this.parseResponse<unknown>(res);
     } catch (err) {
       return {
@@ -219,7 +229,7 @@ export class ProductionClient {
     });
 
     try {
-      const res = await fetch(`${this.config.baseUrl}/api/v3/auth/login`, {
+      const res = await this.request(`${this.config.baseUrl}/api/v3/auth/login`, {
         method: "POST",
         headers,
         body: JSON.stringify(body),
@@ -270,7 +280,7 @@ export class ProductionClient {
     });
 
     try {
-      const res = await fetch(`${this.config.baseUrl}/api/v3/auth/logout`, {
+      const res = await this.request(`${this.config.baseUrl}/api/v3/auth/logout`, {
         method: "POST",
         headers,
         body: JSON.stringify({}),
@@ -305,7 +315,7 @@ export class ProductionClient {
     });
 
     try {
-      const res = await fetch(`${this.config.baseUrl}/api/v3/auth/session`, {
+      const res = await this.request(`${this.config.baseUrl}/api/v3/auth/session`, {
         method: "GET",
         headers,
       });
@@ -348,7 +358,7 @@ export class ProductionClient {
     });
 
     try {
-      const res = await fetch(url.toString(), {
+      const res = await this.request(url.toString(), {
         method: "GET",
         headers,
       });
@@ -377,7 +387,7 @@ export class ProductionClient {
     });
 
     try {
-      const res = await fetch(`${this.config.baseUrl}/api/v3/room/commands`, {
+      const res = await this.request(`${this.config.baseUrl}/api/v3/room/commands`, {
         method: "POST",
         headers,
         body: JSON.stringify(envelope),
@@ -415,7 +425,7 @@ export class ProductionClient {
     });
 
     try {
-      const res = await fetch(
+      const res = await this.request(
         url.toString(),
         {
           method: "GET",
@@ -446,7 +456,7 @@ export class ProductionClient {
     });
 
     try {
-      const res = await fetch(`${this.config.baseUrl}/api/v3/workspace/export`, {
+      const res = await this.request(`${this.config.baseUrl}/api/v3/workspace/export`, {
         method: "GET",
         headers,
       });
@@ -463,10 +473,10 @@ export class ProductionClient {
   }
 
   /** GET /api/healthz */
-  async getHealthz(): Promise<HttpResponse<{ status: string }>> {
+  async getHealthz(): Promise<HttpResponse<{ live: boolean }>> {
     try {
-      const res = await fetch(`${this.config.baseUrl}/api/healthz`);
-      return this.parseResponse<{ status: string }>(res);
+      const res = await this.request(`${this.config.baseUrl}/api/healthz`);
+      return this.parseResponse<{ live: boolean }>(res);
     } catch (err) {
       return {
         status: 0,
@@ -479,10 +489,10 @@ export class ProductionClient {
   }
 
   /** GET /api/readyz */
-  async getReadyz(): Promise<HttpResponse<{ status: string }>> {
+  async getReadyz(): Promise<HttpResponse<{ ready: boolean }>> {
     try {
-      const res = await fetch(`${this.config.baseUrl}/api/readyz`);
-      return this.parseResponse<{ status: string }>(res);
+      const res = await this.request(`${this.config.baseUrl}/api/readyz`);
+      return this.parseResponse<{ ready: boolean }>(res);
     } catch (err) {
       return {
         status: 0,

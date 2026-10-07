@@ -18,9 +18,14 @@ Prior to initiating live verification against an integrated delivery, configure 
 | `LIVELIFT_DB_PATH` | `/var/lib/livelift/authority.sqlite` |
 | `LIVELIFT_BACKUP_DIR` | `/var/backups/livelift` |
 | `LIVELIFT_OPERATOR_USERNAME` | `operator` |
-| `LIVELIFT_OPERATOR_PASSWORD` | `OperatorPassword123!` |
+| `LIVELIFT_OPERATOR_PASSWORD_FILE` | Protected operator password file (live soak) |
 | `LIVELIFT_VIEWER_USERNAME` | `viewer` |
-| `LIVELIFT_VIEWER_PASSWORD` | `ViewerPassword123!` |
+| `LIVELIFT_VIEWER_PASSWORD_FILE` | Protected viewer password file (live soak) |
+
+The live soak requires explicit deployment identity and protected credential files; it
+never uses the acceptance client's fixture credentials or password environment fallback.
+`LIVELIFT_GENERATION` is optional for the soak: login discovers and pins the current
+generation. Supplying it additionally verifies that login matches the expected generation.
 
 ---
 
@@ -92,15 +97,45 @@ flowchart TD
 ### Gate 7: 48-Hour Production Soak Endurance Rehearsal
 - **Protocol:**
   ```bash
-  # Execute full 48h soak rehearsal against staging host
-  node --import tsx acceptance/soakRunner.ts --mode rehearsal_48h --duration 48h
+  # From next/, with the live environment from the platform runbook loaded:
+  npm ci
+  npm run soak:smoke -- --duration 60s
+  npm run soak:48h -- --duration 48h
   ```
+- **Entry point:** `acceptance/soak.mjs` compiles `liveSoak.ts` and the existing
+  `ProductionClient` with the locked, already-installed TypeScript compiler into a
+  temporary directory, runs the CLI, and removes that directory. No `tsx`, experimental
+  TypeScript loading, production dependency or product runtime change is required.
+- **Live behavior:** explicit operator/viewer login, session checks and explicit
+  reauthentication near the absolute 12-hour expiry; full room reads from both roles;
+  one new planned REAL draft, then repeated `save_prepare` commands against that draft.
+  The runner does not start a show, alter an existing show, restore, or delete data.
+- **Fault exercise:** cancel an authenticated read before dispatch, then poll again;
+  deliberately discard every fifth command acknowledgement (including the first),
+  reconcile through the live receipt endpoint and replay the identical envelope to check
+  idempotence. Real transport failures look up the stable command ID before resending.
+  Connectivity/429/502/503/504 responses retry for at most five minutes per operation;
+  requests time out after ten seconds. Unexpected auth/context/server errors fail closed.
+- **Status and backups:** set `LIVELIFT_SOAK_OPS_EXECUTABLE` to a trusted executable wrapper
+  for the existing deployment's `ops` CLI. It receives only `status --json` and `backup`.
+  Status is checked at the health interval; verified online backup runs at startup and
+  hourly. Output is captured and suppressed. Each ops command has a 60-second timeout;
+  failure exits nonzero. Without this wrapper, HTTP probes still run, but **backup coverage
+  is absent** and must be supplied separately for the full release gate.
+- **Output/stop:** bounded JSON startup/progress/final lines; smoke progress every five
+  seconds, rehearsal every minute. SIGINT/SIGTERM finishes the current bounded operation,
+  prints `STOPPED`, and exits 130/143. An interrupted run cannot certify the 48-hour gate.
 - **Pass Criteria:**
-  - 48 hours continuous execution without crash or restart loop.
-  - Zero divergence between operator and viewer reads.
-  - Zero invariant violations.
-  - Reconciles 100% of simulated network glitch dropouts via receipt lookup.
-  - Periodic backup checks passing.
+  - A completed 48-hour run emits final `PASS` and exits 0; a short override is only smoke evidence.
+  - Both authenticated roles participate, at least one real mutation commits, and every
+    submitted logical intent has a durable committed or stale-revision rejection receipt.
+  - Zero revision regression, same-revision snapshot divergence, generation change,
+    REAL/SIMULATED contamination, history rewrite, lost session or duplicate commit.
+  - All injected lost acknowledgements reconcile; duplicate replay returns the same receipt.
+  - Health/readiness remain valid, temporary failures recover, and periodic ops checks pass.
+- **Certification:** see [LIVE_SOAK_CERTIFICATION.md](LIVE_SOAK_CERTIFICATION.md) for real
+  staging smoke evidence. The executable rehearsal entry point is certified using a short
+  duration override; the complete 48-hour endurance gate remains pending.
 
 ---
 
