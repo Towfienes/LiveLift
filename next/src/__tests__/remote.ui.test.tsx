@@ -24,7 +24,7 @@ import type { Session } from "@/contracts";
 import { sessionStore } from "@/lib/store/sessionStore";
 import { remoteRoomStore } from "@/lib/store/remoteRoomStore";
 import { FakeRoom } from "./helpers/fakeRoom";
-import { clearCapability, resetCapabilityCache } from "@/lib/client/capability";
+import { authStore } from "@/lib/client/authStore";
 
 type PageComponent = (props: { params: Promise<{ sessionId: string }> }) => React.ReactElement;
 
@@ -68,7 +68,7 @@ const open = (room: FakeRoom): FakeRoom => {
 
 beforeEach(() => {
   sessionStorage.clear();
-  resetCapabilityCache();
+  authStore.reset();
   localStorage.clear();
   remoteRoomStore.reset();
   sessionStore.reloadFromStorage();
@@ -186,6 +186,10 @@ describe("REAL Operate: stale, disconnected and read-only", () => {
     expect(screen.getByLabelText("Run of Show panel")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("extend-plus-one-btn"));
     expect(room.posts()).toHaveLength(0);
+    // Let the poll that follows the first contact finish inside act, so its store update is not applied after the test.
+    await act(async () => {
+      await remoteRoomStore.refreshNow();
+    });
   });
 });
 
@@ -314,37 +318,35 @@ describe("legacy local REAL data", () => {
   });
 });
 
-describe("capability input and authentication states", () => {
-  it("with no capability the desk says so, offers the input, and connects once it is given", async () => {
-    const room = open(new FakeRoom());
+describe("sign-in states on the REAL desk", () => {
+  it("signed out: the desk says so, offers sign-in, sends nothing to the room, and never says 'not found'", async () => {
+    const room = open(new FakeRoom({ signedIn: false }));
     show(room, "real-1", { start: true });
-    clearCapability();
     await renderPage(OperatePage as PageComponent, "real-1");
-    expect(await screen.findByTestId("session-unavailable")).toHaveTextContent("A room capability is needed");
-    expect(screen.getByTestId("stale-banner")).toHaveTextContent("no room capability");
-    expect(room.requests).toHaveLength(0); // nothing is sent without one
-    expect(screen.getByTestId("capability-input")).toHaveAttribute("type", "password");
-
-    fireEvent.change(screen.getByTestId("capability-input"), { target: { value: room.token } });
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("capability-connect-btn"));
-    });
-    expect(await screen.findByTestId("extend-plus-one-btn")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("connection-chip")).toHaveAttribute("data-connection", "connected"));
-    expect(room.requests.every((r) => r.authorization === `Bearer ${room.token}`)).toBe(true);
-    expect(document.body.textContent).not.toContain(room.token);
-    expect(sessionStorage.getItem("livelift.v3.capability")).toBe(room.token); // this tab only
-    expect(localStorage.getItem("livelift.v3.capability")).toBeNull();
+    const gate = await screen.findByTestId("session-unavailable");
+    expect(gate).toHaveAttribute("data-problem", "signed_out");
+    expect(gate).toHaveTextContent("Sign in to open this show");
+    expect(screen.queryByTestId("session-not-found")).toBeNull();
+    expect(screen.getByTestId("stale-banner")).toHaveTextContent("signed out");
+    for (const link of screen.getAllByRole("link", { name: "Sign in" })) expect(link).toHaveAttribute("href", expect.stringContaining("/login?next="));
+    expect(room.requests).toHaveLength(0); // nothing reaches the room without a session
+    expect(screen.getByTestId("connection-chip")).toHaveTextContent("Signed out");
   });
 
-  it("a capability the room rejects is called what it is, not 'unreachable'", async () => {
+  it("a session the room rejects mid-show is 'session ended': the last state stays, frozen and read-only", async () => {
     const room = open(new FakeRoom());
     show(room, "real-1", { start: true });
-    room.token = "something-else";
     await renderPage(OperatePage as PageComponent, "real-1");
-    expect(await screen.findByTestId("session-unavailable")).toHaveTextContent("did not accept this capability");
-    expect(screen.getByTestId("stale-banner")).toHaveTextContent(/did not accept/);
-    expect(screen.getByTestId("connection-chip")).toHaveTextContent("Capability not accepted");
+    await waitFor(() => expect(screen.getByTestId("extend-plus-one-btn")).not.toBeDisabled());
+    room.revokeSession();
+    await act(async () => {
+      await remoteRoomStore.refreshNow();
+    });
+    expect(await screen.findByTestId("stale-banner")).toHaveTextContent(/session ended/i);
+    expect(screen.getByTestId("connection-chip")).toHaveTextContent("Session ended");
+    expect(screen.getByTestId("extend-plus-one-btn")).toBeDisabled();
+    expect(screen.getByText("Friday launch")).toBeInTheDocument(); // the last confirmed state, not an empty room
+    expect(screen.getAllByRole("link", { name: "Sign in again" }).length).toBeGreaterThan(0);
   });
 });
 

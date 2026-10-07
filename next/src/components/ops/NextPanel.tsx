@@ -22,6 +22,14 @@ const WHY_ICON: Record<SituationTone, string> = {
   missed: "ri-time-line",
 };
 
+/** Spoken prefix for the situation's tone, so a change from "on track" to "at risk" is heard as one. */
+const WHY_SPOKEN: Record<SituationTone, string> = {
+  ok: "",
+  watch: "Watch: ",
+  risk: "At risk: ",
+  missed: "Missed: ",
+};
+
 const MAX_VISIBLE_OPTIONS = 2;
 
 /** NEXT · WHY · ACTION: the next executable segment, one reason, and explicit choices. */
@@ -127,12 +135,15 @@ export function NextPanel({
         </div>
       </div>
 
-      <div
-        data-testid="why-box"
-        role="status"
-        aria-live="polite"
-        className={`mt-2 rounded-[8px] border-l-[3px] px-3 py-1.5 ${WHY_STYLE[tone]}`}
-      >
+      {/*
+        The box's detail counts down (remaining buffer, minutes late), so the box itself must not be a live region: it
+        would be read out every second. Screen readers hear only when the situation itself changes: its tone and headline.
+      */}
+      <p role="status" aria-live="polite" className="sr-only" data-testid="why-announce">
+        {WHY_SPOKEN[tone]}
+        {analysis.situation.headline}
+      </p>
+      <div data-testid="why-box" className={`mt-2 rounded-[8px] border-l-[3px] px-3 py-1.5 ${WHY_STYLE[tone]}`}>
         <p className="text-[16px] leading-snug text-[#F5F7FC]">
           <i className={`${WHY_ICON[tone]} mr-1.5 ${tone === "missed" ? "text-[#F4A4A4]" : tone === "ok" ? "text-[#9AA5B5]" : "text-[#F6C875]"}`} aria-hidden="true" />
           <span className="font-semibold">WHY · </span>

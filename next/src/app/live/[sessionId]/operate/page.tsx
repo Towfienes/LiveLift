@@ -536,7 +536,8 @@ function Desk({
 
         {notice && (
           <div
-            role="status"
+            // A REAL command's final answer is spoken once by the shared announcer; a rehearsal's is spoken here.
+            role={isRemote ? undefined : "status"}
             data-testid="command-ack-banner"
             className={`rounded-[8px] px-3 py-1 text-[16px] flex items-center justify-between gap-3 shrink-0 ${
               notice.tone === "ok"

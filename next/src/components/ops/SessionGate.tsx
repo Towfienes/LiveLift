@@ -2,12 +2,12 @@
 
 import React, { Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { Session } from "@/contracts";
 import { StandardShell } from "@/components/shell";
 import { Button } from "@/components/ui";
-import { remoteRoomStore } from "@/lib/store/remoteRoomStore";
-import { useRemoteState, useSession, type SessionSource } from "@/lib/store/hooks";
+import { remoteRoomStore, type RemoteProblem } from "@/lib/store/remoteRoomStore";
+import { useSession, type SessionSource } from "@/lib/store/hooks";
 
 export interface GateContext {
   /** Where this show's authority lives. REAL shows are "remote"; rehearsals and the local archive are "local". */
@@ -36,6 +36,32 @@ export function SessionGate(props: {
   );
 }
 
+/** Why a REAL show cannot be opened right now: the headline, and what LiveLift can and cannot say about the id. */
+function unavailableCopy(problem: RemoteProblem | null): { title: string; cause: string; signIn: boolean } {
+  switch (problem) {
+    case "signed_out":
+      return { title: "Sign in to open this show", cause: "you are signed out of the shared room", signIn: true };
+    case "session_ended":
+      return { title: "Your session ended", cause: "your session ended (it expired or was revoked)", signIn: true };
+    case "auth_unavailable":
+      return { title: "Sign-in is unavailable", cause: "the sign-in service cannot be reached", signIn: false };
+    case "storage_unavailable":
+      return { title: "The room's storage is unavailable", cause: "the room's storage is not available", signIn: false };
+    case "backend_unavailable":
+      return { title: "The room is unavailable", cause: "the room server is not available", signIn: false };
+    case "wrong_deployment":
+      return { title: "This session belongs to a different workspace", cause: "this session's workspace is not the one this server is set up for", signIn: false };
+    case "recovery_required":
+      return { title: "The room was restored from a backup", cause: "the room was restored and the session is being re-checked", signIn: false };
+    case "context_required":
+    case "request_refused":
+    case "forbidden":
+      return { title: "The room did not accept this session", cause: "the room did not accept this session's request", signIn: false };
+    default:
+      return { title: "The room cannot be reached", cause: "it cannot reach the room right now", signIn: false };
+  }
+}
+
 function GateMessage({ children, busy = false }: { children: React.ReactNode; busy?: boolean }): React.ReactElement {
   return (
     <StandardShell>
@@ -58,28 +84,33 @@ function Gate({
   const params = useSearchParams();
   const archive = params.get("archive") === "1";
   const lookup = useSession(id, { archive });
-  const auth = useRemoteState().auth;
+  const pathname = usePathname();
 
   if (lookup.status === "loading") return <GateMessage busy>Loading show…</GateMessage>;
 
   if (lookup.status === "unavailable") {
+    const copy = unavailableCopy(lookup.problem);
     return (
       <StandardShell>
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center" data-testid="session-unavailable">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center" data-testid="session-unavailable" data-problem={lookup.problem ?? undefined}>
           <span className="text-[44px] text-[#F6C875]">
             <i className="ri-wifi-off-line" aria-hidden="true" />
           </span>
-          <h1 className="text-[28px] font-medium text-[#F5F7FC] mt-4">
-            {auth === "missing" ? "A room capability is needed" : auth === "rejected" ? "The room did not accept this capability" : "The room cannot be reached"}
-          </h1>
+          <h1 className="text-[28px] font-medium text-[#F5F7FC] mt-4">{copy.title}</h1>
           <p className="text-[16px] text-[#B7C1CE] mt-2 max-w-[560px]">
-            REAL shows live in the shared room, and LiveLift {auth === "ok" || auth === "unknown" ? "cannot reach it right now" : "has no accepted capability for it"}, so it cannot tell you whether{" "}
-            <span className="font-mono text-[#F5F7FC]">{id}</span> exists. {lookup.reason}
+            REAL shows live in the shared room, and {copy.cause}, so LiveLift cannot tell you whether{" "}
+            <span className="font-mono text-[#F5F7FC]">{id}</span> exists. That is not the same as it being missing. {lookup.reason}
           </p>
           <div className="mt-6 flex items-center gap-3">
-            <Button variant="primary" onClick={() => void remoteRoomStore.refreshNow()}>
-              Try again
-            </Button>
+            {copy.signIn ? (
+              <Link href={`/login?next=${encodeURIComponent(pathname || "/")}`}>
+                <Button variant="primary">{lookup.problem === "session_ended" ? "Sign in again" : "Sign in"}</Button>
+              </Link>
+            ) : (
+              <Button variant="primary" onClick={() => void remoteRoomStore.refreshNow()}>
+                Try again
+              </Button>
+            )}
             <Link href="/">
               <Button variant="ghost">Return home</Button>
             </Link>

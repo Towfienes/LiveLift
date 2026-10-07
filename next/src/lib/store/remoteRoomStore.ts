@@ -2,12 +2,25 @@ import type { Session } from "@/contracts";
 import type { AuthorityCommandBody, AuthorityReceipt, CommandEnvelope, RoomRead, RoomSnapshot } from "@/contracts/authority";
 import { createAuthorityClient, type AuthorityClient } from "@/lib/client/authorityClient";
 import { authorityNowMs, type AuthorityClockSample } from "@/lib/client/authorityTime";
-import { subscribeCapability } from "@/lib/client/capability";
+import { announce } from "@/lib/client/announcer";
+import { authStore } from "@/lib/client/authStore";
 import { commandLabel, describeRejection } from "@/lib/client/commandText";
-import { canPersistPending, loadPending, savePending, type PersistedPending } from "@/lib/client/pendingEnvelopes";
+import {
+  addPending,
+  canPersistPending,
+  clearAllPending,
+  loadAllPending,
+  partitionPending,
+  removePending,
+  scopeKey,
+  type PendingScope,
+  type PersistedPending,
+  type QuarantineReason,
+  type QuarantinedPending,
+} from "@/lib/client/pendingEnvelopes";
 
 /**
- * Client of the REAL room authority (docs/phase2/contract.md, docs/phase2/ui.md).
+ * Client of the REAL room authority (docs/phase2/contract.md, docs/phase2/ui.md, docs/phase3/ui.md).
  *
  * The server owns REAL state. This store only ever INSTALLS what the server returned:
  * - It never advances REAL state optimistically, never edits an installed session, and never installs an
@@ -19,6 +32,15 @@ import { canPersistPending, loadPending, savePending, type PersistedPending } fr
  *   UNKNOWN (never "failed"); unresolved commands are reconciled through the receipt endpoint and are never
  *   re-POSTed unless the operator explicitly retries the exact same envelope.
  *
+ * Phase 3: the store runs only under an authenticated session (`authStore`). Its scope — actor id, workspace id
+ * and restore generation — is the identity of everything it holds:
+ * - a different actor, workspace or generation drops the installed snapshot and asks for a FULL resnapshot;
+ * - pending commands are looked up and re-sent only for the current scope; older-generation and legacy records are
+ *   quarantined (shown, never looked up, never replayed, never moved into the new generation);
+ * - sign-out drops everything displayed at once and keeps the stored pending records untouched;
+ * - a 401 ends the session; the last confirmed snapshot stays visible, frozen and read-only, until the same actor
+ *   signs in again or anyone else does (which drops it).
+ *
  * Authoritative REAL session state is held in memory only. localStorage keeps just the pending envelopes
  * (see pendingEnvelopes.ts).
  */
@@ -29,11 +51,49 @@ const STALE_CHECK_MS = 500;
 const RECONCILE_DELAY_MS = 1000;
 /** After the last consumer leaves, keep polling briefly so moving between pages does not flicker the status. */
 const IDLE_LINGER_MS = 1500;
+/** While the sign-in service cannot be asked, ask again this often. */
+const AUTH_RETRY_MS = 5000;
 /** Server-provided clock gaps up to this are noise, not a discontinuity worth surfacing. */
 export const CLOCK_BEHIND_TOLERANCE_MS = 2000;
 
 export type ConnectionState = "idle" | "connecting" | "connected" | "stale" | "disconnected";
 export type AccessInfo = RoomRead["access"];
+
+/**
+ * Why the room cannot be shown as current, as far as anything told us. Never "empty": a problem is not a room
+ * with no shows.
+ *
+ * Retried automatically (transient): `unreachable`, `backend_unavailable`, `storage_unavailable`, `rate_limited`.
+ * Waiting for the person (the retry would only repeat the answer): `signed_out`, `session_ended`,
+ * `auth_unavailable` (the session service is asked again every few seconds) and the blocking ones below.
+ */
+export type RemoteProblem =
+  | "signed_out"
+  | "session_ended"
+  | "auth_unavailable"
+  | "unreachable"
+  | "backend_unavailable"
+  | "storage_unavailable"
+  | "rate_limited"
+  /** 404: this session's workspace/room is not what the server is deployed for. */
+  | "wrong_deployment"
+  /** 400: the server did not receive this session's context. */
+  | "context_required"
+  /** 409: the room was restored; the session context is being re-read. */
+  | "recovery_required"
+  /** 403 `csrf_failed`: the server refused this browser request as unsafe. */
+  | "request_refused"
+  /** 403 to a read: access is being re-read. */
+  | "forbidden";
+
+const AUTH_PROBLEMS: ReadonlySet<RemoteProblem> = new Set(["signed_out", "session_ended", "auth_unavailable"]);
+const BLOCKING_PROBLEMS: ReadonlySet<RemoteProblem> = new Set(["wrong_deployment", "context_required", "recovery_required", "request_refused", "forbidden"]);
+const TRANSIENT_PROBLEMS: ReadonlySet<RemoteProblem> = new Set(["unreachable", "backend_unavailable", "storage_unavailable", "rate_limited"]);
+
+export const isAuthProblem = (p: RemoteProblem | null): boolean => p !== null && AUTH_PROBLEMS.has(p);
+export const isBlockingProblem = (p: RemoteProblem | null): boolean => p !== null && BLOCKING_PROBLEMS.has(p);
+/** LiveLift keeps trying on its own. */
+export const isTransientProblem = (p: RemoteProblem | null): boolean => p !== null && TRANSIENT_PROBLEMS.has(p);
 
 export interface InFlightCommand {
   commandId: string;
@@ -49,6 +109,18 @@ export interface UnresolvedCommand {
   detail: string;
   lookup: "idle" | "checking" | "absent" | "failed";
   retrying: boolean;
+}
+
+/**
+ * A pending command from before this session's generation (or from an older build, owner unknown). It is only
+ * displayed: it is never looked up, never sent again and never moved into the current generation.
+ */
+export interface QuarantinedCommand {
+  commandId: string;
+  label: string;
+  reason: QuarantineReason;
+  /** The generation it was made under; null for a record from before scoping existed. */
+  generation: string | null;
 }
 
 /** A one-time message about a command that was unresolved and has now been settled (or set aside). */
@@ -69,14 +141,14 @@ export interface RemoteState {
   access: AccessInfo | null;
   /** Informational: how far the server's raw clock trails time the authority already recorded (0 when none). Not part of display time. */
   clockBehindByMs: number;
-  /**
-   * Authentication, as far as the room has told us. "missing": this browser holds no capability (nothing was sent).
-   * "rejected": the room answered 401/403 to the capability it holds. "unknown": not asked yet.
-   */
-  auth: "unknown" | "ok" | "missing" | "rejected";
+  /** Why the room is not current, when it is not (null while connected or still connecting). */
+  problem: RemoteProblem | null;
   lastError: string | null;
   inflight: InFlightCommand | null;
+  /** Outcome-unknown commands of THIS actor, workspace and generation. They block new commands until resolved. */
   unresolved: UnresolvedCommand[];
+  /** Older-generation and legacy pending commands. Informational only; they never block anything. */
+  quarantined: QuarantinedCommand[];
   resolutions: Resolution[];
   /** Sessions the server confirmed creating that the installed snapshot does not contain yet. */
   awaitingSessionIds: string[];
@@ -88,10 +160,11 @@ const IDLE: RemoteState = {
   snapshot: null,
   access: null,
   clockBehindByMs: 0,
-  auth: "unknown",
+  problem: null,
   lastError: null,
   inflight: null,
   unresolved: [],
+  quarantined: [],
   resolutions: [],
   awaitingSessionIds: [],
 };
@@ -107,6 +180,14 @@ export type CommandOutcome =
   | { status: "unknown"; commandId: string; message: string }
   /** The client declined to send. Nothing was transmitted. */
   | { status: "refused"; code: "not_connected" | "read_only" | "busy" | "unresolved" | "not_saved"; message: string };
+
+/** What one failed request told the store, in the shape `applyFailure` reads. */
+interface Failure {
+  status: number | null;
+  kind: string;
+  code: string | null;
+  message: string;
+}
 
 export interface RemoteStoreDeps {
   client?: AuthorityClient;
@@ -145,19 +226,32 @@ export class RemoteRoomStore {
   private staleTimer: ReturnType<typeof setInterval> | null = null;
   private stopTimer: ReturnType<typeof setTimeout> | null = null;
   private reconcileTimer: ReturnType<typeof setTimeout> | null = null;
-  private unsubscribeCapability: (() => void) | null = null;
+  private authRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private unsubscribeAuth: (() => void) | null = null;
   private pollInFlight: Promise<void> | null = null;
   private reconciling: Promise<void> | null = null;
   private lastPollStartedPerf = 0;
   private forceFull = false;
+  /** Announce connection changes only for real contact changes, not for the store being stopped. */
+  private quiet = false;
+
+  /**
+   * Which actor / workspace / generation everything held here belongs to. `epoch` moves whenever that changes (or
+   * protected state is dropped), so an answer that was already on its way for the OLD scope is recognised and
+   * never installed under the new one.
+   */
+  private activeScopeKey: string | null = null;
+  private snapshotScopeKey: string | null = null;
+  private epoch = 0;
 
   /** Monotonic bookkeeping that changes every poll. Kept out of `state` so unchanged polls do not re-render the app. */
   private clock: AuthorityClockSample | null = null;
   private frozenAtPerfMs: number | null = null;
   private lastContactPerfMs: number | null = null;
 
+  /** Pending commands of the CURRENT scope only. Everything else stays in storage, untouched. */
   private pendingEnvelopes = new Map<string, PersistedPending>();
-  private pendingLoaded = false;
+  private quarantineEntries = new Map<string, QuarantinedPending>();
   private seq = 0;
 
   constructor(deps: RemoteStoreDeps = {}) {
@@ -185,8 +279,21 @@ export class RemoteRoomStore {
       }
     }
     if (!changed) return;
+    const before = this.state;
     this.state = { ...this.state, ...partial };
+    this.announceConnection(before);
     for (const l of this.listeners) l();
+  }
+
+  /** Contact lost and contact restored are announced once each. Auth problems have their own announcement. */
+  private announceConnection(before: RemoteState): void {
+    if (this.quiet || !this.state.active || before.connection === this.state.connection) return;
+    const now = this.state;
+    if (before.connection === "connected" && (now.connection === "stale" || now.connection === "disconnected") && !isAuthProblem(now.problem)) {
+      announce("Lost contact with the room. What you see is the last confirmed state, and changes are paused.", "polite");
+    } else if ((before.connection === "stale" || before.connection === "disconnected") && before.snapshot !== null && now.connection === "connected") {
+      announce("Reconnected to the room. What you see is current again.", "polite");
+    }
   }
 
   // ---- Lifecycle ----------------------------------------------------------------------------------
@@ -214,7 +321,6 @@ export class RemoteRoomStore {
   }
 
   private start(): void {
-    this.loadPersistedPending();
     this.patch({ active: true, connection: this.state.snapshot ? "stale" : "connecting" });
     if (typeof document !== "undefined") document.addEventListener("visibilitychange", this.onForeground);
     if (typeof window !== "undefined") {
@@ -223,18 +329,15 @@ export class RemoteRoomStore {
       window.addEventListener("pageshow", this.onForeground);
     }
     this.staleTimer = setInterval(this.checkStale, STALE_CHECK_MS);
-    this.unsubscribeCapability = subscribeCapability(this.onCapabilityChanged);
-    if (this.isHidden()) return; // polling begins when the view is foregrounded
-    void this.poll();
+    this.unsubscribeAuth = authStore.subscribe(this.syncAuth);
+    authStore.ensureChecked();
+    this.syncAuth();
   }
 
   private stop(): void {
-    if (this.pollTimer) clearTimeout(this.pollTimer);
-    if (this.staleTimer) clearInterval(this.staleTimer);
-    if (this.reconcileTimer) clearTimeout(this.reconcileTimer);
-    this.pollTimer = this.staleTimer = this.reconcileTimer = null;
-    this.unsubscribeCapability?.();
-    this.unsubscribeCapability = null;
+    this.cancelTimers();
+    this.unsubscribeAuth?.();
+    this.unsubscribeAuth = null;
     if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onForeground);
     if (typeof window !== "undefined") {
       window.removeEventListener("focus", this.onForeground);
@@ -243,7 +346,15 @@ export class RemoteRoomStore {
     }
     // Contact is no longer being confirmed, so what is shown cannot be called current.
     this.freezeClock();
+    this.quiet = true;
     this.patch({ active: false, connection: this.state.snapshot ? "stale" : "idle" });
+    this.quiet = false;
+  }
+
+  private cancelTimers(): void {
+    for (const t of [this.pollTimer, this.reconcileTimer, this.authRetryTimer]) if (t) clearTimeout(t);
+    if (this.staleTimer) clearInterval(this.staleTimer);
+    this.pollTimer = this.staleTimer = this.reconcileTimer = this.authRetryTimer = null;
   }
 
   private isHidden(): boolean {
@@ -251,29 +362,140 @@ export class RemoteRoomStore {
   }
 
   private onForeground = (): void => {
-    if (!this.state.active || this.isHidden()) return;
+    if (!this.state.active || this.isHidden() || authStore.getContext() === null) return;
     void this.refreshNow();
   };
 
+  // ---- Session scope ------------------------------------------------------------------------------
+
   /**
-   * A different capability may mean a different identity and role, so what was installed under the previous one is
-   * not carried over: the room is read again from scratch. Pending envelopes are kept (they carry no credential).
+   * React to the auth store. The room is only ever asked under the CURRENT authenticated session; whenever that
+   * session's actor, workspace or generation differs from what is installed, what is installed is dropped.
    */
-  private onCapabilityChanged = (): void => {
+  private syncAuth = (): void => {
     if (!this.state.active) return;
+    const auth = authStore.getSnapshot();
+    if (auth.status !== "unavailable" && this.authRetryTimer) {
+      clearTimeout(this.authRetryTimer);
+      this.authRetryTimer = null;
+    }
+    switch (auth.status) {
+      case "authenticated": {
+        const scope = authStore.getScope();
+        if (!scope) return;
+        const key = scopeKey(scope);
+        if (key !== this.activeScopeKey) this.enterScope(scope, key);
+        else if (isAuthProblem(this.state.problem)) this.patch({ problem: null, lastError: null });
+        this.ensurePolling();
+        return;
+      }
+      case "checking":
+      case "signing_in":
+        // Nothing may be sent until the session is known; do not flash over a problem that is already on screen.
+        if (this.state.problem === null && !this.state.snapshot) this.patch({ connection: "connecting" });
+        return;
+      case "signing_out":
+      case "signed_out":
+        this.dropProtectedState("signed_out", "You are signed out, so REAL shows are not shown.");
+        return;
+      case "ended":
+        this.markEnded();
+        return;
+      case "unavailable":
+        this.freezeClock();
+        this.patch({
+          connection: this.state.snapshot ? "stale" : "disconnected",
+          problem: "auth_unavailable",
+          lastError: auth.unavailable?.message ?? "The sign-in service could not be asked.",
+        });
+        if (!this.authRetryTimer) {
+          this.authRetryTimer = setTimeout(() => {
+            this.authRetryTimer = null;
+            if (this.state.active && authStore.getSnapshot().status === "unavailable") void authStore.bootstrap();
+          }, AUTH_RETRY_MS);
+        }
+        return;
+    }
+  };
+
+  /** A different (or first) actor/workspace/generation: nothing installed under another scope may be shown under this one. */
+  private enterScope(scope: PendingScope, key: string): void {
+    this.activeScopeKey = key;
+    if (this.snapshotScopeKey !== key) {
+      this.epoch += 1;
+      // Another actor, workspace or restore generation: full authoritative resnapshot, nothing carried over.
+      this.clock = null;
+      this.frozenAtPerfMs = null;
+      this.lastContactPerfMs = null;
+      this.forceFull = true;
+      this.snapshotScopeKey = null;
+      this.patch({ snapshot: null, access: null, clockBehindByMs: 0, connection: "connecting", problem: null, lastError: null, awaitingSessionIds: [], resolutions: [], inflight: null });
+      this.loadScopedPending(scope);
+    } else {
+      // The same actor signed in again under the same generation: keep what is held and read on from it.
+      this.patch({ problem: null, lastError: null });
+    }
+    if (this.pollTimer) {
+      clearTimeout(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  /** Sign-out (or an unknown session): the protected REAL view goes away at once. Stored pending records stay saved. */
+  private dropProtectedState(problem: RemoteProblem, message: string): void {
+    this.cancelPolling();
+    this.epoch += 1;
+    this.activeScopeKey = null;
+    this.snapshotScopeKey = null;
     this.clock = null;
     this.frozenAtPerfMs = null;
     this.lastContactPerfMs = null;
-    this.forceFull = true;
-    this.patch({ snapshot: null, access: null, clockBehindByMs: 0, connection: "connecting", auth: "unknown", lastError: null, awaitingSessionIds: [] });
-    void this.refreshNow();
-  };
+    this.forceFull = false;
+    this.pendingEnvelopes.clear();
+    this.quarantineEntries.clear();
+    this.patch({
+      snapshot: null,
+      access: null,
+      clockBehindByMs: 0,
+      connection: "disconnected",
+      problem,
+      lastError: message,
+      inflight: null,
+      unresolved: [],
+      quarantined: [],
+      resolutions: [],
+      awaitingSessionIds: [],
+    });
+  }
+
+  /** The session expired or was revoked. What was last confirmed stays visible, frozen, and nothing more is sent. */
+  private markEnded(): void {
+    this.cancelPolling();
+    this.freezeClock();
+    this.patch({
+      connection: this.state.snapshot ? "stale" : "disconnected",
+      problem: "session_ended",
+      lastError: "Your session ended (it expired or was revoked).",
+    });
+  }
+
+  private cancelPolling(): void {
+    for (const t of [this.pollTimer, this.reconcileTimer]) if (t) clearTimeout(t);
+    this.pollTimer = this.reconcileTimer = null;
+  }
+
+  private ensurePolling(): void {
+    if (!this.state.active || this.isHidden() || authStore.getContext() === null) return;
+    if (isBlockingProblem(this.state.problem)) return;
+    if (this.pollInFlight || this.pollTimer) return;
+    void this.poll();
+  }
 
   private checkStale = (): void => {
     if (this.state.connection !== "connected" || this.lastContactPerfMs === null) return;
     if (this.perfNow() - this.lastContactPerfMs > STALE_AFTER_MS) {
       this.freezeClock();
-      this.patch({ connection: "stale", lastError: "No contact with the room for more than 3 seconds." });
+      this.patch({ connection: "stale", problem: this.state.problem ?? "unreachable", lastError: "No contact with the room for more than 3 seconds." });
     }
   };
 
@@ -282,17 +504,15 @@ export class RemoteRoomStore {
   }
 
   /**
-   * Forget everything this tab knows about the room and drop the locally kept pending envelopes. For sign-out
-   * and tests: it never touches the room itself, so an unresolved command is NOT resolved by calling it.
+   * Forget everything this tab holds in memory AND every stored pending record. Tests only: sign-out never calls
+   * it, because an unresolved command is not resolved by signing out and its record must survive.
    */
   reset(): void {
-    if (this.pollTimer) clearTimeout(this.pollTimer);
-    if (this.staleTimer) clearInterval(this.staleTimer);
+    this.cancelTimers();
     if (this.stopTimer) clearTimeout(this.stopTimer);
-    if (this.reconcileTimer) clearTimeout(this.reconcileTimer);
-    this.pollTimer = this.staleTimer = this.stopTimer = this.reconcileTimer = null;
-    this.unsubscribeCapability?.();
-    this.unsubscribeCapability = null;
+    this.stopTimer = null;
+    this.unsubscribeAuth?.();
+    this.unsubscribeAuth = null;
     if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onForeground);
     if (typeof window !== "undefined") {
       window.removeEventListener("focus", this.onForeground);
@@ -303,12 +523,15 @@ export class RemoteRoomStore {
     this.pollInFlight = null;
     this.reconciling = null;
     this.forceFull = false;
+    this.epoch += 1;
+    this.activeScopeKey = null;
+    this.snapshotScopeKey = null;
     this.clock = null;
     this.frozenAtPerfMs = null;
     this.lastContactPerfMs = null;
     this.pendingEnvelopes.clear();
-    this.pendingLoaded = false;
-    savePending([]);
+    this.quarantineEntries.clear();
+    clearAllPending();
     this.state = IDLE;
     for (const l of this.listeners) l();
   }
@@ -320,6 +543,14 @@ export class RemoteRoomStore {
     if (this.pollTimer) {
       clearTimeout(this.pollTimer);
       this.pollTimer = null;
+    }
+    // A manual retry of a blocked room first asks the server what this session is now.
+    if (isBlockingProblem(this.state.problem)) {
+      return authStore.refresh().then(() => {
+        if (authStore.getContext() === null) return;
+        this.patch({ problem: null });
+        return this.poll();
+      });
     }
     return this.poll();
   }
@@ -335,20 +566,23 @@ export class RemoteRoomStore {
   }
 
   private async doPoll(): Promise<void> {
+    if (authStore.getContext() === null) return; // no authenticated session: nothing is sent
+    const epoch = this.epoch;
     const started = this.perfNow();
     this.lastPollStartedPerf = started;
     const after = this.forceFull ? null : (this.state.snapshot?.revision ?? null);
     this.forceFull = false;
     const res = await this.client.getRoom({ afterRevision: after });
+    if (epoch !== this.epoch) return; // this answer belongs to a session that is no longer the current one
     const ended = this.perfNow();
     if (res.ok) this.applyRead(res.read, (started + ended) / 2, ended);
-    else this.applyFailure(res.message, res.status, res.kind);
+    else this.applyFailure(res);
   }
 
   private scheduleNext(): void {
     if (this.pollTimer) clearTimeout(this.pollTimer);
     this.pollTimer = null;
-    if (!this.state.active || this.isHidden()) return;
+    if (!this.state.active || this.isHidden() || authStore.getContext() === null || isBlockingProblem(this.state.problem)) return;
     const wait = this.forceFull ? 0 : Math.max(0, POLL_INTERVAL_MS - (this.perfNow() - this.lastPollStartedPerf));
     this.pollTimer = setTimeout(() => {
       this.pollTimer = null;
@@ -373,6 +607,7 @@ export class RemoteRoomStore {
     this.clock = { serverNowMs: read.serverNowMs, receivedPerfMs: midPerfMs };
     this.frozenAtPerfMs = null;
     this.lastContactPerfMs = endPerfMs;
+    if (snapshot) this.snapshotScopeKey = this.activeScopeKey;
     const reconnected = this.state.connection !== "connected";
     const present = new Set(snapshot?.sessions.map((s) => s.id) ?? []);
     const awaiting = this.state.awaitingSessionIds.filter((id) => !present.has(id));
@@ -381,26 +616,58 @@ export class RemoteRoomStore {
       snapshot,
       access: read.access,
       clockBehindByMs: read.clockBehindByMs,
-      auth: "ok",
+      problem: null,
       lastError: null,
       awaitingSessionIds: awaiting.length === this.state.awaitingSessionIds.length ? this.state.awaitingSessionIds : awaiting,
     });
+    // The role the room reports is the one that counts: a role change shows up here without a reload.
+    authStore.observeAccess(read.access);
     if (reconnected && this.state.unresolved.length > 0) this.scheduleReconcile(0);
   }
 
-  private applyFailure(message: string, status: number | null, kind?: string): void {
+  /** Turn what one failed request said into the state it truthfully supports. */
+  private applyFailure(f: Failure): void {
+    if (f.kind === "unauthenticated") return; // the auth store owns "no session"
+    if (f.status === 401) {
+      // Expired or revoked. The auth store flips to `ended`, and `syncAuth` freezes the display.
+      this.freezeClock();
+      authStore.markSessionEnded();
+      return;
+    }
     this.freezeClock();
-    const auth: RemoteState["auth"] | null = kind === "unauthenticated" ? "missing" : status === 401 || status === 403 ? "rejected" : null;
-    this.patch({
-      connection: this.state.snapshot ? "stale" : "disconnected",
-      ...(auth ? { auth } : {}),
-      lastError:
-        auth === "missing"
-          ? "Enter this room's capability to connect."
-          : auth === "rejected"
-            ? "The room did not accept the capability this browser holds."
-            : message,
-    });
+    const connection: ConnectionState = this.state.snapshot ? "stale" : "disconnected";
+    let problem: RemoteProblem;
+    let message = f.message;
+    if (f.status === 403 && f.code === "csrf_failed") {
+      problem = "request_refused";
+      message = "The server refused this browser's request as unsafe. Reload the page; if it persists, sign out and in again.";
+    } else if (f.status === 403) {
+      problem = "forbidden";
+      message = "The room did not allow this session to read it. Access is being re-checked.";
+    } else if (f.status === 400 && f.code === "context_required") {
+      problem = "context_required";
+      message = "The server did not receive this session's workspace context. The session is being re-checked.";
+    } else if (f.status === 404) {
+      problem = "wrong_deployment";
+      message = "This session's workspace or room is not the one this server is set up for.";
+    } else if (f.status === 409 && f.code === "recovery_required") {
+      problem = "recovery_required";
+      message = "The room was restored from a backup. LiveLift is re-reading the session and will reload the room.";
+    } else if (f.status === 429) {
+      problem = "rate_limited";
+      message = "The room is limiting how often it is asked. LiveLift will try again.";
+    } else if (f.code === "storage_unavailable") {
+      problem = "storage_unavailable";
+      message = "The room's storage is not available, so REAL shows cannot be read or recorded right now. This is not an empty room.";
+    } else if (f.code === "authority_unavailable" || (f.status !== null && f.status >= 500)) {
+      problem = "backend_unavailable";
+      message = "The room server is not available right now. This is not an empty room.";
+    } else {
+      problem = "unreachable";
+    }
+    this.patch({ connection, problem, lastError: message });
+    // The session may have changed under us (a restore, a role change): ask the server what it is now.
+    if (isBlockingProblem(problem)) void authStore.refresh();
   }
 
   // ---- Time ---------------------------------------------------------------------------------------
@@ -420,6 +687,11 @@ export class RemoteRoomStore {
     return this.state.connection === "connected" && this.state.snapshot !== null;
   }
 
+  private inCurrentScope(): PendingScope | null {
+    const scope = authStore.getScope();
+    return scope && scopeKey(scope) === this.activeScopeKey ? scope : null;
+  }
+
   // ---- Commands -----------------------------------------------------------------------------------
 
   /**
@@ -429,7 +701,8 @@ export class RemoteRoomStore {
   async submit(intent: CommandIntent): Promise<CommandOutcome> {
     const { snapshot, access } = this.state;
     const label = commandLabel(intent.body.type);
-    if (!snapshot || this.state.connection !== "connected") {
+    const scope = this.inCurrentScope();
+    if (!snapshot || this.state.connection !== "connected" || !scope) {
       return { status: "refused", code: "not_connected", message: `Not connected to the room, so what is shown may be out of date. ${label} was not sent.` };
     }
     if (access?.role !== "operator") {
@@ -458,19 +731,48 @@ export class RemoteRoomStore {
       type,
       payload,
     } as CommandEnvelope;
-    return this.transmit(envelope, label);
+    const outcome = await this.transmit({ scope, envelope, label });
+    this.announceOutcome(label, outcome);
+    return outcome;
+  }
+
+  /** A command's FINAL answer is announced once, here. Nothing about a pending or waiting state is announced. */
+  private announceOutcome(label: string, outcome: CommandOutcome): void {
+    if (outcome.status === "committed") announce(`${label}: recorded by the room.`, "polite");
+    else if (outcome.status === "rejected") announce(`${label}: not accepted. ${outcome.message}`, "assertive");
+    else if (outcome.status === "unknown") announce(`${label}: outcome unknown. It may or may not have been recorded.`, "assertive");
+    else announce(outcome.message, "assertive"); // refused: nothing was sent, and the person who clicked should hear why
   }
 
   /** Persist the exact envelope, send it, and settle the answer. Also used for an explicit retry of the same envelope. */
-  private async transmit(envelope: CommandEnvelope, label: string): Promise<CommandOutcome> {
-    this.pendingEnvelopes.set(envelope.commandId, { envelope, label });
-    if (!savePending([...this.pendingEnvelopes.values()])) {
+  private async transmit(entry: PersistedPending): Promise<CommandOutcome> {
+    const { envelope, label } = entry;
+    const epoch = this.epoch;
+    this.pendingEnvelopes.set(envelope.commandId, entry);
+    if (!addPending(entry)) {
       this.pendingEnvelopes.delete(envelope.commandId);
       return { status: "refused", code: "not_saved", message: "This browser could not record the pending action, so it was not sent. Nothing was recorded." };
     }
     this.patch({ inflight: { commandId: envelope.commandId, label } });
     const result = await this.client.postCommand(envelope);
-    this.patch({ inflight: null });
+    const current = epoch === this.epoch;
+    if (current) this.patch({ inflight: null });
+
+    if (!current) {
+      // Signed out, or the session's scope changed, while this was on its way. It is neither cancelled nor failed.
+      if (result.kind === "response" && result.response.receipt.commandId === envelope.commandId) {
+        const receipt = result.response.receipt;
+        removePending(entry.scope, envelope.commandId); // the answer is known: nothing left to reconcile
+        return receipt.outcome === "committed"
+          ? { status: "committed", receipt, duplicate: result.response.duplicate, viewCurrent: false }
+          : { status: "rejected", code: receipt.code, message: describeRejection(receipt.code, receipt.message, null), receipt };
+      }
+      return {
+        status: "unknown",
+        commandId: envelope.commandId,
+        message: `You signed out, or the session changed, while “${label}” was being confirmed. It may or may not have been recorded. Its record stays saved under your account.`,
+      };
+    }
 
     if (result.kind === "response") {
       const receipt = result.response.receipt;
@@ -482,11 +784,15 @@ export class RemoteRoomStore {
     if (result.kind === "refused") {
       // The server refused before executing anything: this is a definite "not recorded".
       this.forgetPending(envelope.commandId);
-      const code = result.code ?? (result.status === 409 ? "stale_revision" : null);
-      if (result.status === 401) this.applyFailure("", 401);
+      const code = result.status === 404 ? "wrong_deployment" : (result.code ?? (result.status === 409 ? "stale_revision" : null));
       if (code === "stale_revision") await this.refreshNow();
+      else if (code === "wrong_deployment" || code === "context_required" || code === "recovery_required" || code === "csrf_failed") {
+        this.applyFailure({ status: result.status, kind: "http", code: result.status === 404 ? "not_found" : code, message: result.message });
+      } else if (code === "forbidden") void authStore.refresh(); // a role change shows up here
       return { status: "rejected", code, message: describeRejection(code, result.message, this.state.access?.role ?? null), receipt: null };
     }
+    // Unknown. A 401 is not a rejection: the session may have ended after the command was already sent.
+    if (result.status === 401) authStore.markSessionEnded();
     return this.markUnknown(envelope, label, result.message);
   }
 
@@ -529,19 +835,24 @@ export class RemoteRoomStore {
   }
 
   private forgetPending(commandId: string): void {
+    const held = this.pendingEnvelopes.get(commandId);
     this.pendingEnvelopes.delete(commandId);
-    savePending([...this.pendingEnvelopes.values()]);
+    if (held) removePending(held.scope, commandId);
     if (this.state.unresolved.some((u) => u.commandId === commandId)) {
       this.patch({ unresolved: this.state.unresolved.filter((u) => u.commandId !== commandId) });
     }
   }
 
-  private loadPersistedPending(): void {
-    if (this.pendingLoaded) return;
-    this.pendingLoaded = true;
-    const stored = loadPending();
-    if (stored.length === 0) return;
-    const unresolved: UnresolvedCommand[] = stored.map((p) => {
+  /**
+   * Split what storage holds for this browser: the current scope's work becomes `unresolved` (it can be looked up and
+   * re-sent); older-generation and legacy records become `quarantined` (display only); other actors' records are
+   * not read into memory at all.
+   */
+  private loadScopedPending(scope: PendingScope): void {
+    const { current, quarantined } = partitionPending(loadAllPending(), scope);
+    this.pendingEnvelopes.clear();
+    this.quarantineEntries.clear();
+    const unresolved: UnresolvedCommand[] = current.map((p) => {
       this.pendingEnvelopes.set(p.envelope.commandId, p);
       return {
         commandId: p.envelope.commandId,
@@ -552,7 +863,12 @@ export class RemoteRoomStore {
         retrying: false,
       };
     });
-    this.patch({ unresolved: [...this.state.unresolved, ...unresolved] });
+    for (const q of quarantined) this.quarantineEntries.set(q.envelope.commandId, q);
+    if (unresolved.length > 0) announce(`${unresolved.length === 1 ? "An earlier action is" : "Earlier actions are"} still waiting for confirmation. Check their status before recording anything else.`, "polite");
+    this.patch({
+      unresolved,
+      quarantined: quarantined.map((q) => ({ commandId: q.envelope.commandId, label: q.label, reason: q.reason, generation: q.scope?.generation ?? null })),
+    });
   }
 
   // ---- Reconciliation (receipt lookup — never a re-POST) -------------------------------------------
@@ -565,7 +881,7 @@ export class RemoteRoomStore {
     }, delayMs);
   }
 
-  /** Ask the authority what happened to each unresolved command. Read-only: nothing is sent again. */
+  /** Ask the authority what happened to each unresolved command of the current scope. Read-only: nothing is sent again. */
   reconcile(): Promise<void> {
     if (this.reconciling) return this.reconciling;
     const run = this.doReconcile().finally(() => {
@@ -580,10 +896,13 @@ export class RemoteRoomStore {
   }
 
   private async doReconcile(): Promise<void> {
+    const epoch = this.epoch;
     for (const entry of [...this.state.unresolved]) {
       if (entry.retrying) continue;
+      if (epoch !== this.epoch) return;
       this.setUnresolved(entry.commandId, { lookup: "checking" });
       const res = await this.client.getReceipt(entry.commandId);
+      if (epoch !== this.epoch) return; // the session changed: this lookup is not for the current scope any more
       if (res.kind === "found") {
         const outcome = await this.settleReceipt(entry.commandId, res.receipt, true);
         this.addResolution(
@@ -599,6 +918,7 @@ export class RemoteRoomStore {
           detail: `The room has no record of “${entry.label}”. That does not prove it failed. It has not been sent again.`,
         });
       } else {
+        if (res.status === 401) authStore.markSessionEnded();
         this.setUnresolved(entry.commandId, { lookup: "failed", detail: `Could not check “${entry.label}” yet: ${res.message}` });
       }
     }
@@ -612,11 +932,13 @@ export class RemoteRoomStore {
   /**
    * Operator action: send the exact same envelope again (same commandId, same expectedRevision, same payload).
    * If the original was committed the server answers with the original receipt; if the room moved on it rejects
-   * the command as stale and nothing is applied twice.
+   * the command as stale and nothing is applied twice. Only work of the CURRENT scope can be re-sent.
    */
   async retryUnresolved(commandId: string): Promise<CommandOutcome> {
     const entry = this.state.unresolved.find((u) => u.commandId === commandId);
-    if (!entry) return { status: "refused", code: "unresolved", message: "That action is no longer waiting." };
+    const held = this.pendingEnvelopes.get(commandId);
+    const scope = this.inCurrentScope();
+    if (!entry || !held || !scope || !sameScopeKey(held.scope, scope)) return { status: "refused", code: "unresolved", message: "That action is no longer waiting." };
     if (!this.isAuthoritative()) {
       return { status: "refused", code: "not_connected", message: "Not connected to the room, so the action was not sent again." };
     }
@@ -625,7 +947,7 @@ export class RemoteRoomStore {
     }
     if (this.state.inflight) return { status: "refused", code: "busy", message: "Another action is still being confirmed." };
     this.setUnresolved(commandId, { retrying: true });
-    const outcome = await this.transmit(entry.envelope, entry.label);
+    const outcome = await this.transmit(held);
     // `transmit` already cleared the entry on a known outcome; on a second unknown it re-created it (retrying: false).
     if (outcome.status === "committed" || outcome.status === "rejected") {
       this.addResolution(
@@ -650,14 +972,29 @@ export class RemoteRoomStore {
     this.addResolution(entry, "warn", `“${entry.label}” was set aside with its outcome still unknown. Check the show history to see whether it was recorded.`);
   }
 
+  /**
+   * Operator action: stop listing a quarantined command. It is not looked up, sent or attached to anything first:
+   * setting it aside only removes this browser's note of it.
+   */
+  dismissQuarantined(commandId: string): void {
+    const held = this.quarantineEntries.get(commandId);
+    if (!held) return;
+    this.quarantineEntries.delete(commandId);
+    removePending(held.scope, commandId);
+    this.patch({ quarantined: this.state.quarantined.filter((q) => q.commandId !== commandId) });
+  }
+
   private addResolution(entry: UnresolvedCommand, tone: Resolution["tone"], text: string): void {
     this.seq += 1;
     this.patch({ resolutions: [...this.state.resolutions, { id: `res-${this.seq}`, commandId: entry.commandId, label: entry.label, tone, text }] });
+    announce(text, tone === "warn" ? "assertive" : "polite");
   }
 
   dismissResolution(id: string): void {
     this.patch({ resolutions: this.state.resolutions.filter((r) => r.id !== id) });
   }
 }
+
+const sameScopeKey = (a: PendingScope | null, b: PendingScope): boolean => a !== null && scopeKey(a) === scopeKey(b);
 
 export const remoteRoomStore = new RemoteRoomStore();

@@ -432,6 +432,7 @@ export function HistoryList({
       >
         <textarea
           data-autofocus
+          aria-label="Note"
           rows={3}
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -458,6 +459,7 @@ export function HistoryList({
           </p>
           <input
             data-autofocus
+            aria-label="Correction: what was actually true"
             value={correction}
             onChange={(e) => setCorrection(e.target.value)}
             placeholder="What was actually true?"

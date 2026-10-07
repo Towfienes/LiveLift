@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Session } from "@/contracts";
 import { StandardShell } from "@/components/shell";
 import { Button, EnvironmentBadge } from "@/components/ui";
+import { RoomStatusPanel } from "@/components/ops/ConnectionStatus";
 import { SegmentTile } from "@/components/ops/SegmentTile";
 import { Signal } from "@/components/ops/StatusChips";
 import {
@@ -27,7 +28,9 @@ function firstProduct(session: Session) {
 }
 
 export default function HomePage(): React.ReactElement {
-  const { hydrated, sessions } = useSessions();
+  const { hydrated, sessions, remote } = useSessions();
+  // The room could not be asked at all: say why, rather than showing an empty home or first-time setup.
+  const roomProblem = remote.active && remote.snapshot === null && remote.problem !== null;
 
   const { active, prepared, ended } = useMemo(
     () => ({
@@ -58,6 +61,10 @@ export default function HomePage(): React.ReactElement {
         {!hydrated ? (
           <div className="mt-8 rounded-[12px] bg-[#13161C] p-8 text-[#9AA5B5]" role="status">
             Loading your shows…
+          </div>
+        ) : roomProblem && !lead ? (
+          <div className="mt-8">
+            <RoomStatusPanel />
           </div>
         ) : lead ? (
           <div className="mt-8 rounded-[12px] bg-[#1B1F27] p-6 lg:p-7" data-testid="active-live-card">

@@ -59,8 +59,23 @@ export function describeRejection(code: string | null, message: string | null, r
       ? "You are viewing this room read-only. Only an operator can record changes."
       : "This room did not allow that action for your access. Nothing was recorded.";
   }
-  if (code === "unauthorized") {
-    return "The room did not accept this browser's capability, so the action was not recorded. Enter a valid capability and try again.";
+  if (code === "unauthenticated" || code === "unauthorized") {
+    return "Your session is no longer valid, so the room did not accept the action. Sign in again to continue.";
+  }
+  if (code === "csrf_failed") {
+    return "The server refused this browser request as unsafe, so the action was not recorded. Reload the page and try again.";
+  }
+  if (code === "context_required" || code === "wrong_deployment") {
+    return "The room does not recognise this session's workspace, so the action was not recorded. Sign out and sign in again.";
+  }
+  if (code === "recovery_required") {
+    return "The room was restored from a backup since this session began, so the action was not recorded. LiveLift is reloading the room; check it and try again.";
+  }
+  if (code === "rate_limited") {
+    return "The room is limiting how quickly actions can be sent. Nothing was recorded; wait a moment and try again.";
+  }
+  if (code === "invalid_request" || code === "payload_too_large") {
+    return "The room could not accept that request as sent. Nothing was recorded.";
   }
   if (code === "stale_revision") {
     return "The room changed since you last looked. The latest state is shown now. Nothing was recorded; review it and try again.";
