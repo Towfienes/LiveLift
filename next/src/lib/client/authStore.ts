@@ -163,6 +163,7 @@ export class AuthStore {
     const run = this.client
       .getSession()
       .then((r) => this.applySession(r))
+      .catch(() => this.applySession({ kind: "unavailable", reason: "unexpected", message: "The sign-in check could not be completed. Reload the page and try again." }))
       .finally(() => {
         this.checking = null;
       });
@@ -180,6 +181,7 @@ export class AuthStore {
     const run = this.client
       .getSession()
       .then((r) => this.applySession(r))
+      .catch(() => this.applySession({ kind: "unavailable", reason: "unexpected", message: "The sign-in check could not be completed. Reload the page and try again." }))
       .finally(() => {
         this.checking = null;
       });

@@ -1,6 +1,7 @@
-import { describe, it, expect, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { announcer } from "@/lib/client/announcer";
-import { authStore, safeNextPath } from "@/lib/client/authStore";
+import { AuthStore, authStore, safeNextPath } from "@/lib/client/authStore";
+import { createAuthClient } from "@/lib/client/authClient";
 import { FakeRoom } from "../helpers/fakeRoom";
 
 /** The browser's account of "who is signed in": every state, and nothing credential-shaped kept anywhere. */
@@ -24,6 +25,17 @@ afterEach(() => {
 });
 
 describe("session bootstrap", () => {
+  it("a rejected session check leaves checking and permits a successful retry", async () => {
+    const client = createAuthClient();
+    const getSession = vi.spyOn(client, "getSession").mockRejectedValueOnce(new Error("Unexpected client failure")).mockResolvedValue({ kind: "signed_out" });
+    const store = new AuthStore({ client });
+    await store.bootstrap();
+    expect(store.getSnapshot()).toMatchObject({ status: "unavailable", unavailable: { reason: "unexpected" } });
+    await store.bootstrap();
+    expect(store.getSnapshot().status).toBe("signed_out");
+    expect(getSession).toHaveBeenCalledTimes(2);
+  });
+
   it("starts as 'checking' and asks the server once", async () => {
     const room = open(new FakeRoom());
     expect(authStore.getSnapshot().status).toBe("checking");

@@ -41,6 +41,29 @@ function headers(token: string, context?: { workspaceId: string; generation: str
 }
 afterEach(async () => { await closeRuntime(); vi.restoreAllMocks(); vi.unstubAllEnvs(); for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true }); });
 
+test.each(["development", "production"])("session resolves 401 behind an HTTPS tunnel in %s; forwarded headers cannot bypass CSRF", async (mode) => {
+  const cfg = config(); initialize(cfg); production(cfg);
+  vi.stubEnv("NODE_ENV", mode);
+  const tunnelHeaders = { Host: "livelift.example.com", "X-Forwarded-Host": "livelift.example.com", "X-Forwarded-Proto": "https", "CF-Visitor": '{"scheme":"https"}' };
+  const response = await sessionRoute(new Request("http://localhost:3130/api/v3/auth/session", { headers: tunnelHeaders }));
+  expect(response.status).toBe(401);
+  expect(await response.json()).toMatchObject({ error: { code: "unauthenticated" } });
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  expect(response.headers.has("Set-Cookie")).toBe(false);
+  expect(() => csrf(request("/api/v3/auth/login", {}, tunnelHeaders), cfg)).not.toThrow();
+  for (const Origin of ["https://other.example.com", "http://livelift.example.com", "https://livelift.example.com:8443", "null", ""]) {
+    expect(() => csrf(request("/api/v3/auth/login", {}, { ...tunnelHeaders, Origin }), cfg)).toThrow("Same-origin");
+  }
+}, 2000);
+
+test("session reports unavailable storage rather than signed out and never creates a missing database", async () => {
+  const cfg = config(); production(cfg);
+  const response = await sessionRoute(request("/api/v3/auth/session"));
+  expect(response.status).toBe(503);
+  expect(await response.json()).toMatchObject({ error: { code: "storage_unavailable" } });
+  expect(existsSync(cfg.dbPath)).toBe(false);
+}, 2000);
+
 test("cookie HTTP login/logout, current auth, context, role, CSRF, expiry, export and duplicate protection", async () => {
   const cfg = config(); initialize(cfg);
   const db = openExisting(cfg.dbPath);
