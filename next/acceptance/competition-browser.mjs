@@ -35,11 +35,61 @@ fs.mkdirSync(output, { recursive: true });
       const capture = async name => {
         const dimensions = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
         assert.equal(dimensions.scroll, width, `${name} overflow at ${width}: ${dimensions.scroll}`);
+        let rundown;
+        if (['operate-start', 'operate-recovery'].includes(name)) {
+          const rows = page.getByLabel('Run of Show rows', { exact: true });
+          await rows.scrollIntoViewIfNeeded();
+          rundown = await rows.evaluate(e => {
+            const r = e.getBoundingClientRect(), main = e.closest('main').getBoundingClientRect();
+            return {
+              height: r.height,
+              visibleHeight: Math.max(0, Math.min(r.bottom, main.bottom) - Math.max(r.top, main.top)),
+              clientWidth: e.clientWidth, scrollWidth: e.scrollWidth,
+              overflow: [...document.querySelectorAll('#main-content, #main-content *')].filter(el => {
+                const style = getComputedStyle(el);
+                return el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1
+                  && ['visible', 'auto', 'scroll'].includes(style.overflowX) && !el.classList.contains('sr-only');
+              }).map(el => el.getAttribute('data-testid') || el.getAttribute('aria-label') || el.tagName),
+            };
+          });
+          assert(rundown.height >= 160, `${name} rundown collapsed at ${width}: ${rundown.height}px`);
+          assert(rundown.visibleHeight >= 160, `${name} rundown clipped at ${width}: ${rundown.visibleHeight}px`);
+          assert.equal(rundown.scrollWidth, rundown.clientWidth, `${name} internal rundown overflow at ${width}`);
+          assert.deepEqual(rundown.overflow, [], `${name} internal Operate overflow at ${width}`);
+          // Inspect the current, next and final rows through the real nested scroll containers.
+          const current = page.getByTestId('live-ros').locator('[aria-current="step"]');
+          const next = page.getByTestId('live-ros').locator('[data-state="pending"]').first();
+          const last = page.getByTestId('live-ros').locator('li').last();
+          for (const row of [current, next, last]) {
+            await row.scrollIntoViewIfNeeded();
+            assert(await row.evaluate(e => {
+              const r = e.getBoundingClientRect(), box = e.closest('[data-ros-scroll]').getBoundingClientRect();
+              const main = e.closest('main').getBoundingClientRect();
+              return r.top >= Math.max(box.top, main.top) - 1 && r.bottom <= Math.min(box.bottom, main.bottom) + 1;
+            }), `${name} rundown row unreachable at ${width}`);
+          }
+          await page.getByRole('button', { name: 'Return to current', exact: true }).click();
+          assert(await current.evaluate(e => {
+            const r = e.getBoundingClientRect(), box = e.closest('[data-ros-scroll]').getBoundingClientRect();
+            return r.top >= box.top - 1 && r.bottom <= box.bottom + 1;
+          }), 'Return to current did not expose the current row');
+          // Trial clicks check that primary actions can be scrolled to and receive input without changing the script.
+          for (const id of ['estimate-open-btn', 'advance-btn', 'cue-performed-btn', 'quick-add-note-btn']) {
+            await page.getByTestId(id).click({ trial: true });
+          }
+          if (name === 'operate-recovery') await page.locator('[data-testid^="apply-"]').first().click({ trial: true });
+          rundown.primaryControlsUsable = true;
+          rundown.rowsReachable = true;
+          await rows.scrollIntoViewIfNeeded();
+          await rows.focus();
+          await page.keyboard.press('Tab'); await page.keyboard.press('Shift+Tab');
+          assert(await rows.evaluate(e => e === document.activeElement && getComputedStyle(e).outlineStyle !== 'none'), 'Rundown keyboard focus invisible');
+        }
         for (const href of await page.locator('a[href]').evaluateAll(es => es.map(e => e.getAttribute('href')))) {
           if (href.startsWith('/') && !href.startsWith('//')) links.add(href);
         }
         await page.screenshot({ path: path.join(output, `${width}-${name}.png`) });
-        results.push({ width, name, url: page.url(), ...dimensions });
+        results.push({ width, name, url: page.url(), ...dimensions, ...(rundown ? { rundown } : {}) });
         console.log(`PASS ${width} ${name}`);
       };
       const click = id => page.getByTestId(id).click();
@@ -159,6 +209,13 @@ fs.mkdirSync(output, { recursive: true });
       assert.equal(created.environment, 'SIMULATED'); assert.deepEqual(created.events, []);
       assert.equal(created.derivedFrom.appliedChanges.length, 1);
       await capture('next-prepare');
+      await click('start-live-cta-btn');
+      await page.getByTestId('now-panel').waitFor();
+      await click('end-live-header-btn');
+      await page.getByRole('button', { name: 'End tracking', exact: true }).click();
+      await page.waitForURL(/\/review$/);
+      await page.getByTestId('review-reading-note').waitFor();
+      await capture('end-confirm-review');
       await go('/integrations', 'integrations-list');
       assert.equal(await page.getByRole('button', { name: /Configure|Connect account/ }).count(), 0);
       assert.match(await page.locator('body').innerText(), /No platform provider is connected/);

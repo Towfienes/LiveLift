@@ -95,20 +95,20 @@ export function RunOfShowLive({
           const tag =
             cue.audience !== "operator" ? "Presenter cue" : cue.action !== "none" ? CUE_ACTION_LABEL[cue.action] : "Operator cue";
           return (
-            <li key={cue.id} className="flex items-center gap-3 py-1 pl-[88px] pr-2" data-testid={`ros-cue-${cue.id}`}>
+            <li key={cue.id} className="flex items-center gap-3 py-1 pl-3 sm:pl-[88px] pr-2" data-testid={`ros-cue-${cue.id}`}>
               <i className="ri-focus-3-line text-[18px] text-[#8A95A5] shrink-0" aria-hidden="true" />
               <div className="min-w-0 flex-1">
-                <p className="text-[16px] leading-6 text-[#E4E8F0] truncate" title={cue.title}>
+                <p className="text-[16px] leading-6 text-[#E4E8F0] break-words sm:truncate" title={cue.title}>
                   {cue.title}
                 </p>
-                <p className="flex items-center gap-x-3 min-w-0 text-[16px] leading-5 text-[#9AA5B5]">
+                <p className="flex flex-wrap items-center gap-x-3 min-w-0 text-[16px] leading-5 text-[#9AA5B5]">
                   <span className="truncate min-w-0" title={`${tag} · no host time`}>
                     {tag}
                   </span>
                   <span className="tabular-nums whitespace-nowrap shrink-0">
                     {fc?.orphaned ? "segment skipped" : fc?.timeMs != null ? `${fc.lowerBound ? "≥ " : ""}${formatClock(fc.timeMs, tz, true)}` : "—"}
                   </span>
-                  <span className="shrink-0">
+                  <span className="min-w-0">
                     {cue.audience !== "operator" ? (
                       <Signal tone="muted" size="desk">informational</Signal>
                     ) : run.state === "performed" ? (
@@ -159,7 +159,7 @@ export function RunOfShowLive({
             aria-current={isActive ? "step" : undefined}
             data-testid={`ros-row-${segment.id}`}
             data-state={run.state}
-            className={`flex items-center gap-3 py-2 px-3 rounded-[8px] ${isActive ? "bg-[#1F2A22] border-l-2 border-[#DFFF00]" : ""} ${
+            className={`grid grid-cols-[minmax(0,1fr)_auto] sm:flex items-center gap-3 py-2 px-3 rounded-[8px] ${isActive ? "bg-[#1F2A22] border-l-2 border-[#DFFF00]" : ""} ${
               run.state === "skipped" ? "opacity-60" : ""
             }`}
           >
@@ -170,8 +170,8 @@ export function RunOfShowLive({
               </p>
             </div>
             <SegmentTile segment={segment} product={product} size={40} active={isActive} />
-            <div className="min-w-0 flex-1">
-              <p className={`text-[16px] font-medium truncate ${isActive ? "text-[#DFFF00]" : "text-[#F5F7FC]"}`}>{segment.title}</p>
+            <div className="col-span-2 min-w-0 flex-1">
+              <p className={`text-[16px] font-medium break-words sm:truncate ${isActive ? "text-[#DFFF00]" : "text-[#F5F7FC]"}`}>{segment.title}</p>
               <div className="flex items-center gap-3 flex-wrap">
                 {fc.anchor && run.state !== "skipped" && (
                   <>
@@ -189,7 +189,7 @@ export function RunOfShowLive({
                 )}
               </div>
             </div>
-            <div className="w-[150px] shrink-0 text-right">
+            <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 sm:block sm:w-[150px] shrink-0 sm:text-right">
               {run.state === "completed" && actualSec !== null && (
                 <p className="text-[16px] leading-6 font-medium tabular-nums text-[#F5F7FC]">
                   {formatDuration(actualSec)}
