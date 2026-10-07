@@ -12,6 +12,8 @@ import { NextPanel } from "@/components/ops/NextPanel";
 import { CueBar, type ReportTarget } from "@/components/ops/CueBar";
 import { RunOfShowLive, scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
 import { SupportTabs } from "@/components/ops/SupportTabs";
+import { OperateCopilot } from "@/components/ai/OperateCopilot";
+import { useOperateCopilot } from "@/components/ai/useAiCopilot";
 import { SimulatorStrip } from "@/components/ops/SimulatorStrip";
 import { Drift } from "@/components/ops/StatusChips";
 import {
@@ -188,6 +190,9 @@ function Desk({
   const simulated = session.environment === "SIMULATED";
   const forecast = useMemo(() => forecastSession(session, nowMs), [session, nowMs]);
   const analysis = useMemo(() => analyzeRecovery(session, nowMs), [session, nowMs]);
+  // The AI Copilot only asks the server anything once its tab has been opened, and only advises: it has no way to command.
+  const [copilotOpened, setCopilotOpened] = useState(false);
+  const copilot = useOperateCopilot({ enabled: copilotOpened, resetKey: session.id });
 
   const active = activeSegment(session);
   const activeRun = active ? (session.runtime.segments[active.id] ?? null) : null;
@@ -673,7 +678,25 @@ function Desk({
             </div>
           </section>
 
-          <SupportTabs session={session} products={session.products} tz={tz} />
+          <SupportTabs
+            session={session}
+            products={session.products}
+            tz={tz}
+            copilotAvailable={copilot.phase === "available"}
+            onCopilotOpen={() => setCopilotOpened(true)}
+            copilot={
+              <OperateCopilot
+                copilot={copilot}
+                session={session}
+                source={source}
+                nowMs={nowMs}
+                forecast={forecast}
+                analysis={analysis}
+                locked={locked}
+                onApplyOption={applyOption}
+              />
+            }
+          />
         </div>
       </div>
 

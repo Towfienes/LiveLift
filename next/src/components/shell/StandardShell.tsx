@@ -86,6 +86,14 @@ export const StandardShell: React.FC<StandardShellProps> = ({
               <i className="ri-shopping-bag-3-line text-[18px]" aria-hidden="true" />
               <span>Products</span>
             </Link>
+            <Link
+              href="/insights"
+              className={`min-h-[44px] px-3.5 rounded-[8px] flex items-center gap-2 text-[16px] font-medium transition-colors ${isNavActive("/insights") ? "text-[#DFFF00] bg-[#242A22]" : "text-[#C8CDD6] hover:text-white hover:bg-[#1B2028]"}`}
+              aria-current={isNavActive("/insights") ? "page" : undefined}
+            >
+              <i className="ri-bar-chart-line text-[18px]" aria-hidden="true" />
+              <span>Insights</span>
+            </Link>
           </nav>
         </div>
 
