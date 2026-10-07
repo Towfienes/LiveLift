@@ -228,6 +228,8 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
             <div role="tabpanel" id="review-perspective-panel" aria-labelledby={`perspective-tab-${perspective}`} data-perspective={perspective} data-testid="review-perspective-panel" className="space-y-4">
             {perspective === "later" ? (
               <>
+                {/* The provider sections below start at h3; this keeps the outline h1 > h2 > h3 for screen-reader navigation. */}
+                <h2 className="sr-only">With later evidence</h2>
                 <LaterEvidenceView session={session} review={review} intelligence={intelligence} scenario={scenario} onScenario={chooseScenario} onRetry={intelligence.reload} />
                 <HistoryList items={fullReview?.history ?? []} tz={tz} canAppend={canAppend}
                   onNote={text => append({ type: "add_note", text })} onCorrect={(targetEventId, text) => append({ type: "append_correction", targetEventId, text })} />
@@ -268,11 +270,6 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
                   <PlanActualRows rows={review.rows} products={session.products} tz={tz} />
                 </section>
 
-                <div id="ai-review-copilot" className="scroll-mt-4">
-                  <ReviewCopilot copilot={copilot} perspective="known" session={session} source={isRemote ? "remote" : "local"} archive={ctx.archive} facts={productFacts} opened={copilotOpened} onOpen={() => setCopilotOpened(true)} onOpenNextLive={() => setView("next")} />
-
-                </div>
-
                 <section className="rounded-[12px] bg-[#13161C] p-3" aria-label="Cues">
                   <h2 className="text-[18px] font-medium text-[#F5F7FC] px-2 mb-1">Cues</h2>
                   <p className="text-[13px] text-[#9AA5B5] px-2 mb-1">
@@ -312,6 +309,11 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
                     </ol>
                   </section>
                 )}
+
+                {/* Interpretation comes after every recorded fact it reads, and before the next-LIVE decision. */}
+                <div id="ai-review-copilot" className="scroll-mt-4">
+                  <ReviewCopilot copilot={copilot} perspective="known" session={session} source={isRemote ? "remote" : "local"} archive={ctx.archive} facts={productFacts} opened={copilotOpened} onOpen={() => setCopilotOpened(true)} onOpenNextLive={() => setView("next")} />
+                </div>
               </div>
 
               <aside

@@ -110,7 +110,7 @@ export default function ProductsPage() {
                     </div>
 
                     <div className="min-w-0">
-                      <h3 className="text-[18px] font-medium text-[#F5F7FC] truncate">{prod.name}</h3>
+                      <h2 className="text-[18px] font-medium text-[#F5F7FC] truncate">{prod.name}</h2>
                       <p className="text-[14px] text-[#CAD0DA]">
                         {prod.price !== null ? `${prod.currency} ${prod.price}` : "Not entered"}
                       </p>
@@ -140,7 +140,7 @@ export default function ProductsPage() {
                 className="rounded-[12px] bg-[#13161C] border border-[#232935] p-5 flex items-center justify-between gap-6"
               >
                 <div>
-                  <h3 className="text-[19px] font-medium text-[#F5F7FC]">{pack.name}</h3>
+                  <h2 className="text-[19px] font-medium text-[#F5F7FC]">{pack.name}</h2>
                   <p className="text-[14px] text-[#CAD0DA] mt-1">{pack.description}</p>
                   <p className="text-[13px] text-[#8A95A5] mt-2 font-mono">
                     {pack.productIds.length} items in pack · Updated {pack.updatedAt}

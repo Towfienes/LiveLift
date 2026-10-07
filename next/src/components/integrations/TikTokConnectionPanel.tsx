@@ -9,7 +9,7 @@ import type { TikTokConnection } from "./useTikTokConnection";
 type Label = { text: string; tone: string; icon: string };
 const LABELS: Record<TikTokConnectionState | "connecting", Label> = {
   not_configured: { text: "Not configured", tone: "bg-[#20181A] text-[#9AA5B5] border-[#3D262B]", icon: "ri-settings-3-line" },
-  ready: { text: "Ready to connect", tone: "bg-[#211E2E] text-[#C8B2FF] border-[#4A3866]", icon: "ri-plug-line" },
+  ready: { text: "Ready to connect", tone: "bg-[#1B1F27] text-[#CAD0DA] border-[#333C4B]", icon: "ri-plug-line" },
   connecting: { text: "Connecting", tone: "bg-[#1B1F27] text-[#CAD0DA] border-[#333C4B]", icon: "ri-loader-4-line" },
   connected: { text: "Connected", tone: "bg-[#1E2718] text-[#DFFF00] border-[#3E5224]", icon: "ri-checkbox-circle-line" },
   expired: { text: "Authorization expired", tone: "bg-[#2A2316] text-[#F6C875] border-[#5E4822]", icon: "ri-time-line" },

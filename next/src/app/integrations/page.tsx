@@ -23,8 +23,9 @@ const VARIANT_STYLE: Record<Variant, { badge: string; icon: string }> = {
     badge: "bg-[#2A2316] text-[#F6C875] border-[#5E4822]",
     icon: "ri-hand-heart-line",
   },
+  // Violet is the SIMULATED identity; a platform limit is a plain neutral state, told apart by its words and icon.
   adapter_ready: {
-    badge: "bg-[#211E2E] text-[#C8B2FF] border-[#4A3866]",
+    badge: "bg-[#1B1F27] text-[#CAD0DA] border-[#333C4B]",
     icon: "ri-plug-line",
   },
   unsupported: {
@@ -67,9 +68,9 @@ const CATEGORY_THEMES: Record<
     icon: "ri-hand-heart-line",
   },
   adapter_ready: {
-    badgeClass: "bg-[#211E2E] text-[#C8B2FF] border-[#4A3866]",
-    borderClass: "border-[#332A4A]",
-    headerAccent: "text-[#C8B2FF]",
+    badgeClass: "bg-[#1B1F27] text-[#CAD0DA] border-[#333C4B]",
+    borderClass: "border-[#2A303A]",
+    headerAccent: "text-[#CAD0DA]",
     icon: "ri-plug-line",
   },
   unsupported: {
@@ -146,32 +147,26 @@ export default function IntegrationsPage(): React.ReactElement {
               </p>
             </div>
 
-            {/* Quick KPI stats */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 min-w-0">
-              <div className="rounded-[10px] bg-[#1A2218] border border-[#3E5224] p-3 text-center min-w-0">
-                <div className="text-[22px] font-bold text-[#DFFF00]">5 steps</div>
-                <div className="text-[12px] text-[#CAD0DA] font-medium leading-tight mt-0.5">
-                  Standalone loop
-                </div>
+            {/* Three plain facts, equal in weight and none boxed: bordered tiles added no hierarchy and the longest label spilled out of its tile. */}
+            <dl className="grid grid-cols-3 gap-x-4 sm:gap-x-8 min-w-0 text-left lg:shrink-0">
+              <div className="min-w-0">
+                <dt className="text-[13px] leading-tight text-[#B7C1CE]">Standalone loop</dt>
+                <dd className="mt-1.5 text-[22px] leading-none font-semibold text-[#F5F7FC] tabular-nums">5 steps</dd>
               </div>
-              <div className="rounded-[10px] bg-[#161B22] border border-[#2D3748] p-3 text-center min-w-0">
-                <div className="text-[22px] font-bold text-[#F5F7FC]">0</div>
-                <div className="text-[12px] text-[#CAD0DA] font-medium leading-tight mt-0.5">
-                  Platform API Dependencies
-                </div>
+              <div className="min-w-0">
+                <dt className="text-[13px] leading-tight text-[#B7C1CE]">Platform API Dependencies</dt>
+                <dd className="mt-1.5 text-[22px] leading-none font-semibold text-[#F5F7FC] tabular-nums">0</dd>
               </div>
-              <div className="rounded-[10px] bg-[#161B22] border border-[#2D3748] p-3 text-center min-w-0">
-                <div className="text-[22px] font-bold text-[#F5F7FC]">{connectedPlatforms}</div>
-                <div className="text-[12px] text-[#CAD0DA] font-medium leading-tight mt-0.5">
-                  Connected Platforms
-                </div>
+              <div className="min-w-0">
+                <dt className="text-[13px] leading-tight text-[#B7C1CE]">Connected Platforms</dt>
+                <dd className="mt-1.5 text-[22px] leading-none font-semibold text-[#F5F7FC] tabular-nums">{connectedPlatforms}</dd>
                 {connectedPlatforms > 0 && (
-                  <div className="text-[12px] leading-tight mt-1 text-[#9AA5B5]" data-testid="connected-identity-only">
+                  <dd className="mt-1 text-[13px] leading-tight text-[#9AA5B5]" data-testid="connected-identity-only">
                     TikTok sign-in identity only
-                  </div>
+                  </dd>
                 )}
               </div>
-            </div>
+            </dl>
           </div>
 
           <div className="pt-4 border-t border-[#20272F] flex flex-wrap items-center justify-between gap-3 text-[14px]">
@@ -224,7 +219,7 @@ export default function IntegrationsPage(): React.ReactElement {
           className="rounded-[14px] bg-[#13161C] border border-[#252C38] p-6 space-y-4"
         >
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-2.5 text-[#C8B2FF]">
+            <div className="flex items-center gap-2.5 text-[#CAD0DA]">
               <i className="ri-scales-3-line text-[22px]" aria-hidden="true" />
               <h2
                 id="epistemic-ledger-heading"
@@ -233,7 +228,7 @@ export default function IntegrationsPage(): React.ReactElement {
                 What the evidence means
               </h2>
             </div>
-            <span className="text-[13px] text-[#8A95A5] font-mono">
+            <span className="text-[13px] text-[#8A95A5]">
               Truthful reports and unknown outcomes
             </span>
           </div>
@@ -243,9 +238,10 @@ export default function IntegrationsPage(): React.ReactElement {
             are separate records. These rules apply in every part of the loop:
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-            <div className="rounded-[10px] bg-[#181C24] border border-[#2D3545] p-4 space-y-1.5">
-              <div className="text-[13px] font-mono font-semibold text-[#DFFF00] flex items-center gap-1.5">
+          {/* Three rules read side by side, separated by hairlines: a card inside a card added a box and no information. */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-5 pt-1">
+            <div className="space-y-1.5 md:border-l md:border-[#252C38] md:pl-6 md:first:border-l-0 md:first:pl-0">
+              <div className="text-[13px] font-semibold text-[#CAD0DA] flex items-center gap-1.5">
                 <i className="ri-hand-heart-line" aria-hidden="true" />
                 <span>Evidence Tiers</span>
               </div>
@@ -259,8 +255,8 @@ export default function IntegrationsPage(): React.ReactElement {
               </p>
             </div>
 
-            <div className="rounded-[10px] bg-[#181C24] border border-[#2D3545] p-4 space-y-1.5">
-              <div className="text-[13px] font-mono font-semibold text-[#C8B2FF] flex items-center gap-1.5">
+            <div className="space-y-1.5 md:border-l md:border-[#252C38] md:pl-6">
+              <div className="text-[13px] font-semibold text-[#CAD0DA] flex items-center gap-1.5">
                 <i className="ri-question-line" aria-hidden="true" />
                 <span>Neutrality Rule</span>
               </div>
@@ -274,8 +270,8 @@ export default function IntegrationsPage(): React.ReactElement {
               </p>
             </div>
 
-            <div className="rounded-[10px] bg-[#181C24] border border-[#2D3545] p-4 space-y-1.5">
-              <div className="text-[13px] font-mono font-semibold text-[#F6C875] flex items-center gap-1.5">
+            <div className="space-y-1.5 md:border-l md:border-[#252C38] md:pl-6">
+              <div className="text-[13px] font-semibold text-[#CAD0DA] flex items-center gap-1.5">
                 <i className="ri-numbers-line" aria-hidden="true" />
                 <span>Value Rule</span>
               </div>
@@ -419,7 +415,7 @@ export default function IntegrationsPage(): React.ReactElement {
 
                           {/* Footer: Epistemic Note & Action CTAs */}
                           <div className="space-y-3 pt-3 border-t border-[#1B212C]">
-                            <div className="flex items-start gap-2 text-[12px] text-[#9AA5B5] leading-normal font-mono bg-[#0D0F14] rounded-[6px] p-2 border border-[#191F2B]">
+                            <div className="flex items-start gap-2 text-[13px] text-[#9AA5B5] leading-snug">
                               <i
                                 className="ri-information-line text-[#CAD0DA] shrink-0 mt-0.5"
                                 aria-hidden="true"

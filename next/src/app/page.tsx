@@ -128,7 +128,10 @@ export default function HomePage(): React.ReactElement {
         {hydrated && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
             <div>
-              <h2 className="text-[22px] font-medium tracking-[-0.5px] text-[#F5F7FC] mb-2">Prepared for next</h2>
+              {/* Same 44px header row as "Finish the review" (its All sessions link sets that height), so both lists start level. */}
+              <div className="flex items-center min-h-[44px] mb-2">
+                <h2 className="text-[22px] font-medium tracking-[-0.5px] text-[#F5F7FC]">Prepared for next</h2>
+              </div>
               {prepared.length > 0 ? (
                 <ul className="divide-y divide-[#232935]" data-testid="prepared-list">
                   {prepared.slice(0, 6).map((s) => (

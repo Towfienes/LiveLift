@@ -368,7 +368,13 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
 
             {/* Readiness and schedule impact */}
             <aside className="rounded-[12px] bg-[#1B1F27] p-5 flex flex-col min-h-0 md:col-span-2 xl:col-span-1" aria-label="Readiness">
-              <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              {/* Static text that scrolls on a short screen: focusable so a keyboard user can scroll it (WCAG 2.1.1). */}
+              <div
+                className="flex-1 min-h-0 overflow-y-auto pr-1 rounded-[8px] focus-visible:outline-2 focus-visible:outline-[#DFFF00] focus-visible:outline-offset-2"
+                role="region"
+                aria-label="Readiness and schedule impact"
+                tabIndex={0}
+              >
               <p className="text-[13px] font-semibold tracking-[1.5px] uppercase text-[#AEB7C5] mb-2">Readiness</p>
               {otherActiveReal && (
                 <p className="mb-2 text-[15px] text-[#F6C875]" data-testid="other-show-active">
