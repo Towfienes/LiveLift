@@ -28,3 +28,6 @@ CLAUDE.md
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Operations build output
+.ops/

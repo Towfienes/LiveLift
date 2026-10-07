@@ -21,6 +21,8 @@ export default tseslint.config(
   {
     ignores: [
       ".next/**",
+      ".ops/**",
+      "scripts/*.mjs",
       "out/**",
       "node_modules/**",
       "dist/**",

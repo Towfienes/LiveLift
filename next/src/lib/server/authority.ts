@@ -1,3 +1,6 @@
+import { V1_SQL } from "./schema";
+import { openExisting, verifyDatabase } from "./database";
+import type { ProductionConfig } from "./config";
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { DatabaseSync } from "node:sqlite";
@@ -62,54 +65,27 @@ function checkDraft(session: Session, previous?: StoredSession): string | null {
 }
 
 export class RoomAuthority {
-  private db: DatabaseSync;
+  readonly db: DatabaseSync;
   private clock: ClockState | null = null;
 
-  constructor(readonly roomId: string, dbPath: string) {
-    const db = new DatabaseSync(dbPath);
+  constructor(readonly roomId: string, dbPath: string, readonly production?: ProductionConfig) {
+    if (process.env.NODE_ENV === "production" && !production) throw new Error("Production identity is required");
+    const db = production ? openExisting(dbPath) : new DatabaseSync(dbPath);
     this.db = db;
     try {
       db.exec("PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA foreign_keys = ON;");
-      this.transaction(() => {
-        const version = db.prepare("PRAGMA user_version").get()!.user_version;
-        if (version !== 0 && version !== 1) throw new Error("Unsupported authority schema");
-        db.exec(`
-          CREATE TABLE IF NOT EXISTS room_state (
-            singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
-            room_id TEXT NOT NULL UNIQUE,
-            revision INTEGER NOT NULL CHECK (revision >= 0),
-            clock_ms INTEGER NOT NULL
-          ) STRICT;
-          CREATE TABLE IF NOT EXISTS sessions (
-            id TEXT PRIMARY KEY,
-            room_id TEXT NOT NULL REFERENCES room_state(room_id),
-            lifecycle TEXT NOT NULL CHECK (lifecycle IN ('planned', 'active', 'ended')),
-            state_json TEXT NOT NULL CHECK (json_valid(state_json) AND json_extract(state_json, '$.environment') = 'REAL'),
-            used_ids_json TEXT NOT NULL CHECK (json_valid(used_ids_json))
-          ) STRICT;
-          CREATE UNIQUE INDEX IF NOT EXISTS one_active_show ON sessions(room_id) WHERE lifecycle = 'active';
-          CREATE TABLE IF NOT EXISTS command_log (
-            command_id TEXT PRIMARY KEY,
-            actor_id TEXT NOT NULL,
-            canonical_request TEXT NOT NULL,
-            receipt_json TEXT NOT NULL CHECK (json_valid(receipt_json)),
-            http_status INTEGER NOT NULL,
-            recorded_at_ms INTEGER NOT NULL,
-            resolved_creation_json TEXT CHECK (resolved_creation_json IS NULL OR json_valid(resolved_creation_json))
-          ) STRICT;
-          CREATE TRIGGER IF NOT EXISTS command_log_no_update BEFORE UPDATE ON command_log
-            BEGIN SELECT RAISE(ABORT, 'command log is immutable'); END;
-          CREATE TRIGGER IF NOT EXISTS command_log_no_delete BEFORE DELETE ON command_log
-            BEGIN SELECT RAISE(ABORT, 'command log is immutable'); END;
-          CREATE TRIGGER IF NOT EXISTS command_log_no_replace BEFORE INSERT ON command_log
-            WHEN EXISTS (SELECT 1 FROM command_log WHERE command_id = NEW.command_id)
-            BEGIN SELECT RAISE(ABORT, 'command log is immutable'); END;
-          PRAGMA user_version = 1;
-        `);
-        const existing = db.prepare("SELECT room_id FROM room_state").get();
-        if (existing && existing.room_id !== roomId) throw new Error("Database belongs to another room");
-        if (!existing) db.prepare("INSERT INTO room_state VALUES (1, ?, 0, ?)").run(roomId, Date.now());
-      });
+      if (production) {
+        verifyDatabase(db, production);
+      } else {
+        this.transaction(() => {
+          const version = db.prepare("PRAGMA user_version").get()!.user_version;
+          if (version !== 0 && version !== 1) throw new Error("Unsupported authority schema");
+          db.exec(V1_SQL);
+          const existing = db.prepare("SELECT room_id FROM room_state").get();
+          if (existing && existing.room_id !== roomId) throw new Error("Database belongs to another room");
+          if (!existing) db.prepare("INSERT INTO room_state VALUES (1, ?, 0, ?)").run(roomId, Date.now());
+        });
+      }
     } catch (error) {
       db.close();
       throw error;
@@ -170,8 +146,9 @@ export class RoomAuthority {
     return row ? JSON.parse(String(row.receipt_json)) as AuthorityReceipt : null;
   }
 
-  command(envelope: Envelope, access: Access): CommandReply {
+  command(envelope: Envelope, access: Access, currentAccess?: () => Access): CommandReply {
     return this.transaction(() => {
+      if (currentAccess) access = currentAccess();
       const canonical = canonicalJson({ roomId: envelope.roomId, sessionId: envelope.sessionId, expectedRevision: envelope.expectedRevision, type: envelope.type, payload: envelope.payload });
       const existing = this.db.prepare("SELECT actor_id, canonical_request, receipt_json, http_status FROM command_log WHERE command_id = ?").get(envelope.commandId);
       const room = this.room();
