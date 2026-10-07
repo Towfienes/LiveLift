@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AccountControl } from "@/components/auth/AccountControl";
 import { ConnectionChip, RemoteBanners } from "@/components/ops/ConnectionStatus";
 import { useRemoteState } from "@/lib/store/hooks";
 
@@ -30,8 +31,12 @@ export const StandardShell: React.FC<StandardShellProps> = ({
   return (
     <div className="min-h-screen flex flex-col bg-[#090B0F] text-[#F5F7FC]">
       {/* Global Header */}
-      <header className="h-[64px] px-6 lg:px-8 flex items-center justify-between bg-[#101319] border-b border-[#1E232B] shrink-0 sticky top-0 z-40">
-        <div className="flex items-center gap-2">
+      {/*
+        Below 1024px the header wraps instead of running off the screen: at 200% zoom (or on a tablet) the right-hand
+        controls, Sign out among them, would otherwise be clipped and unreachable. From 1024px up nothing changes.
+      */}
+      <header className="min-h-[64px] py-2 lg:py-0 lg:h-[64px] px-6 lg:px-8 flex flex-wrap lg:flex-nowrap items-center justify-between gap-x-4 gap-y-1 bg-[#101319] border-b border-[#1E232B] shrink-0 sticky top-0 z-40">
+        <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
           <Link href="/" className="flex items-center gap-2.5 text-[#F5F7FC] hover:opacity-90">
             <span className="text-[25px] text-[#DFFF00]" aria-hidden="true">
               <i className="ri-bar-chart-grouped-line" />
@@ -42,7 +47,7 @@ export const StandardShell: React.FC<StandardShellProps> = ({
           </Link>
 
           {/* Primary Navigation */}
-          <nav className="flex items-center gap-1.5 ml-8" aria-label="Main Navigation">
+          <nav className="flex flex-wrap lg:flex-nowrap items-center gap-1.5 ml-2 lg:ml-8" aria-label="Main Navigation">
             <Link
               href="/"
               className={`min-h-[44px] px-3.5 rounded-[8px] flex items-center gap-2 text-[16px] font-medium transition-colors ${
@@ -85,7 +90,7 @@ export const StandardShell: React.FC<StandardShellProps> = ({
         </div>
 
         {/* Right side: Active session return + user identity */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-4 gap-y-1">
           {activeSessionId && (
             <Link
               href={`/live/${activeSessionId}/operate`}
@@ -97,7 +102,7 @@ export const StandardShell: React.FC<StandardShellProps> = ({
             </Link>
           )}
 
-          <div className="flex items-center gap-2 text-[#CAD0DA]">
+          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 text-[#CAD0DA]">
             <Link
               href="/simulator"
               className={`min-h-[44px] px-3 rounded-[8px] flex items-center gap-2 text-[15px] hover:text-white hover:bg-[#1B2028] transition-colors ${
@@ -122,7 +127,10 @@ export const StandardShell: React.FC<StandardShellProps> = ({
             <span className="text-[#39414D]">|</span>
 
             {roomInUse ? (
-              <ConnectionChip />
+              <>
+                <ConnectionChip />
+                <AccountControl />
+              </>
             ) : (
               <span
                 className="inline-flex items-center gap-1.5 text-[15px] text-[#CAD0DA] px-2 py-1"
@@ -139,7 +147,9 @@ export const StandardShell: React.FC<StandardShellProps> = ({
       <RemoteBanners />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col">{children}</main>
+      <main id="main-content" tabIndex={-1} className="flex-1 flex flex-col outline-none">
+        {children}
+      </main>
     </div>
   );
 };

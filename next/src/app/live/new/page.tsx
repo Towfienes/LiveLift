@@ -291,8 +291,8 @@ function CreateLiveForm(): React.ReactElement {
             <p className="text-[14px] text-[#9AA5B5]" data-testid="recorded-as">
               <i className="ri-user-line mr-1.5" aria-hidden="true" />
               {remote.access
-                ? `Actions are recorded as ${remote.access.name}, the identity the room gave this browser.`
-                : "Actions are recorded under the identity the room gives this browser once it is connected."}
+                ? `Actions are recorded as ${remote.access.name}, the account you are signed in with.`
+                : "Actions are recorded under the account you sign in with, once the room is connected."}
             </p>
           )}
 
@@ -318,6 +318,15 @@ function CreateLiveForm(): React.ReactElement {
             <p className="text-[14px] text-[#F6C875]" data-testid="create-blocked">
               <i className="ri-lock-line mr-1.5" aria-hidden="true" />
               {commands.blockedReason}
+              {(remote.problem === "signed_out" || remote.problem === "session_ended") && (
+                <>
+                  {" "}
+                  <Link href="/login?next=%2Flive%2Fnew" className="underline underline-offset-4 text-[#F5F7FC]" data-testid="create-sign-in-link">
+                    Sign in
+                  </Link>
+                  .
+                </>
+              )}
             </p>
           )}
 

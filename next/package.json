@@ -5,11 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3130",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start -p 3130",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:ops": "node scripts/build-ops.mjs",
+    "ops": "npm run build:ops --silent && node .ops/scripts/ops.js",
+    "test:platform": "vitest run src/lib/server/platform.test.ts",
+    "test:platform-live": "node scripts/platform-smoke.mjs",
+    "test:phase2-live": "npm run build:ops --silent && node scripts/phase2-live.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
@@ -34,5 +39,8 @@
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.24.0",
     "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22.16 <23 || >=24"
   }
 }
