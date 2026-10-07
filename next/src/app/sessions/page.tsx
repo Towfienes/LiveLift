@@ -23,11 +23,13 @@ export default function SessionsPage(): React.ReactElement {
   const [search, setSearch] = useState("");
   const [lifecycle, setLifecycle] = useState("all");
   const [environment, setEnvironment] = useState("all");
+  const hasFilters = search.trim() !== "" || lifecycle !== "all" || environment !== "all";
+  const realLoading = environment !== "SIMULATED" && !remote.snapshot && remote.connection === "connecting" && remote.problem === null;
 
   const filtered = useMemo(
     () =>
       sessions
-        .filter((s) => (search ? s.title.toLowerCase().includes(search.toLowerCase()) : true))
+        .filter((s) => (search.trim() ? s.title.toLowerCase().includes(search.trim().toLowerCase()) : true))
         .filter((s) => (lifecycle === "all" ? true : s.lifecycle === lifecycle))
         .filter((s) => (environment === "all" ? true : s.environment === environment))
         .sort((a, b) => (a.environment === b.environment ? b.updatedAtMs - a.updatedAtMs : a.environment === "REAL" ? -1 : 1)),
@@ -62,10 +64,10 @@ export default function SessionsPage(): React.ReactElement {
               className="w-full h-11 bg-[#1B1F27] border border-[#2F3642] rounded-[8px] pl-9 pr-3 text-[15px] text-[#F5F7FC] placeholder-[#8A95A5]"
             />
           </div>
-          <label className="sr-only" htmlFor="lifecycle-filter">Lifecycle</label>
+          <label className="sr-only" htmlFor="lifecycle-filter">Show state</label>
           <select id="lifecycle-filter" value={lifecycle} onChange={(e) => setLifecycle(e.target.value)} className="h-11 bg-[#1B1F27] border border-[#2F3642] rounded-[8px] px-3 text-[14px] text-[#CAD0DA]">
-            <option value="all">All lifecycles</option>
-            <option value="planned">Prepared</option>
+            <option value="all">All show states</option>
+            <option value="planned">Planned</option>
             <option value="active">Active</option>
             <option value="ended">Ended</option>
           </select>
@@ -83,15 +85,20 @@ export default function SessionsPage(): React.ReactElement {
           ) : filtered.length === 0 ? (
             <div className="p-10 text-center" data-testid="sessions-empty">
               <i className="ri-stack-line text-[28px] text-[#8A95A5]" aria-hidden="true" />
-              <h2 className="text-[22px] font-medium text-[#F5F7FC] mt-2">{sessions.length === 0 ? "Make your first rundown" : "No sessions match"}</h2>
+              <h2 className="text-[22px] font-medium text-[#F5F7FC] mt-2">{realLoading ? "Loading REAL shows…" : hasFilters ? "No sessions match" : !remote.snapshot ? "REAL shows are unavailable" : "Make your first rundown"}</h2>
               <p className="text-[15px] text-[#B7C1CE] mt-1">
-                {remote.snapshot || (remote.connection === "connecting" && remote.problem === null)
-                  ? "Real shows and simulated rehearsals will appear here."
-                  : "REAL shows cannot be listed right now (see above), which does not mean there are none. Simulated rehearsals appear here either way."}
+                {realLoading
+                  ? "Waiting for the shared room. This does not mean there are no REAL shows."
+                  : hasFilters && remote.snapshot
+                    ? "Try another title or clear the filters to see all loaded shows."
+                    : remote.snapshot
+                      ? "REAL shows and SIMULATED rehearsals will appear here."
+                      : "REAL shows cannot be listed right now (see above), which does not mean there are none. Simulated rehearsals appear here either way."}
               </p>
-              <Link href="/live/new" className="inline-block mt-4">
+              {hasFilters && <Button className="mt-4" variant="secondary" onClick={() => { setSearch(""); setLifecycle("all"); setEnvironment("all"); }}>Clear filters</Button>}
+              {!hasFilters && !realLoading && <Link href="/live/new" className="inline-block mt-4">
                 <Button variant="primary">Create LIVE</Button>
-              </Link>
+              </Link>}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -101,7 +108,7 @@ export default function SessionsPage(): React.ReactElement {
                     <th className="py-3 px-5 font-normal">Session</th>
                     <th className="py-3 px-4 font-normal">Environment</th>
                     <th className="py-3 px-4 font-normal">Planned start</th>
-                    <th className="py-3 px-4 font-normal">Lifecycle</th>
+                    <th className="py-3 px-4 font-normal">Show state</th>
                     <th className="py-3 px-5 font-normal text-right">Action</th>
                   </tr>
                 </thead>

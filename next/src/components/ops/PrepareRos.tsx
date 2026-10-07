@@ -12,7 +12,7 @@ import {
   type PlanIssue,
   type Schedule,
 } from "@/lib/domain";
-import { Button, Dialog } from "@/components/ui";
+import { Button, Dialog, useCommandState } from "@/components/ui";
 import { afterResult } from "@/lib/client/commandText";
 import { SegmentTile } from "./SegmentTile";
 import { Signal } from "./StatusChips";
@@ -250,12 +250,20 @@ export function ProductPack({
   onPatch: (productId: string, patch: Partial<ProductSnapshot>) => void | boolean | Promise<boolean>;
   onRemove: (productId: string) => void | boolean | Promise<boolean>;
 }): React.ReactElement {
+  const command = useCommandState();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [currency, setCurrency] = useState("");
+  const [notes, setNotes] = useState("");
 
   const selected = products.find((p) => p.id === selectedId) ?? null;
+  const parsedPrice = price.trim() === "" ? null : Number(price);
+  const detailsValid = name.trim() !== "" && currency.trim() !== "" &&
+    (parsedPrice === null || (Number.isFinite(parsedPrice) && parsedPrice >= 0));
   // Segments AND cues can target a product; removing it would leave a dangling target.
   const refs = selected ? productReferences(plan, selected.id) : { segments: [], cues: [] };
   const usedBy = [...refs.segments.map((s) => s.title || "Untitled segment"), ...refs.cues.map((c) => `cue “${c.title}”`)];
@@ -277,7 +285,7 @@ export function ProductPack({
       {products.length > 0 && (
         <p className="text-[13px] text-[#9AA5B5] mb-1.5 shrink-0" data-testid="product-edit-hint">
           <i className="ri-edit-line mr-1" aria-hidden="true" />
-          Select a product to set its priority, disable it for this show, or remove it.
+          Select a product to edit its details, set priority, or disable it for this show.
         </p>
       )}
       {products.length === 0 ? (
@@ -293,7 +301,13 @@ export function ProductPack({
               <button
                 type="button"
                 title={`Edit ${p.code} · ${p.name}`}
-                onClick={() => setSelectedId(p.id)}
+                onClick={() => {
+                  setSelectedId(p.id);
+                  setName(p.name);
+                  setPrice(p.price === null ? "" : String(p.price));
+                  setCurrency(p.currency);
+                  setNotes(p.notes ?? "");
+                }}
                 className={`w-full text-left flex gap-3 items-center p-2.5 rounded-[10px] cursor-pointer transition-colors ${
                   p.status === "disabled" ? "bg-[#111317] opacity-70" : "bg-[#181C24] hover:bg-[#202632]"
                 }`}
@@ -319,21 +333,46 @@ export function ProductPack({
           ))}
         </ul>
       )}
-      <p className="pt-2 text-[12px] text-[#8A95A5] shrink-0">Session snapshot · edits here never change the library or past shows.</p>
+      <p className="pt-2 text-[12px] text-[#8A95A5] shrink-0">Products for this show · edits here never change the library or past shows.</p>
 
       <Dialog
         isOpen={selected !== null}
         onClose={() => setSelectedId(null)}
         title={selected ? `${selected.code} · ${selected.name}` : ""}
-        description="Product details for this show only. Changes save immediately and never touch the library or past shows."
+        description="Edit product details for this show, including products already used in the rundown."
+        confirmText="Save product details"
+        confirmDisabled={!detailsValid}
+        onConfirm={() => {
+          if (!selected || !detailsValid) return;
+          afterResult(onPatch(selected.id, { name: name.trim(), price: parsedPrice, currency: currency.trim(), notes: notes.trim() }), () => setSelectedId(null));
+        }}
         cancelText="Close"
       >
         {selected && (
-          <div className="space-y-4 pb-1" data-testid="product-dialog">
-            <p className="text-[15px] text-[#F5F7FC]">Price: {selected.price !== null ? `${selected.currency} ${selected.price}` : "Not entered"}</p>
-            <p className="text-[13px] text-[#9AA5B5] -mt-2" data-testid="product-correct-hint">
-              To correct the name or price, remove this product and add it again with the right values (Import).
+          <fieldset disabled={command.busy} className="space-y-4 pb-1 border-0 p-0 m-0 min-w-0" data-testid="product-dialog">
+            <label className="block text-[14px] text-[#CAD0DA]">
+              Product name
+              <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full h-11 bg-[#13161C] border border-[#39414D] rounded-[8px] px-3 text-[#F5F7FC]" />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-[14px] text-[#CAD0DA]">
+                Price (optional)
+                <input type="number" min="0" step="any" value={price} onChange={(e) => setPrice(e.target.value)} className="mt-1 w-full h-11 bg-[#13161C] border border-[#39414D] rounded-[8px] px-3 text-[#F5F7FC]" />
+              </label>
+              <label className="block text-[14px] text-[#CAD0DA]">
+                Currency
+                <input value={currency} onChange={(e) => setCurrency(e.target.value)} className="mt-1 w-full h-11 bg-[#13161C] border border-[#39414D] rounded-[8px] px-3 text-[#F5F7FC]" />
+              </label>
+            </div>
+            <p className="text-[13px] text-[#9AA5B5]" data-testid="product-correct-hint">
+              Leave price blank when it is unknown. Enter 0 only for a known zero price.
             </p>
+            <label className="block text-[14px] text-[#CAD0DA]">
+              Operator notes
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-1 w-full bg-[#13161C] border border-[#39414D] rounded-[8px] p-3 text-[#F5F7FC]" />
+            </label>
+            {!detailsValid && <p className="text-[14px] text-[#F6C875]">Enter a product name and currency. Price must be blank or a valid number of zero or more.</p>}
+            {selected.source === "sample_library" && <p className="text-[14px] text-[#F6C875]">Sample origin is retained when you edit these details. Check all product facts before a real show.</p>}
             {selected.talkingPoints.length > 0 && (
               <ul className="list-disc list-inside text-[14px] text-[#B7C1CE] space-y-1">
                 {selected.talkingPoints.map((t) => (
@@ -359,12 +398,13 @@ export function ProductPack({
                 Remove
               </Button>
             </div>
+            <p className="text-[13px] text-[#9AA5B5]">Priority, enable/disable and removal save immediately. Name, price, currency and notes save with “Save product details”.</p>
             {usedBy.length > 0 && (
               <p className="text-[14px] text-[#9AA5B5]" data-testid="product-used-by">
                 Used by {usedBy.join(", ")}. Change or remove those first, so no segment or cue points at a missing product.
               </p>
             )}
-          </div>
+          </fieldset>
         )}
       </Dialog>
 
@@ -425,6 +465,7 @@ export function ProductPack({
       >
         <div className="space-y-3 pb-1" data-testid="import-dialog">
           <textarea
+            aria-label="Product rows to import"
             data-testid="import-text"
             data-autofocus
             rows={4}

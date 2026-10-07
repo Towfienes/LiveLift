@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { StandardShell } from "@/components/shell";
 import { Button, Dialog } from "@/components/ui";
 import { ProductSnapshot } from "@/contracts";
@@ -57,6 +58,11 @@ export default function ProductsPage() {
             </button>
           </div>
         </div>
+
+        <p className="text-[15px] text-[#CAD0DA]">
+          To use your own products, create a LIVE and paste your lineup in Prepare → Product Pack → Import.{" "}
+          <Link href="/live/new" className="text-[#DFFF00] underline underline-offset-4">Create LIVE</Link>
+        </p>
 
         {/* Note on session separation */}
         <div className="rounded-[8px] bg-[#101319] border border-[#232935] px-4 py-2.5 text-[14px] text-[#8A95A5]">
@@ -118,7 +124,7 @@ export default function ProductsPage() {
 
                 <div className="pt-3 mt-4 border-t border-[#202632] flex items-center justify-between text-[12px] text-[#8A95A5]">
                   <span>Status: {prod.status}</span>
-                  <span>{prod.asOf || "Oct 2, 2026"}</span>
+                  <span>{prod.asOf || "As-of not recorded"}</span>
                 </div>
               </div>
             ))}
@@ -170,7 +176,8 @@ export default function ProductsPage() {
                   );
                 })}
               </ul>
-              <p className="text-[14px] text-[#9AA5B5]">Use “Saved pack” in Create LIVE, or Library in Prepare, to copy this pack into a show.</p>
+              <p className="text-[14px] text-[#9AA5B5]">This copies sample products into a new plan. Check their details in Prepare.</p>
+              <Link href={`/live/new?pack=${encodeURIComponent(inspected.id)}`} className="inline-flex min-h-[44px] items-center text-[#DFFF00] underline underline-offset-4">Create LIVE with this sample pack</Link>
             </div>
           )}
         </Dialog>

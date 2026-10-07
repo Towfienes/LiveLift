@@ -11,9 +11,11 @@ import {
   buildReview,
   diffPlans,
   formatClock,
+  formatDay,
   formatDuration,
   msToZonedParts,
   proposeChanges,
+  setPlannedStart,
   zonedTimeToMs,
   type ProposedChange,
 } from "@/lib/domain";
@@ -64,12 +66,13 @@ export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateCo
   const [error, setError] = useState<string | null>(null);
 
   const chosen: ProposedChange[] = proposals.filter((p) => selected.has(p.id));
-  const preview = useMemo(() => applyChangeOps(base, chosen.map((c) => c.op)), [base, chosen]);
+  const plannedStartMs = zonedTimeToMs(date, time, tz);
+  const previewBase = useMemo(() => setPlannedStart(base, plannedStartMs ?? base.plannedStartMs), [base, plannedStartMs]);
+  const preview = useMemo(() => applyChangeOps(previewBase, chosen.map((c) => c.op)), [previewBase, chosen]);
   const baseAssess = useMemo(() => assessPlan(base, session.products, tz), [base, session.products, tz]);
   const assess = useMemo(() => assessPlan(preview, session.products, tz), [preview, session.products, tz]);
-  const diff = useMemo(() => diffPlans(base, preview), [base, preview]);
+  const diff = useMemo(() => diffPlans(previewBase, preview), [previewBase, preview]);
   const late = assess.anchors.filter((a) => a.deficitSec > 0);
-  const plannedStartMs = zonedTimeToMs(date, time, tz);
   const clock = (ms: number): string => formatClock(ms, tz, true);
 
   const toggle = (id: string): void => {
@@ -87,7 +90,7 @@ export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateCo
   const canCreate = title.trim() !== "" && plannedStartMs !== null && (late.length === 0 || acknowledged) && writable && !submitting;
 
   const create = async (): Promise<void> => {
-    if (plannedStartMs === null) return;
+    if (!canCreate || plannedStartMs === null) return;
     setError(null);
     if (isRemote) {
       // The room creates the next show (new id, its own clock, no runtime copied) and answers with a receipt.
@@ -210,6 +213,12 @@ export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateCo
           </Signal>
         </div>
 
+        <p className="mt-2 text-[14px] text-[#CAD0DA]" data-testid="next-plan-start">
+          {plannedStartMs !== null
+            ? `Planned for ${formatDay(plannedStartMs, tz)} · ${clock(plannedStartMs)} · ${tz}. Anchors keep their offset from this new start.`
+            : "Choose a valid date and start time to preview the next schedule."}
+        </p>
+
         <ol className="mt-3 divide-y divide-[#262C38]" data-testid="clone-preview">
           {preview.segments.map((seg, i) => {
             const d = diff[i];
@@ -307,6 +316,9 @@ export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateCo
         </div>
 
         {error && <p role="alert" className="mt-3 text-[14px] text-[#F4A4A4]">{error}</p>}
+        {(title.trim() === "" || plannedStartMs === null) && (
+          <p className="mt-3 text-[14px] text-[#F6C875]">Enter a title, planned date and valid start time to create the next LIVE.</p>
+        )}
         {!writable && (
           <p className="mt-3 text-[14px] text-[#F6C875]" data-testid="next-live-blocked">
             <i className="ri-lock-line mr-1.5" aria-hidden="true" />

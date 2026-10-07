@@ -88,6 +88,7 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [startOpen, setStartOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
 
   const schedule = useMemo(() => schedulePlan(plan), [plan]);
   const assessment = useMemo(() => assessPlan(plan, session.products, tz), [plan, session.products, tz]);
@@ -107,6 +108,7 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
   const editRemote = async (fn: (draft: Session, alloc: Alloc) => void): Promise<boolean> => {
     setMessage(null);
     setCmdError(null);
+    setSavedFeedback(null);
     const draft = structuredClone(session);
     fn(draft, {
       segmentId: () => `${draft.id}:s${++draft.seq.segment}`,
@@ -133,7 +135,10 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
     setBusy(true);
     try {
       const outcome = await commands.submit({ body: { type: "save_prepare", ...payload }, sessionId: session.id });
-      if (outcome.status === "committed") return true;
+      if (outcome.status === "committed") {
+        setSavedFeedback("Change saved to this show's plan.");
+        return true;
+      }
       if (outcome.status === "unknown") {
         // The exact request is kept (see the banner above); the dialog may close without losing it.
         setMessage(`${outcome.message} Your change is held exactly as sent; use the banner to check it.`);
@@ -155,6 +160,8 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
     if (isRemote) return editRemote(fn);
     const r = sessionStore.editDraft(session.id, fn);
     setMessage(r.ok ? null : r.reason);
+    setCmdError(r.ok ? null : r.reason);
+    setSavedFeedback(r.ok ? "Change saved to this rehearsal's plan." : null);
     return r.ok;
   };
   const editPlan = (fn: (p: PlanVersion, alloc: Alloc) => PlanVersion): boolean | Promise<boolean> =>
@@ -188,6 +195,7 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
     }
     setMessage(null);
     setCmdError(null);
+    setSavedFeedback(null);
     setBusy(true);
     try {
       const outcome = await commands.submit({ body: { type: "start_live", rebaseToNow }, sessionId: session.id });
@@ -220,11 +228,15 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
   const editingSegment = segmentEditing?.mode === "edit" ? (plan.segments.find((s) => s.id === segmentEditing.id) ?? null) : null;
   const editingCue: Cue | null = cueEditing?.mode === "edit" ? (plan.cues.find((c) => c.id === cueEditing.id) ?? null) : null;
   const saved = isRemote
-    ? commands.role === "viewer"
-      ? { tone: "warn" as const, icon: "ri-eye-line", text: "Read-only — viewing" }
-      : commands.stale
-        ? { tone: "warn" as const, icon: "ri-wifi-off-line", text: "Not connected — changes paused" }
-        : { tone: "neutral" as const, icon: "ri-save-line", text: "Saved to the room" }
+    ? busy || commands.pending !== null
+      ? { tone: "warn" as const, icon: "ri-time-line", text: "Waiting for confirmation…" }
+      : remote.unresolved.length > 0
+        ? { tone: "warn" as const, icon: "ri-question-line", text: "Action outcome unknown — check above" }
+        : commands.role === "viewer"
+          ? { tone: "warn" as const, icon: "ri-eye-line", text: "Read-only — viewing" }
+          : commands.stale
+            ? { tone: "warn" as const, icon: "ri-wifi-off-line", text: "Not connected — changes paused" }
+            : { tone: "neutral" as const, icon: "ri-save-line", text: "Saved to the room" }
     : storeState.storage === "ok"
       ? { tone: "neutral" as const, icon: "ri-save-line", text: "Saved on this device" }
       : { tone: "warn" as const, icon: "ri-alert-line", text: "Not saved — storage unavailable" };
@@ -245,7 +257,7 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
               <Signal tone={saved.tone} icon={saved.icon}>
                 <span data-testid="save-status">{saved.text}</span>
               </Signal>
-              <Button variant="ghost" size="sm" icon="ri-edit-line" onClick={() => setDetailsOpen(true)} data-testid="edit-details-btn">
+              <Button variant="ghost" size="sm" icon="ri-edit-line" disabled={!editable || busy} onClick={() => setDetailsOpen(true)} data-testid="edit-details-btn">
                 Edit details
               </Button>
             </div>
@@ -257,7 +269,8 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
             {message}
           </div>
         )}
-        {isRemote && commands.role === "viewer" && commands.blockedReason && (
+        {savedFeedback && <p role="status" className="mx-6 lg:mx-8 mt-3 text-[14px] text-[#DFFF00]">{savedFeedback}</p>}
+        {isRemote && !commands.canWrite && commands.blockedReason && (
           <p className="mx-6 lg:mx-8 mt-3 text-[14px] text-[#F6C875]" data-testid="prepare-readonly-note">
             <i className="ri-lock-line mr-1.5" aria-hidden="true" />
             {commands.blockedReason}
@@ -266,7 +279,7 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
 
         <div className="px-4 lg:px-6 py-4 max-w-[1720px] w-full mx-auto">
           <fieldset
-            disabled={!editable}
+            disabled={!editable || busy}
             className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_310px] gap-4 lg:h-[calc(100dvh-222px)] lg:min-h-[480px] border-0 p-0 m-0 min-w-0"
           >
             {/* Product Pack */}
@@ -274,7 +287,7 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
               <div className="flex items-center justify-between mb-1 shrink-0">
                 <h2 className="text-[20px] font-medium text-[#F5F7FC]">Product Pack</h2>
               </div>
-              <p className="text-[14px] text-[#AEB7C5] mb-2 shrink-0">{session.products.length} products · Session snapshot</p>
+              <p className="text-[14px] text-[#AEB7C5] mb-2 shrink-0">{session.products.length} products · For this show</p>
               <ProductPack
                 products={session.products}
                 plan={plan}
@@ -282,7 +295,10 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
                   // Every requested product is added or the whole change is refused with a reason — never silently fewer.
                   const clash = items.filter((item) => session.products.some((p) => p.id === item.id || p.code.toLowerCase() === item.code.toLowerCase()));
                   if (clash.length > 0) {
-                    setMessage(`Not added: ${clash.map((c) => c.code).join(", ")} already ${clash.length === 1 ? "exists" : "exist"} in this pack. Nothing was changed.`);
+                    const why = `Not added: ${clash.map((c) => c.code).join(", ")} already ${clash.length === 1 ? "exists" : "exist"} in this pack. Nothing was changed.`;
+                    setMessage(why);
+                    setCmdError(why);
+                    setSavedFeedback(null);
                     return false;
                   }
                   return edit((d) => {
@@ -453,7 +469,7 @@ function PrepareDesk({ session, source }: { session: Session; source: SessionSou
                   className="w-full min-h-[52px] text-[19px]"
                   data-testid="start-live-cta-btn"
                 >
-                  {session.environment === "SIMULATED" ? "Start SIMULATED session" : "Start LIVE"}
+                  {busy ? "Waiting for confirmation…" : session.environment === "SIMULATED" ? "Start SIMULATED session" : "Start LIVE"}
                 </Button>
                 <p className="text-[13px] leading-5 text-[#AEB7C5] mt-2 text-center" data-testid="start-helper">
                   {session.environment === "SIMULATED"
