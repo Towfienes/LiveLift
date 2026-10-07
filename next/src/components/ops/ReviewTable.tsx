@@ -386,7 +386,7 @@ export function HistoryList({
           </Button>
         )}
       </div>
-      <ol className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#1F2530] pr-1">
+      <ol tabIndex={0} aria-label="Actual history records" className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#1F2530] pr-1 focus-visible:outline-2 focus-visible:outline-[#DFFF00]">
         {items.map((h) => (
           <li key={h.id} className="py-2 flex gap-3 items-start" data-testid={`history-${h.type}`}>
             <span className="text-[13px] tabular-nums font-mono text-[#AEB7C5] w-[64px] shrink-0 pt-0.5">{formatClock(h.occurredAtMs, tz, true)}</span>

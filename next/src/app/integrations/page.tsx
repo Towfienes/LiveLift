@@ -5,6 +5,9 @@ import Link from "next/link";
 import { StandardShell } from "@/components/shell";
 import { TikTokConnectionPanel } from "@/components/integrations/TikTokConnectionPanel";
 import { useTikTokConnection } from "@/components/integrations/useTikTokConnection";
+import { CapabilityLedger } from "@/components/intelligence/CapabilityLedger";
+import { useProviderCapabilities } from "@/components/intelligence/useLiveIntelligence";
+import { buildLedger } from "@/lib/intelligence/capabilities";
 import {
   CATEGORIES,
   type CapabilityCategory,
@@ -83,6 +86,8 @@ export default function IntegrationsPage(): React.ReactElement {
   >("all");
 
   const tiktok = useTikTokConnection();
+  const providerCapabilities = useProviderCapabilities(true);
+  const ledger = buildLedger({ loginKit: tiktok.state.kind === "loaded" ? tiktok.state.view.state : null, server: providerCapabilities.server });
   // Only a stored authorization with no known problem counts; an unknown or expired one does not.
   const connectedPlatforms = tiktok.state.kind === "loaded" && tiktok.state.view.state === "connected" ? 1 : 0;
 
@@ -200,6 +205,18 @@ export default function IntegrationsPage(): React.ReactElement {
         </section>
 
         <TikTokConnectionPanel connection={tiktok} />
+
+        {/* What TikTok lets LiveLift read about a show, and what it does not */}
+        <section aria-labelledby="provider-evidence-heading" className="rounded-[14px] bg-[#13161C] border border-[#252C38] p-5 sm:p-6" data-testid="provider-evidence-access">
+          <h2 id="provider-evidence-heading" className="text-[20px] sm:text-[22px] font-semibold text-[#F5F7FC]">
+            Provider evidence access
+          </h2>
+          <p className="mt-1 max-w-[760px] text-[14px] sm:text-[15px] leading-relaxed text-[#B7C1CE]">
+            What TikTok lets LiveLift read about a show, and what it does not. Provider evidence arrives after the LIVE as later evidence; nothing here is real time.
+            A feature that is unavailable is a stated limit, not a fault.
+          </p>
+          <CapabilityLedger rows={ledger} className="mt-2" />
+        </section>
 
         {/* Epistemic Truth Ledger Callout */}
         <section

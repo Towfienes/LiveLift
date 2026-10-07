@@ -609,6 +609,7 @@ describe("Review and Next LIVE", () => {
     await renderPage(ReviewPage as PageComponent, "sim-buffered-done");
     const before = sessionStore.getSession("sim-buffered-done")!.events.length;
     const target = sessionStore.getSession("sim-buffered-done")!.events.find((e) => e.type === "segment_ended")!;
+    fireEvent.click(await screen.findByTestId("perspective-later"));
     fireEvent.click(await screen.findByTestId(`correct-${target.id}`));
     await act(async () => {});
     fireEvent.change(screen.getByTestId("correction-input"), { target: { value: "Host says it ended a minute later" } });

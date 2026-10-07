@@ -361,6 +361,10 @@ async function journey(browser, runtime, mode, width, report, output) {
       assert.equal(await id('tiktok-actions').getByRole('button', { name: /start.*LIVE|control.*LIVE|pin|promot/i }).count(), 0);
     });
     await capture('integrations');
+    if (mode !== 'not-configured') await check('v7-login-kit-connected-capability', async () => {
+      await page.waitForFunction(() => document.querySelector('[data-testid=capability-login_kit]')?.getAttribute('data-state') === 'connected');
+      assert.equal(await id('capability-login_kit').getAttribute('data-state'), 'connected');
+    });
     if (mode !== 'not-configured') await check('tiktok-fixture-disconnect', async () => {
       await click('tiktok-disconnect'); await click('tiktok-disconnect-confirm');
       await id('tiktok-disconnected').waitFor();

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { EvidenceSource } from "./liveIntelligence";
 
 /**
  * AI Copilot contracts: what the browser may send, and what it may be told.
@@ -55,6 +56,10 @@ export const AiFactSchema = z
     text: z.string().min(1).max(420),
     /** The numbers behind the sentence, so a model may quote them exactly. */
     values: z.record(z.string(), z.number()).optional(),
+    evidenceTier: z.literal("provider_observed").optional(),
+    source: z.enum(["tiktok_shop", "fixture"]).optional(),
+    fetchedAt: z.number().int().nonnegative().optional(),
+    perspective: z.literal("later_evidence").optional(),
   })
   .strict();
 export type AiFact = z.infer<typeof AiFactSchema>;
@@ -300,6 +305,7 @@ export interface ReviewAiContext extends AiContextBase {
   contract: "livelift.ai.review.v1";
   show: { title: string; trackedSec: number };
   changes: AiCandidateChange[];
+  laterEvidence?: { snapshotId: string; fetchedAt: number; perspective: "later_evidence"; source: EvidenceSource; evidenceTier: "provider_observed" };
 }
 
 export type AiContext = OperateAiContext | ReviewAiContext;

@@ -34,7 +34,7 @@ async function listen(server) {
   return server.address().port;
 }
 
-export async function startRuntime(mode, evidence) {
+export async function startRuntime(mode, evidence, options = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'livelift-cert-runtime-'));
   const log = path.join(evidence, `${mode}-server.log`);
   fs.writeFileSync(log, '', { mode: 0o600 });
@@ -72,6 +72,8 @@ export async function startRuntime(mode, evidence) {
     const origin = `https://127.0.0.1:${await listen(proxy)}`;
     Object.assign(env, { LIVELIFT_WORKSPACE_ID: randomUUID(), LIVELIFT_ROOM_ID: 'final-cert', LIVELIFT_DB_PATH: path.join(directory, 'data', 'room.sqlite'),
       LIVELIFT_BACKUP_DIR: path.join(directory, 'backups'), LIVELIFT_APP_ORIGIN: origin });
+    if (options.intelligenceFixture) Object.assign(env, { LIVELIFT_INTELLIGENCE_MODE: 'fixture',
+      LIVELIFT_TIKTOK_SHOP_INTERVAL_POLICY: 'unverified', LIVELIFT_PROVIDER_EVIDENCE_DB_PATH: path.join(directory, 'data', 'provider-evidence.sqlite') });
     // Build the existing ops tooling in a private copy; never leave .ops or edit app source.
     const tooling = path.join(directory, 'tooling');
     for (const relative of ['src/contracts', 'src/fixtures', 'src/lib/domain', 'src/lib/server', 'src/lib/ai', 'src/app/api', 'scripts']) {
@@ -96,6 +98,26 @@ export async function startRuntime(mode, evidence) {
         for (const [name, value] of Object.entries(process.env)) if (name.startsWith('LIVELIFT_AI_')) env[name] = value;
       }
     }
+    let intelligenceControl;
+    if (options.intelligenceTransport) {
+      intelligenceControl = path.join(directory, 'intelligence-control.json');
+      fs.writeFileSync(intelligenceControl, JSON.stringify({ state: 'available', startMs: 1791000000000, endMs: 1791000120000 }), { mode: 0o600 });
+      env.NODE_OPTIONS += ` --import ${path.join(app, 'scripts/live-intelligence-fixture-preload.mjs')}`;
+      Object.assign(env, { LIVELIFT_INTELLIGENCE_MODE: 'real', LIVELIFT_TIKTOK_SHOP_APP_KEY: randomBytes(16).toString('hex'),
+        LIVELIFT_TIKTOK_SHOP_APP_SECRET: randomBytes(32).toString('hex'), LIVELIFT_TIKTOK_SHOP_ACCESS_TOKEN: randomBytes(32).toString('hex'),
+        LIVELIFT_TIKTOK_SHOP_CIPHER: randomBytes(16).toString('hex'), LIVELIFT_TIKTOK_SHOP_INTERVAL_POLICY: 'half_open_confirmed',
+        LIVELIFT_PROVIDER_EVIDENCE_DB_PATH: path.join(directory, 'data', 'provider-evidence.sqlite'),
+        LIVELIFT_CERT_INTELLIGENCE_FIXTURES: path.join(tooling, '.ops/src/lib/domain/liveIntelligenceFixtures.js'), LIVELIFT_CERT_INTELLIGENCE_CONTROL: intelligenceControl });
+    }
+    const privateValues = Object.entries(env).filter(([name, value]) => value && /(?:SECRET|ACCESS_TOKEN|ENCRYPTION_KEY|SHOP_CIPHER|SHOP_APP_KEY|AI_API_KEY)$/.test(name)).map(([, value]) => value);
+    const assertNoSecrets = (...texts) => {
+      for (const text of texts) if (privateValues.some(value => text.includes(value))) throw new Error('A certification credential appeared in a browser artifact or log');
+    };
+    const verifyPrivateArtifacts = () => {
+      assertNoSecrets(fs.readFileSync(log, 'utf8'));
+      const staticDir = path.join(app, '.next/static');
+      for (const file of fs.readdirSync(staticDir, { recursive: true })) if (file.endsWith('.js')) assertNoSecrets(fs.readFileSync(path.join(staticDir, file), 'utf8'));
+    };
     const fd = fs.openSync(log, 'a', 0o600);
     child = spawn(process.execPath, [path.join(app, 'node_modules/next/dist/bin/next'), 'start', '--hostname', '127.0.0.1', '--port', String(upstreamPort)], { cwd: app, env, stdio: ['ignore', fd, fd] });
     fs.closeSync(fd);
@@ -106,7 +128,8 @@ export async function startRuntime(mode, evidence) {
       if (spawnError || child.exitCode !== null) throw new Error(`App exited before readiness; see ${log}`);
       try {
         const response = await fetch(`http://127.0.0.1:${upstreamPort}/api/readyz`, { signal: AbortSignal.timeout(2000) });
-        if (response.status === 200 && (await response.json()).ready === true) return { origin, credentials, stop };
+        if (response.status === 200 && (await response.json()).ready === true) return { origin, credentials, stop,
+          fixtureTools: path.join(tooling, '.ops/src'), intelligenceControl, assertNoSecrets, verifyPrivateArtifacts };
       } catch { /* Wait for this child only. */ }
       await new Promise(resolve => setTimeout(resolve, 250));
     }

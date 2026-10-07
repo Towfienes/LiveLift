@@ -5,7 +5,7 @@ import type { Session } from "@/contracts";
 import type { AiFact, ReviewAvailable } from "@/contracts/ai";
 import { formatClock } from "@/lib/domain";
 import { Button } from "@/components/ui";
-import { Basis, DISCLOSURE, FactList, LayerLabel, PHASE_LABEL, StateChip, phaseMessage } from "./CopilotParts";
+import { Basis, DISCLOSURE, FactList, LayerLabel, PHASE_LABEL, StateChip, isProviderFact, phaseMessage } from "./CopilotParts";
 import type { AiCopilot } from "./useAiCopilot";
 
 /**
@@ -19,6 +19,7 @@ import type { AiCopilot } from "./useAiCopilot";
 
 export function ReviewCopilot({
   copilot,
+  perspective,
   session,
   source,
   archive,
@@ -28,6 +29,11 @@ export function ReviewCopilot({
   onOpenNextLive,
 }: {
   copilot: AiCopilot<ReviewAvailable>;
+  /**
+   * "known": show only what the operator could have known during the LIVE; provider (later) facts, and AI statements that
+   * rest on them, stay out of view and are counted. "later" or unset: show everything, with later evidence labelled.
+   */
+  perspective?: "known" | "later";
   session: Session;
   source: "remote" | "local";
   /** A pre-Phase-2 REAL show kept in this browser: it is not in the room, so the server cannot read it. */
@@ -46,7 +52,18 @@ export function ReviewCopilot({
   const unopened = !archive && !opened;
   const message = archive || unopened ? null : phaseMessage(copilot.phase, copilot.failure);
   const ask = (): void => copilot.ask(source === "remote" ? { sessionId: session.id } : { sessionId: session.id, session });
-  const shown = result && !stale ? result.facts : facts;
+  const known = perspective === "known";
+  const lateRecords = session.runtime.endedAtMs !== null && session.events.some(e => e.recordedAtMs > session.runtime.endedAtMs!);
+  const shown = known ? facts : result && !stale ? result.facts : facts;
+  // Provider evidence is later evidence. It is labelled everywhere, and withheld entirely from the "as known then" view.
+  const allFacts = result ? result.facts : facts;
+  const restsOnLater = (cites: string[]): boolean => lateRecords || cites.some((c) => allFacts.some((f) => f.id === c && isProviderFact(f)));
+  const keep = <T extends { cites: string[] }>(items: T[]): T[] => (known ? items.filter((i) => !restsOnLater(i.cites)) : items);
+  const providerShown = shown.filter(isProviderFact);
+  const operationsShown = shown.filter((f) => !isProviderFact(f));
+  const hasProvider = allFacts.some(isProviderFact);
+  const statementLists: Array<Array<{ cites: string[] }>> = result ? [result.output.deviations, result.output.gaps, result.output.evidenceLimits, result.output.nextLive, result.output.manualIdeas] : [];
+  const withheld = known && result ? statementLists.reduce((n, list) => n + list.length - keep(list).length, 0) + (restsOnLater(result.output.summary.cites) ? 1 : 0) : 0;
 
   return (
     <section className="rounded-[12px] bg-[#13161C] border border-[#1B2F38] p-4 space-y-3" aria-label="AI Review Copilot" data-testid="review-copilot" data-phase={archive ? "archive" : unopened ? "unopened" : copilot.phase}>
@@ -57,7 +74,9 @@ export function ReviewCopilot({
             AI Review Copilot
           </h2>
           <p className="text-[16px] leading-snug text-[#B7C1CE] mt-0.5 max-w-[760px]">
-            A second reading of this show&apos;s recorded evidence. It does not know viewer, sales or TikTok analytics, and it never edits this show.
+            {hasProvider
+              ? "A second reading of this show's evidence. Part of what it was shown is provider evidence fetched after the LIVE, labelled as later evidence. It never edits this show."
+              : "A second reading of this show's recorded evidence. It does not know viewer, sales or TikTok analytics, and it never edits this show."}
             {session.environment === "SIMULATED" ? " Every record here is SIMULATED." : ""}
           </p>
         </div>
@@ -121,19 +140,33 @@ export function ReviewCopilot({
           <div className={`space-y-4 min-w-0 ${stale ? "opacity-60" : ""}`} data-testid="copilot-result" data-stale={stale}>
             <div className="rounded-[8px] bg-[#14171E] border border-dashed border-[#25505F] px-3 py-2 space-y-1">
               <LayerLabel kind="interpretation" extra="summary · can be wrong" />
-              <p className="text-[16px] leading-snug text-[#F5F7FC]" data-testid="ai-summary">{result.output.summary.text}</p>
-              <Basis cites={result.output.summary.cites} facts={result.facts} />
+              {known && restsOnLater(result.output.summary.cites) ? (
+                <p className="text-[16px] leading-snug text-[#B7C1CE]" data-testid="ai-summary-withheld">
+                  {lateRecords ? "This analysis uses records appended after the LIVE." : "This summary rests on provider evidence fetched after the LIVE."} Open “With later evidence” to read it.
+                </p>
+              ) : (
+                <>
+                  <p className="text-[16px] leading-snug text-[#F5F7FC]" data-testid="ai-summary">{result.output.summary.text}</p>
+                  <Basis cites={result.output.summary.cites} facts={result.facts} />
+                </>
+              )}
             </div>
+            {withheld > 0 && (
+              <p className="text-[16px] leading-snug text-[#B4C6DD]" data-testid="ai-withheld-note">
+                <i className="ri-time-line mr-1.5" aria-hidden="true" />
+                {withheld} AI statement{withheld === 1 ? "" : "s"} rest{withheld === 1 ? "s" : ""} on evidence the operator did not have during the LIVE. {withheld === 1 ? "It is" : "They are"} shown under “With later evidence”.
+              </p>
+            )}
 
-            <AiList title="Timing deviations" items={result.output.deviations} facts={result.facts} testId="ai-deviations" empty="The AI did not flag a timing deviation." />
-            <AiList title="Cue and report gaps" items={result.output.gaps} facts={result.facts} testId="ai-gaps" empty="The AI did not flag a gap." />
-            <AiList title="Evidence limits" items={result.output.evidenceLimits} facts={result.facts} testId="ai-limits" empty="No limits stated." />
+            <AiList title="Timing deviations" items={keep(result.output.deviations)} facts={result.facts} testId="ai-deviations" empty="The AI did not flag a timing deviation." />
+            <AiList title="Cue and report gaps" items={keep(result.output.gaps)} facts={result.facts} testId="ai-gaps" empty="The AI did not flag a gap." />
+            <AiList title="Evidence limits" items={keep(result.output.evidenceLimits)} facts={result.facts} testId="ai-limits" empty="No limits stated." />
 
             <section aria-label="AI recommendation: Next LIVE" className="space-y-2">
               <LayerLabel kind="recommendation" extra="Next LIVE · not selected, not applied" />
-              {result.output.nextLive.length === 0 && <p className="text-[16px] text-[#9AA5B5]" data-testid="ai-no-next-live">The AI is not suggesting a listed adjustment for this show.</p>}
+              {keep(result.output.nextLive).length === 0 && <p className="text-[16px] text-[#9AA5B5]" data-testid="ai-no-next-live">The AI is not suggesting a listed adjustment for this show.</p>}
               <ul className="space-y-2" data-testid="ai-next-live">
-                {result.output.nextLive.map((s) => (
+                {keep(result.output.nextLive).map((s) => (
                   <li key={s.change.id} className="rounded-[8px] bg-[#12222A] border border-[#25505F] px-3 py-2 space-y-1" data-testid="ai-next-live-item" data-change-id={s.change.id}>
                     <p className="text-[16px] font-medium text-[#F5F7FC]">{s.change.title}</p>
                     <p className="text-[16px] leading-snug text-[#B7C1CE]">{s.change.detail}</p>
@@ -145,19 +178,19 @@ export function ReviewCopilot({
                   </li>
                 ))}
               </ul>
-              {result.output.nextLive.length > 0 && (
+              {keep(result.output.nextLive).length > 0 && (
                 <div className="flex flex-wrap items-center gap-3">
                   <Button variant="secondary" size="md" icon="ri-arrow-right-line" onClick={onOpenNextLive} data-testid="ai-open-next-live-btn">
                     Choose in Next LIVE
                   </Button>
-                  <span className="text-[16px] text-[#9AA5B5]">Nothing is selected until you select it. This show is never edited.</span>
+                  <span className="text-[16px] text-[#9AA5B5]" data-testid="ai-recommended-not-applied">Recommended, not applied. Nothing is selected until you select it. This show is never edited.</span>
                 </div>
               )}
-              {result.output.manualIdeas.length > 0 && (
+              {keep(result.output.manualIdeas).length > 0 && (
                 <div className="space-y-1" data-testid="ai-manual-ideas">
                   <p className="text-[16px] leading-5 font-semibold tracking-[1.5px] uppercase text-[#AEB7C5]">AI suggestion · do by hand</p>
                   <ul className="space-y-1.5">
-                    {result.output.manualIdeas.map((m, i) => (
+                    {keep(result.output.manualIdeas).map((m, i) => (
                       <li key={i} className="text-[16px] leading-snug text-[#E4E8F0]">
                         {m.text} <span className="text-[#B7C1CE]">Why (AI): {m.why}</span>
                       </li>
@@ -174,8 +207,26 @@ export function ReviewCopilot({
         )}
 
         <section aria-label="Observed facts" className="space-y-1.5 min-w-0">
-          {result && !stale ? <LayerLabel kind="observed" extra="what the AI was shown" /> : <LayerLabel kind="product" extra="facts from LiveLift records · not AI" />}
-          <FactList facts={shown} columns={!result} />
+          {hasProvider ? (
+            <LayerLabel kind="operations" extra={result && !stale ? "what the AI was shown · known then" : "facts from LiveLift records · not AI"} />
+          ) : result && !stale ? (
+            <LayerLabel kind="observed" extra="what the AI was shown" />
+          ) : (
+            <LayerLabel kind="product" extra="facts from LiveLift records · not AI" />
+          )}
+          <FactList facts={hasProvider ? operationsShown : shown} all={shown} columns={!result} />
+          {providerShown.length > 0 && !known && (
+            <div className="space-y-1.5 pt-2" data-testid="provider-facts">
+              <LayerLabel kind="provider" />
+              <FactList facts={providerShown} all={shown} />
+            </div>
+          )}
+          {known && providerShown.length > 0 && (
+            <p className="pt-1 text-[16px] leading-snug text-[#B4C6DD]" data-testid="provider-facts-withheld">
+              <i className="ri-time-line mr-1.5" aria-hidden="true" />
+              {providerShown.length} provider fact{providerShown.length === 1 ? "" : "s"} {providerShown.length === 1 ? "belongs" : "belong"} to later evidence and {providerShown.length === 1 ? "is" : "are"} shown under “With later evidence”.
+            </p>
+          )}
           {!result && <p className="text-[16px] leading-snug text-[#9AA5B5] pt-1">{DISCLOSURE}</p>}
         </section>
       </div>

@@ -13,6 +13,13 @@ import { NextLivePanel } from "@/components/ops/NextLivePanel";
 import { Signal } from "@/components/ops/StatusChips";
 import { ReviewCopilot } from "@/components/ai/ReviewCopilot";
 import { useReviewCopilot } from "@/components/ai/useAiCopilot";
+import { LaterEvidenceView } from "@/components/intelligence/LaterEvidenceView";
+import { PerspectiveTabs, type Perspective } from "@/components/intelligence/PerspectiveTabs";
+import { ReplayTimeline } from "@/components/intelligence/ReplayTimeline";
+import { useLiveIntelligence, useHistoricalEvidence } from "@/components/intelligence/useLiveIntelligence";
+import { DEFAULT_FIXTURE_SCENARIO, isFixtureScenario, type FixtureScenarioId } from "@/lib/intelligence/fixtures";
+import { reconstructAsKnownThen } from "@/lib/domain/asKnownThen";
+import { buildReplay } from "@/lib/intelligence/replay";
 import { buildReviewFacts } from "@/lib/ai/context";
 import { buildReview,formatClock, formatDay, formatDuration, proposeChanges } from "@/lib/domain";
 import { useRemoteCommands, useSessionActions } from "@/lib/store/hooks";
@@ -68,14 +75,54 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
   // History is appended after the show: a REAL show only through the room, a pre-Phase-2 archive never.
   const canAppend = ctx.archive ? false : isRemote ? commands.canWrite || commands.pending !== null : true;
   const tz = session.timezone;
-  const review = useMemo(() => buildReview(session), [session]);
+  const historicalSession = useMemo(() => {
+    if (session.runtime.startedAtMs === null || session.runtime.endedAtMs === null) return session;
+    const known = reconstructAsKnownThen(session, session.runtime.endedAtMs);
+    // Missing timing in a retained archive remains missing; replay must not repair an incomplete record.
+    for (const [id, run] of Object.entries(known.runtime.segments)) {
+      const retained = session.runtime.segments[id];
+      if (retained?.startedAtMs === null) run.startedAtMs = null;
+      if (retained?.endedAtMs === null) run.endedAtMs = null;
+    }
+    return { ...session, events: known.events, runtime: known.runtime, plans: session.plans.filter(p => p.kind === "baseline" || known.events.some(e => e.planVersionId === p.id)) };
+  }, [session]);
+  const review = useMemo(() => buildReview(historicalSession), [historicalSession]);
+  const fullReview = useMemo(() => buildReview(session), [session]);
   const proposals = useMemo(() => proposeChanges(session), [session]);
   // Advisory only. A pre-Phase-2 archive is not in the room, so the server cannot read it and the Copilot stays off.
   // REAL shows already sync with the room; a rehearsal's Review stays offline until the operator opens the Copilot.
   const [copilotOpened, setCopilotOpened] = useState(isRemote);
   const copilot = useReviewCopilot({ enabled: copilotOpened && !ctx.archive, resetKey: session.id });
-  const productFacts = useMemo(() => (review ? buildReviewFacts(session, review) : []), [session, review]);
+  const productFacts = useMemo(() => (review ? buildReviewFacts(historicalSession, review) : []), [historicalSession, review]);
   const askAi = (): void => copilot.ask(isRemote ? { sessionId: session.id } : { sessionId: session.id, session });
+
+  // Perspective is view state only. "As known then" is the default; later evidence is fetched only once it is opened.
+  const [perspective, setPerspective] = useState<Perspective>(params.get("perspective") === "later" ? "later" : "known");
+  const [laterOpened, setLaterOpened] = useState(params.get("perspective") === "later");
+  const wantedScenario = params.get("evidence");
+  const [scenario, setScenario] = useState<FixtureScenarioId>(isFixtureScenario(wantedScenario) ? wantedScenario : DEFAULT_FIXTURE_SCENARIO);
+  const intelligence = useLiveIntelligence({ session, review, enabled: laterOpened, archive: ctx.archive, scenario });
+  const historical = useHistoricalEvidence(session, perspective === "known" && !ctx.archive);
+  const replay = useMemo(() => (review ? buildReplay(session, review) : null), [session, review]);
+  const rememberInUrl = (key: string, value: string | null): void => {
+    try {
+      const url = new URL(window.location.href);
+      if (value === null) url.searchParams.delete(key);
+      else url.searchParams.set(key, value);
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      /* the address bar keeps its old value; harmless */
+    }
+  };
+  const choosePerspective = (next: Perspective): void => {
+    setPerspective(next);
+    if (next === "later") setLaterOpened(true);
+    rememberInUrl("perspective", next === "later" ? "later" : null);
+  };
+  const chooseScenario = (next: FixtureScenarioId): void => {
+    setScenario(next);
+    rememberInUrl("evidence", next === DEFAULT_FIXTURE_SCENARIO ? null : next);
+  };
 
   if (!review) {
     return (
@@ -177,6 +224,24 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
 
         {view === "plan" ? (
           <div className="px-4 lg:px-6 py-4 max-w-[1760px] w-full mx-auto space-y-4">
+            <PerspectiveTabs value={perspective} onChange={choosePerspective} panelId="review-perspective-panel" />
+            <div role="tabpanel" id="review-perspective-panel" aria-labelledby={`perspective-tab-${perspective}`} data-perspective={perspective} data-testid="review-perspective-panel" className="space-y-4">
+            {perspective === "later" ? (
+              <>
+                <LaterEvidenceView session={session} review={review} intelligence={intelligence} scenario={scenario} onScenario={chooseScenario} onRetry={intelligence.reload} />
+                <HistoryList items={fullReview?.history ?? []} tz={tz} canAppend={canAppend}
+                  onNote={text => append({ type: "add_note", text })} onCorrect={(targetEventId, text) => append({ type: "append_correction", targetEventId, text })} />
+
+                <div id="ai-review-copilot" className="scroll-mt-4">
+                  <ReviewCopilot copilot={copilot} perspective="later" session={session} source={isRemote ? "remote" : "local"} archive={ctx.archive} facts={productFacts} opened={copilotOpened} onOpen={() => setCopilotOpened(true)} onOpenNextLive={() => setView("next")} />
+                </div>
+              </>
+            ) : (
+            <>
+            <p className="text-[14px] leading-snug text-[#9AA5B5]" data-testid="known-then-note">
+              <i className="ri-eye-line mr-1.5" aria-hidden="true" />
+              This is what the operator could see while the LIVE ran: the plan, what was recorded, and what the operator reported. No provider data is mixed in.
+            </p>
             <ReviewSummary review={review} tz={tz} />
 
             <a href="#ai-review-copilot" className="inline-flex min-h-[44px] items-center gap-2 text-[15px] text-[#7DD8EA] hover:underline underline-offset-4" data-testid="jump-to-copilot">
@@ -192,6 +257,8 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
                   <PlanActualLanes rows={review.rows} tz={tz} />
                 </section>
 
+                {replay && <ReplayTimeline replay={replay} tz={tz} historical={historical} />}
+
                 <section className="rounded-[12px] bg-[#13161C] p-3" aria-label="Segments">
                   <h2 className="text-[18px] font-medium text-[#F5F7FC] px-2 mb-1">Segments</h2>
                   <p className="text-[13px] text-[#9AA5B5] px-2 mb-1" data-testid="segments-coverage-note">
@@ -202,7 +269,7 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
                 </section>
 
                 <div id="ai-review-copilot" className="scroll-mt-4">
-                  <ReviewCopilot copilot={copilot} session={session} source={isRemote ? "remote" : "local"} archive={ctx.archive} facts={productFacts} opened={copilotOpened} onOpen={() => setCopilotOpened(true)} onOpenNextLive={() => setView("next")} />
+                  <ReviewCopilot copilot={copilot} perspective="known" session={session} source={isRemote ? "remote" : "local"} archive={ctx.archive} facts={productFacts} opened={copilotOpened} onOpen={() => setCopilotOpened(true)} onOpenNextLive={() => setView("next")} />
 
                 </div>
 
@@ -254,11 +321,14 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
                 <HistoryList
                   items={review.history}
                   tz={tz}
-                  canAppend={canAppend}
+                  canAppend={false}
                   onNote={(text) => append({ type: "add_note", text })}
                   onCorrect={(targetEventId, text) => append({ type: "append_correction", targetEventId, text })}
                 />
               </aside>
+            </div>
+            </>
+            )}
             </div>
 
             <div className="rounded-[12px] bg-[#101319] px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
@@ -266,8 +336,9 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
                 {proposals.length > 0
                   ? `${proposals.length} concrete adjustment${proposals.length === 1 ? " is" : "s are"} ready to select for the next show.`
                   : "Nothing in this show justifies a change; you can still carry the plan forward."}{" "}
-                This page shows operational facts only. Association with viewer or sales activity is not causation, and platform analytics stay in
-                TikTok.
+                {perspective === "later"
+                  ? "Provider evidence is later evidence: it informs your choice, it does not choose for you. Association with viewer or sales activity is not causation."
+                  : "This page shows operational facts only. Association with viewer or sales activity is not causation, and platform analytics stay in TikTok."}
               </p>
               <Button variant="primary" icon="ri-arrow-right-line" onClick={() => setView("next")} data-testid="goto-next-live-btn">
                 Plan the next LIVE

@@ -7,7 +7,7 @@ import { formatAnchorLate, formatClock, formatDuration, formatSigned, isAnchorDu
  * Amber warns, red is controlled, violet marks SIMULATED/evidence, lime marks the one live action, cyan marks AI assistance.
  */
 
-export type Tone = "neutral" | "lime" | "warn" | "danger" | "violet" | "muted" | "ai";
+export type Tone = "neutral" | "lime" | "warn" | "danger" | "violet" | "muted" | "ai" | "ink";
 
 /**
  * `desk` is the operating-desk reading size: operational status and metadata are 16px there, on a
@@ -29,6 +29,8 @@ const TONE: Record<Tone, string> = {
   violet: "text-[#C8B2FF]",
   muted: "text-[#9AA5B5]",
   ai: "text-[#7DD8EA]",
+  /** Provider-observed evidence (V7 later evidence): a quiet cool ink, never lime, cyan or violet. */
+  ink: "text-[#B4C6DD]",
 };
 
 export function Signal({
