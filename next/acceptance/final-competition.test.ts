@@ -17,13 +17,14 @@ describe('final certification guards', () => {
     for (const after of [{ ...before, revision: 5 }, { ...before, plans: [{ targetSec: 120 }] }, { ...before, events: [] }]) expect(() => assertUnchanged(before, after)).toThrow();
   });
 
-  it('rejects missing-as-zero, zero-as-missing and fabricated chart bars', () => {
+  it('rejects missing-as-zero and zero-as-missing while accepting a zero without a visual mark', () => {
     const missing = { title: 'Unreached', missing: true, zero: false, actual: 'Not recorded', variance: 'Unknown', actualBars: 0 };
-    const zero = { title: 'Opening', missing: false, zero: true, actual: '0:00', variance: '−3:00 · underrun', actualBars: 1 };
+    const zero = { title: 'Opening', missing: false, zero: true, actual: '0:00', variance: '−3:00 · underrun', actualBars: 0 };
     assertTiming([missing, zero]);
-    for (const bad of [{ ...missing, actual: '0:00' }, { ...missing, variance: '0:00' }, { ...missing, actualBars: 1 }]) expect(() => assertTiming([bad, zero])).toThrow();
-    expect(() => assertTiming([missing, { ...zero, actual: 'Not recorded' }])).toThrow();
+    for (const bad of [{ ...missing, actual: '0:00' }, { ...missing, variance: '0:00' }, { ...missing, zero: true }]) expect(() => assertTiming([bad, zero])).toThrow();
+    for (const bad of [{ ...zero, actual: 'Not recorded' }, { ...zero, variance: 'Unknown' }, { ...zero, variance: 'Unavailable' }]) expect(() => assertTiming([missing, bad])).toThrow();
     expect(() => assertTiming([missing])).toThrow();
+    expect(() => assertTiming([zero])).toThrow();
   });
 
   it('rejects copied runtime/history, wrong provenance, environment and change count', () => {

@@ -2,7 +2,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { Session } from "@/contracts";
-import { createScenarioSession, runScript } from "@/lib/domain";
+import { applyCommand, createScenarioSession, createSession, newSegment, runScript } from "@/lib/domain";
 
 const state = vi.hoisted(() => ({ sessions: [] as Session[], hydrated: true, connection: "connected", snapshot: {} as object | null, storage: "ok" }));
 vi.mock("@/components/shell", () => ({ StandardShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }));
@@ -17,6 +17,26 @@ afterEach(cleanup);
 beforeEach(() => { state.sessions = []; state.hydrated = true; state.connection = "connected"; state.snapshot = {}; state.storage = "ok"; });
 
 describe("Insights evidence UI", () => {
+  it("exposes measured zero and missing actual distinctly in the same accessible timing table", () => {
+    const initial = createSession({ id: "zero-and-missing", title: "Zero and missing", environment: "SIMULATED", timezone: "UTC", plannedStartMs: 0, nowMs: 0,
+      segments: [newSegment("opening", { title: "Opening", kind: "opening", targetSec: 60, minSec: 0 }), newSegment("closing", { title: "Unreached", kind: "closing", targetSec: 60 })], cues: [],
+    });
+    const started = applyCommand(initial, { type: "start_live", nowMs: 0 }).session;
+    state.sessions = [applyCommand(started, { type: "end_live", nowMs: 0 }).session];
+    render(<InsightsPage />);
+    fireEvent.change(screen.getByLabelText("Environment"), { target: { value: "SIMULATED" } });
+    const table = screen.getByRole("table", { name: "Segment timing and operator-declared coverage" });
+    const headings = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    const actual = headings.indexOf("Actual") - 1;
+    const difference = headings.indexOf("Duration difference") - 1;
+    const zeroRow = within(table).getByRole("row", { name: /^Opening / });
+    const missingRow = within(table).getByRole("row", { name: /^Unreached / });
+    expect(within(zeroRow).getAllByRole("cell")[actual]).toHaveTextContent(/^0:00$/);
+    expect(within(zeroRow).getAllByRole("cell")[difference]).toHaveTextContent(/^−1:00 · underrun$/);
+    expect(within(missingRow).getAllByRole("cell")[actual]).toHaveTextContent(/^Not recorded$/);
+    expect(within(missingRow).getAllByRole("cell")[difference]).toHaveTextContent(/^Unknown$/);
+  });
+
   it("has truthful empty, loading, unavailable and stale states", () => {
     const rendered = render(<InsightsPage />);
     expect(screen.getByTestId("insights-empty")).toHaveTextContent("No sessions match");
