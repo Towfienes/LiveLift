@@ -471,7 +471,7 @@ function Desk({
       }
     >
       <CommandStateContext.Provider value={{ busy, error: cmdError }}>
-      <div className="h-full flex flex-col gap-2 p-3 [@media(min-height:860px)]:gap-3 [@media(min-height:860px)]:lg:p-4 max-w-[1720px] w-full mx-auto">
+        <div className="min-h-full lg:h-full flex flex-col gap-2 p-3 [@media(min-height:860px)]:gap-3 [@media(min-height:860px)]:lg:p-4 max-w-[1720px] w-full mx-auto">
         {isRemote && locked && commands.blockedReason && (
           <p className="text-[16px] text-[#F6C875] shrink-0 px-1" data-testid="desk-readonly-note">
             <i className="ri-lock-line mr-1.5" aria-hidden="true" />
@@ -640,12 +640,12 @@ function Desk({
           </div>
         </fieldset>
 
-        {/* Run of Show owns scroll; one support region beside it */}
-        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] gap-3 flex-1 min-h-[200px]">
+        {/* Stacked panels grow with content; desktop panels share the remaining desk height. */}
+        <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] gap-3 lg:flex-1 min-h-[200px]">
           <section className="rounded-[12px] bg-[#13161C] p-3 pb-1 flex flex-col min-h-0" aria-label="Run of Show panel">
             <div className="flex items-center justify-between gap-3 pb-1 shrink-0 flex-wrap">
               <h2 className="text-[18px] font-medium text-[#F5F7FC]">Run of Show</h2>
-              <div className="flex items-center gap-3 text-[16px]">
+              <div className="flex flex-wrap items-center gap-3 min-w-0 text-[16px]">
                 {forecast.finishMs !== null && (
                   <span className="text-[#CAD0DA] tabular-nums" data-testid="projected-finish">
                     Projected finish {forecast.finishLowerBound ? "≥ " : ""}
@@ -662,7 +662,7 @@ function Desk({
                 </Button>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto pr-1" data-ros-scroll tabIndex={0} aria-label="Run of Show rows">
+            <div className="flex-1 min-h-[12rem] max-h-[50dvh] lg:min-h-0 lg:max-h-none overflow-y-auto pr-1" data-ros-scroll tabIndex={0} aria-label="Run of Show rows">
               <RunOfShowLive
                 session={session}
                 forecast={forecast}
