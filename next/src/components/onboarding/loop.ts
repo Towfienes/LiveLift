@@ -68,7 +68,7 @@ export function deriveLoopGuide(sessions: Session[]): LoopGuide {
     {
       id: "review",
       label: "Review",
-      summary: "See the plan beside what was recorded, with what is reported and what is unknown kept apart.",
+      summary: "See the plan beside what was recorded, with what is reported and what is unknown kept apart. Later evidence, when there is any, stays separate.",
       href: ended[0] ? `/live/${ended[0].id}/review` : null,
       rehearsal: isRehearsal(ended),
       action: ended[0] ? "Open Review" : "Opens when a show ends",

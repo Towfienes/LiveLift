@@ -58,7 +58,10 @@ async function journey(browser, runtime, mode, width, report, output) {
   page.on('response', response => {
     if (response.status() >= 400) {
       const route = new URL(response.url()).pathname;
-      const expected = !authenticated && route === '/api/v3/auth/session' && response.status() === 401;
+      // V7: a server without the provider-evidence routes (owned by the provider-core lane) answers 404, and the UI states that as
+      // "not set up". Only that exact route family and status is tolerated; every other >= 400 still fails.
+      const expected = (!authenticated && route === '/api/v3/auth/session' && response.status() === 401)
+        || (route.startsWith('/api/v3/live-intelligence/') && response.status() === 404);
       if (!expected) httpErrors.push({ route, status: response.status() });
     }
   });

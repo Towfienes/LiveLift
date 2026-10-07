@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { AiFact, AiFactKind } from "@/contracts/ai";
+import type { AiFact } from "@/contracts/ai";
 import { Signal, type Tone } from "@/components/ops/StatusChips";
 import type { CopilotPhase } from "./useAiCopilot";
 
@@ -65,13 +65,17 @@ export function StateChip({ phase, testId = "copilot-state" }: { phase: CopilotP
   );
 }
 
-export type LayerKind = "observed" | "interpretation" | "recommendation" | "product";
+export type LayerKind = "observed" | "interpretation" | "recommendation" | "product" | "operations" | "provider";
 
 const LAYER: Record<LayerKind, { icon: string; title: string; hint: string; tone: string }> = {
   observed: { icon: "ri-eye-line", title: "Observed fact", hint: "from LiveLift records", tone: "text-[#CAD0DA]" },
   product: { icon: "ri-calculator-line", title: "Product logic", hint: "not AI", tone: "text-[#CAD0DA]" },
   interpretation: { icon: "ri-sparkling-2-line", title: "AI interpretation", hint: "can be wrong", tone: "text-[#7DD8EA]" },
-  recommendation: { icon: "ri-lightbulb-flash-line", title: "AI recommendation", hint: "advice, not applied", tone: "text-[#7DD8EA]" },
+  recommendation: { icon: "ri-lightbulb-flash-line", title: "AI recommendation", hint: "recommended, not applied", tone: "text-[#7DD8EA]" },
+  /** What the operator's own records show: known during the LIVE. */
+  operations: { icon: "ri-clipboard-line", title: "Operations evidence", hint: "LiveLift records · known then", tone: "text-[#CAD0DA]" },
+  /** What a provider reported afterwards: NOT known during the LIVE. */
+  provider: { icon: "ri-database-2-line", title: "Provider evidence", hint: "later evidence · not known during the LIVE", tone: "text-[#B4C6DD]" },
 };
 
 /** The small uppercase label that tells the reader which layer a block belongs to. */
@@ -88,25 +92,34 @@ export function LayerLabel({ kind, extra, testId }: { kind: LayerKind; extra?: s
   );
 }
 
-const FACT_SIGNAL: Record<AiFactKind, { tone: Tone; icon: string; label: string }> = {
+const FACT_SIGNAL: Record<string, { tone: Tone; icon: string; label: string }> = {
   recorded: { tone: "neutral", icon: "ri-eye-line", label: "Recorded" },
   computed: { tone: "neutral", icon: "ri-calculator-line", label: "Computed" },
   operator_reported: { tone: "neutral", icon: "ri-hand-heart-line", label: "Operator reported" },
   gap: { tone: "warn", icon: "ri-question-line", label: "Not established" },
   simulated: { tone: "violet", icon: "ri-flask-line", label: "Simulated" },
+  /** V7: a provider observed this after the LIVE. Not AiFactKind yet; read defensively. */
+  provider_observed: { tone: "ink", icon: "ri-database-2-line", label: "Provider observed · later" },
 };
 
-/** Numbered so an AI statement can say which facts it rests on. */
-export function FactList({ facts, empty, columns = false }: { facts: AiFact[]; empty?: string; columns?: boolean }): React.ReactElement {
+/**
+ * A fact that came from a provider, fetched after the LIVE. The server may tag it with a `provider_observed` kind or
+ * a `provider*` topic; either way it is later evidence and is never presented as something the operator knew.
+ */
+export const isProviderFact = (f: AiFact): boolean => (f.kind as string) === "provider_observed" || f.topic.startsWith("provider");
+
+/** Numbered so an AI statement can say which facts it rests on. `all` keeps the numbers of a filtered list stable. */
+export function FactList({ facts, empty, columns = false, all }: { facts: AiFact[]; empty?: string; columns?: boolean; all?: AiFact[] }): React.ReactElement {
   if (facts.length === 0) return <p className="text-[16px] text-[#9AA5B5]">{empty ?? "Nothing to report yet."}</p>;
   return (
     <ol className={columns ? "md:columns-2 md:gap-x-10" : "space-y-1.5"} data-testid="fact-list">
       {facts.map((f, i) => {
-        const s = FACT_SIGNAL[f.kind];
+        const s = FACT_SIGNAL[f.kind as string] ?? { tone: "muted" as Tone, icon: "ri-information-line", label: String(f.kind).replaceAll("_", " ") };
+        const at = (all ?? facts).findIndex((x) => x.id === f.id);
         return (
           <li key={f.id} className={`flex gap-2.5 items-start ${columns ? "mb-1.5 break-inside-avoid" : ""}`} data-testid={`fact-${f.topic}`} data-fact-kind={f.kind}>
             <span className="mt-0.5 w-6 shrink-0 text-right text-[16px] leading-5 tabular-nums font-mono text-[#9AA5B5]" aria-hidden="true">
-              {i + 1}
+              {(at >= 0 ? at : i) + 1}
             </span>
             <div className="min-w-0">
               <p className="text-[16px] leading-snug text-[#E4E8F0] break-words">{f.text}</p>
@@ -125,9 +138,17 @@ export function FactList({ facts, empty, columns = false }: { facts: AiFact[]; e
 export function Basis({ cites, facts }: { cites: string[]; facts: AiFact[] }): React.ReactElement | null {
   const numbers = cites.map((id) => facts.findIndex((f) => f.id === id) + 1).filter((n) => n > 0);
   if (numbers.length === 0) return null;
+  // A statement that rests on provider evidence says so: the operator did not have that evidence during the LIVE.
+  const later = cites.some((id) => facts.some((f) => f.id === id && isProviderFact(f)));
   return (
     <p className="text-[16px] leading-5 text-[#9AA5B5]" data-testid="basis">
       Based on {numbers.length === 1 ? "fact" : "facts"} {[...new Set(numbers)].sort((a, b) => a - b).join(", ")}
+      {later && (
+        <span className="text-[#B4C6DD]" data-testid="basis-later">
+          {" "}
+          · includes later provider evidence
+        </span>
+      )}
     </p>
   );
 }
