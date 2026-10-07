@@ -49,11 +49,11 @@ export function ReviewCopilot({
   const shown = result && !stale ? result.facts : facts;
 
   return (
-    <section className="rounded-[12px] bg-[#13161C] p-4 space-y-3" aria-label="AI Review Copilot" data-testid="review-copilot" data-phase={archive ? "archive" : unopened ? "unopened" : copilot.phase}>
+    <section className="rounded-[12px] bg-[#13161C] border border-[#1B2F38] p-4 space-y-3" aria-label="AI Review Copilot" data-testid="review-copilot" data-phase={archive ? "archive" : unopened ? "unopened" : copilot.phase}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-[18px] font-medium text-[#F5F7FC] inline-flex items-center gap-2">
-            <i className="ri-sparkling-2-line text-[#DFFF00]" aria-hidden="true" />
+            <i className="ri-sparkling-2-line text-[#7DD8EA]" aria-hidden="true" />
             AI Review Copilot
           </h2>
           <p className="text-[16px] leading-snug text-[#B7C1CE] mt-0.5 max-w-[760px]">
@@ -64,12 +64,12 @@ export function ReviewCopilot({
         <div className="flex flex-wrap items-center gap-3">
           {!archive && !unopened && <StateChip phase={copilot.phase} />}
           {unopened && (
-            <Button variant="secondary" size="md" icon="ri-sparkling-2-line" onClick={onOpen} data-testid="copilot-open-btn">
+            <Button variant="assist" size="md" icon="ri-sparkling-2-line" onClick={onOpen} data-testid="copilot-open-btn">
               Check the AI Copilot
             </Button>
           )}
           {!archive && !unopened && (copilot.canAsk || asking) && (
-            <Button variant={result ? "secondary" : "primary"} size="md" icon="ri-sparkling-2-line" onClick={ask} disabled={!copilot.canAsk} data-testid="copilot-ask-btn">
+            <Button variant="assist" size="md" icon="ri-sparkling-2-line" onClick={ask} disabled={!copilot.canAsk} data-testid="copilot-ask-btn">
               {asking ? "Analysing…" : result ? "Analyse again" : "Analyse this show"}
             </Button>
           )}
@@ -111,7 +111,7 @@ export function ReviewCopilot({
         </Button>
       )}
       {stale && (
-        <p role="status" className="rounded-[8px] bg-[#2A2316] border-l-[3px] border-[#F6C875] px-3 py-1.5 text-[16px] text-[#F6C875]" data-testid="copilot-stale">
+        <p role="status" className="rounded-[8px] bg-[#2A2316] border border-[#5E4822] px-3 py-1.5 text-[16px] text-[#F6C875]" data-testid="copilot-stale">
           This show&apos;s record has changed since the analysis (for example a note or correction was added), so it is out of date. Analyse again.
         </p>
       )}
@@ -119,7 +119,7 @@ export function ReviewCopilot({
       <div className={`grid grid-cols-1 gap-4 ${result ? "xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]" : ""}`}>
         {result && (
           <div className={`space-y-4 min-w-0 ${stale ? "opacity-60" : ""}`} data-testid="copilot-result" data-stale={stale}>
-            <div className="rounded-[8px] bg-[#14171E] border border-dashed border-[#4A5566] px-3 py-2 space-y-1">
+            <div className="rounded-[8px] bg-[#14171E] border border-dashed border-[#25505F] px-3 py-2 space-y-1">
               <LayerLabel kind="interpretation" extra="summary · can be wrong" />
               <p className="text-[16px] leading-snug text-[#F5F7FC]" data-testid="ai-summary">{result.output.summary.text}</p>
               <Basis cites={result.output.summary.cites} facts={result.facts} />
@@ -134,7 +134,7 @@ export function ReviewCopilot({
               {result.output.nextLive.length === 0 && <p className="text-[16px] text-[#9AA5B5]" data-testid="ai-no-next-live">The AI is not suggesting a listed adjustment for this show.</p>}
               <ul className="space-y-2" data-testid="ai-next-live">
                 {result.output.nextLive.map((s) => (
-                  <li key={s.change.id} className="rounded-[8px] bg-[#1B1F27] border border-[#3A4F00] px-3 py-2 space-y-1" data-testid="ai-next-live-item" data-change-id={s.change.id}>
+                  <li key={s.change.id} className="rounded-[8px] bg-[#12222A] border border-[#25505F] px-3 py-2 space-y-1" data-testid="ai-next-live-item" data-change-id={s.change.id}>
                     <p className="text-[16px] font-medium text-[#F5F7FC]">{s.change.title}</p>
                     <p className="text-[16px] leading-snug text-[#B7C1CE]">{s.change.detail}</p>
                     <p className="text-[16px] leading-snug text-[#E4E8F0]">
@@ -175,7 +175,7 @@ export function ReviewCopilot({
 
         <section aria-label="Observed facts" className="space-y-1.5 min-w-0">
           {result && !stale ? <LayerLabel kind="observed" extra="what the AI was shown" /> : <LayerLabel kind="product" extra="facts from LiveLift records · not AI" />}
-          <FactList facts={shown} />
+          <FactList facts={shown} columns={!result} />
           {!result && <p className="text-[16px] leading-snug text-[#9AA5B5] pt-1">{DISCLOSURE}</p>}
         </section>
       </div>

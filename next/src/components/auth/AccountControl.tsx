@@ -22,7 +22,9 @@ export function AccountControl({ size = "md" }: { size?: "md" | "desk" }): React
   const pathname = usePathname();
   const [confirming, setConfirming] = useState(false);
   const text = size === "desk" ? "text-[16px]" : "text-[15px]";
-  const words = size === "desk" ? "" : "sr-only xl:not-sr-only";
+  // Page header: spelled out in the stacked mobile menu and on wide screens, icon-only between, where the row is tight.
+  // Operating desk: spelled out from 640px; on a phone the context line is full, and a clipped Sign out is unreachable.
+  const words = size === "desk" ? "max-sm:sr-only" : "lg:max-[1439px]:sr-only";
   const waiting = remote.inflight !== null || remote.unresolved.length > 0;
 
   if (pathname === "/login") return null;
@@ -65,7 +67,7 @@ export function AccountControl({ size = "md" }: { size?: "md" | "desk" }): React
       <span className={`${words} max-w-[160px] truncate`} data-testid="account-name" title={`Signed in as ${name}`}>
         {name}
       </span>
-      <Button size="desk" variant="ghost" onClick={startSignOut} title="Sign out" data-testid="sign-out-btn">
+      <Button size="desk" variant="ghost" onClick={startSignOut} title="Sign out" data-testid="sign-out-btn" className="min-w-[44px]">
         <i className="ri-logout-box-r-line" aria-hidden="true" />
         <span className={words}>Sign out</span>
       </Button>

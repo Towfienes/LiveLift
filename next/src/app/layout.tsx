@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Rubik } from "next/font/google";
 import { connection } from "next/server";
 import { LiveAnnouncer } from "@/components/ui/LiveAnnouncer";
@@ -15,6 +15,11 @@ export const metadata: Metadata = {
   title: "LiveLift — Livestream Commerce Operational Desk",
   description:
     "Operational decision, evidence, replay, and learning workspace for livestream commerce.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#090B0F",
+  colorScheme: "dark",
 };
 
 export default async function RootLayout({

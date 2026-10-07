@@ -1,6 +1,6 @@
 import React from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "nav";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "nav" | "assist";
 /**
  * `desk` and `deskPrimary` are for the operating desk: still compact 44px targets, but with the readable
  * 16px label (secondary actions) and 18px label (the primary, lime action) the operating screens require.
@@ -49,6 +49,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-[#381E24] text-[#FF8585] hover:bg-[#4E232B] active:bg-[#2B1519] border border-[#6B2A35]",
       nav:
         "bg-transparent text-[#C8CDD6] hover:text-white hover:bg-[#1E232B]",
+      // AI assistance: never the lime of the desk's one real action.
+      assist:
+        "bg-[#12222A] text-[#7DD8EA] border border-[#25505F] hover:bg-[#173039] active:bg-[#0E1B21]",
     }[variant];
 
     return (

@@ -476,3 +476,36 @@ describe("desk and mobile source guards", () => {
     expect(read("components/ai/ReviewCopilot.tsx")).toContain("xl:grid-cols-");
   });
 });
+
+describe("Copilot visual role (final polish)", () => {
+  it("never borrows the lime of the desk's one real action: its buttons and cards use the AI accent", async () => {
+    const s = scenario(3);
+    const result = await operateResult(s);
+    const { container } = renderOperate(s, copilot({ phase: "available", result }));
+    const panel = container.querySelector("[data-testid=operate-copilot]") as HTMLElement;
+    // The global focus ring stays lime; no background, text or border in the Copilot may be.
+    expect(panel.innerHTML).not.toMatch(/(bg|text|border)-\[#DFFF00\]/);
+    expect(screen.getByTestId("copilot-ask-btn").className).toContain("#7DD8EA");
+    expect(screen.getAllByTestId("ai-apply-btn")[0].className).toContain("#7DD8EA");
+    // The AI layers share one accent, and it is not the violet that means SIMULATED.
+    expect(screen.getByTestId("layer-interpretation").className).toContain("#7DD8EA");
+    expect(screen.getByTestId("layer-interpretation").className).not.toContain("#C8B2FF");
+    expect(screen.getByTestId("layer-recommendation").className).toContain("#7DD8EA");
+  });
+
+  it("the stale notice is a full amber outline, not a coloured side stripe", async () => {
+    const s = scenario(3);
+    const result = await operateResult(s);
+    const advanced = { ...s, revision: s.revision + 1 };
+    renderOperate(s, copilot({ phase: "available", result }), { session: advanced });
+    const stale = screen.getByTestId("copilot-stale");
+    expect(stale.className).toContain("border-[#5E4822]");
+    expect(stale.className).not.toMatch(/border-l-/);
+  });
+
+  it("the review Copilot lists the facts in two columns when it has the full width", () => {
+    const s = scenario(SCENARIO_BY_ID.buffered.script.length);
+    render(<ReviewCopilot copilot={copilot()} session={s} source="local" archive={false} facts={buildReviewFacts(s, buildReviewContext(s)!.review)} opened onOpen={vi.fn()} onOpenNextLive={vi.fn()} />);
+    expect(screen.getByTestId("fact-list").className).toContain("md:columns-2");
+  });
+});

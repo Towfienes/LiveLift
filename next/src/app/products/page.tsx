@@ -35,7 +35,7 @@ export default function ProductsPage() {
               role="tab"
               aria-selected={activeTab === "products"}
               onClick={() => setActiveTab("products")}
-              className={`min-h-[40px] px-4 rounded-[6px] text-[15px] font-medium cursor-pointer transition-colors ${
+              className={`min-h-[44px] px-4 rounded-[8px] text-[15px] font-medium cursor-pointer transition-colors ${
                 activeTab === "products"
                   ? "bg-[#252A34] text-[#DFFF00]"
                   : "text-[#CAD0DA] hover:text-white"
@@ -48,7 +48,7 @@ export default function ProductsPage() {
               role="tab"
               aria-selected={activeTab === "packs"}
               onClick={() => setActiveTab("packs")}
-              className={`min-h-[40px] px-4 rounded-[6px] text-[15px] font-medium cursor-pointer transition-colors ${
+              className={`min-h-[44px] px-4 rounded-[8px] text-[15px] font-medium cursor-pointer transition-colors ${
                 activeTab === "packs"
                   ? "bg-[#252A34] text-[#DFFF00]"
                   : "text-[#CAD0DA] hover:text-white"

@@ -55,4 +55,29 @@ describe("Insights evidence UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(screen.getByTestId("analytics-summaries")).toHaveTextContent(sim.title);
   });
+
+  it("draws overrun in amber, explains the colours, and says 'not recorded' instead of drawing a missing value as zero", () => {
+    const sim = runScript(createScenarioSession("buffered"));
+    state.sessions = [sim, createScenarioSession("minimum")];
+    render(<InsightsPage />);
+    fireEvent.change(screen.getByLabelText("Environment"), { target: { value: "SIMULATED" } });
+    expect(screen.getAllByRole("list", { name: "Chart key" })[0]).toHaveTextContent("Recorded, overrun");
+    const timing = screen.getByRole("table", { name: "Segment timing and operator-declared coverage" });
+    const overrunRow = within(timing).getByText("+3:00 · overrun").closest("tr") as HTMLElement;
+    expect(overrunRow.querySelector("rect[fill='#F6C875']")).not.toBeNull();
+    expect(overrunRow.querySelector("rect[fill='#DFFF00']")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Show state"), { target: { value: "planned" } });
+    const planned = screen.getByRole("table", { name: "Segment timing and operator-declared coverage" });
+    expect(within(planned).getAllByText("not recorded").length).toBeGreaterThan(0);
+    // A value that is missing has no bar at all; the only rects are the planned ones.
+    expect(planned.querySelectorAll("rect[fill='#DFFF00'], rect[fill='#F6C875'], rect[fill='#5FD3C0']")).toHaveLength(0);
+  });
+
+  it("lists each provider metric as unavailable, never as a number", () => {
+    render(<InsightsPage />);
+    const list = screen.getByRole("list", { name: "Provider metrics, all unavailable" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(6);
+    for (const li of within(list).getAllByRole("listitem")) expect(li).toHaveTextContent("Unavailable");
+    expect(list.textContent).not.toMatch(/\d/);
+  });
 });

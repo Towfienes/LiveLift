@@ -41,6 +41,11 @@
     --simulated-bg: #211F2B;
     --simulated-line: #44385C;
     
+    /* AI assistance: cyan, so advice never borrows the lime of the one real action or the violet of SIMULATED. */
+    --ai: #7DD8EA;
+    --ai-bg: #12222A;
+    --ai-line: #25505F;
+
     --focus-ring: #DFFF00;
   }
 

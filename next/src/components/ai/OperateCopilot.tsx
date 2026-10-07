@@ -56,7 +56,7 @@ export function OperateCopilot({
     <div data-testid="operate-copilot" data-phase={copilot.phase} className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <h3 className="text-[18px] font-medium text-[#F5F7FC] inline-flex items-center gap-2">
-          <i className="ri-sparkling-2-line text-[#DFFF00]" aria-hidden="true" />
+          <i className="ri-sparkling-2-line text-[#7DD8EA]" aria-hidden="true" />
           AI Copilot
         </h3>
         <StateChip phase={copilot.phase} />
@@ -88,7 +88,7 @@ export function OperateCopilot({
 
       {(copilot.canAsk || asking) && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant={result ? "secondary" : "primary"} size="desk" icon="ri-sparkling-2-line" onClick={ask} disabled={!copilot.canAsk} data-testid="copilot-ask-btn">
+          <Button variant="assist" size="desk" icon="ri-sparkling-2-line" onClick={ask} disabled={!copilot.canAsk} data-testid="copilot-ask-btn">
             {asking ? "Analysing…" : result ? "Analyse again" : "Analyse this show"}
           </Button>
           {copilot.model && <span className="text-[16px] text-[#9AA5B5]">Model: {copilot.model}</span>}
@@ -101,7 +101,7 @@ export function OperateCopilot({
       )}
 
       {stale && (
-        <p role="status" className="rounded-[8px] bg-[#2A2316] border-l-[3px] border-[#F6C875] px-3 py-1.5 text-[16px] leading-snug text-[#F6C875]" data-testid="copilot-stale">
+        <p role="status" className="rounded-[8px] bg-[#2A2316] border border-[#5E4822] px-3 py-1.5 text-[16px] leading-snug text-[#F6C875]" data-testid="copilot-stale">
           <i className="ri-history-line mr-1.5" aria-hidden="true" />
           The show has changed since this analysis, so its advice is out of date and cannot be applied from here. Analyse again for a fresh view.
         </p>
@@ -109,7 +109,7 @@ export function OperateCopilot({
 
       {result && (
         <div className={`space-y-3 ${stale ? "opacity-60" : ""}`} data-testid="copilot-result" data-stale={stale}>
-          <section aria-label="AI interpretation" className="rounded-[8px] bg-[#14171E] border border-dashed border-[#4A5566] px-3 py-2 space-y-1">
+          <section aria-label="AI interpretation" className="rounded-[8px] bg-[#14171E] border border-dashed border-[#25505F] px-3 py-2 space-y-1">
             <LayerLabel kind="interpretation" />
             <p className="text-[16px] leading-snug text-[#F5F7FC]" data-testid="ai-interpretation">{result.output.interpretation.text}</p>
             <Basis cites={result.output.interpretation.cites} facts={result.facts} />
@@ -126,8 +126,8 @@ export function OperateCopilot({
                 const exception = live?.exception?.code ?? rec.option.exception;
                 const disabled = locked || stale || live === null;
                 return (
-                  <li key={rec.option.id} className="rounded-[8px] bg-[#1B1F27] border border-[#3A4F00] px-3 py-2 space-y-1" data-testid="ai-recommendation" data-option-id={rec.option.id}>
-                    <Signal tone="lime" icon="ri-lightbulb-flash-line" size="desk" className="font-medium">
+                  <li key={rec.option.id} className="rounded-[8px] bg-[#12222A] border border-[#25505F] px-3 py-2 space-y-1" data-testid="ai-recommendation" data-option-id={rec.option.id}>
+                    <Signal tone="ai" icon="ri-lightbulb-flash-line" size="desk" className="font-medium">
                       <span data-testid="ai-recommendation-state">Recommended · not applied</span>
                     </Signal>
                     <p className="text-[16px] leading-snug font-medium text-[#F5F7FC]">{label}</p>
@@ -143,7 +143,7 @@ export function OperateCopilot({
                     {live === null && !stale && <p className="text-[16px] text-[#F6C875]">This option is no longer offered: the situation changed.</p>}
                     <Button
                       size="desk"
-                      variant={!exception && live?.protects ? "primary" : "secondary"}
+                      variant="assist"
                       disabled={disabled}
                       onClick={() => live && onApplyOption(live)}
                       aria-label={`${exception === "commitment_change" ? "Review" : "Apply"} the recommended option: ${label}`}
@@ -156,7 +156,7 @@ export function OperateCopilot({
               })}
             </ul>
             {result.output.nextStep && (
-              <div className="rounded-[8px] bg-[#14171E] border border-dashed border-[#4A5566] px-3 py-2 space-y-1" data-testid="ai-next-step">
+              <div className="rounded-[8px] bg-[#14171E] border border-dashed border-[#25505F] px-3 py-2 space-y-1" data-testid="ai-next-step">
                 <p className="text-[16px] leading-5 font-semibold tracking-[1.5px] uppercase text-[#AEB7C5]">Next · AI suggestion</p>
                 <p className="text-[16px] leading-snug text-[#F5F7FC]">{result.output.nextStep.text}</p>
                 <p className="text-[16px] leading-snug text-[#B7C1CE]">

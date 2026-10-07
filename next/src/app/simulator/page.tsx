@@ -46,18 +46,18 @@ export default function SimulatorPage(): React.ReactElement {
           <p className="mt-6 text-[#9AA5B5]" role="status">Loading rehearsals…</p>
         ) : (
           <ul className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4" data-testid="scenario-list">
-            {SCENARIOS.map((sc) => {
+            {SCENARIOS.map((sc, index) => {
               const session = sessions.find((s) => s.id === sc.sessionId) ?? null;
               const st = session ? STATUS[session.lifecycle] : null;
               return (
                 <li key={sc.id} className="rounded-[12px] bg-[#13161C] p-5 flex flex-col" data-testid={`scenario-${sc.id}`}>
-                  <Signal tone="violet" icon="ri-flask-line" className="text-[12px] font-semibold tracking-[1.2px] uppercase">
+                  <Signal tone="violet" icon="ri-flask-line" className="text-[13px] font-semibold tracking-[1.2px] uppercase">
                     Scenario
                   </Signal>
                   <h2 className="text-[20px] font-medium text-[#F5F7FC] mt-2">{sc.title}</h2>
                   <p className="text-[14px] text-[#CAD0DA] mt-1">{sc.summary}</p>
-                  <p className="text-[12px] font-semibold tracking-[1.4px] uppercase text-[#AEB7C5] mt-4">Watch for</p>
-                  <ul className="mt-1 space-y-1.5 text-[13px] text-[#B7C1CE] list-disc list-inside flex-1">
+                  <p className="text-[13px] font-semibold tracking-[1.4px] uppercase text-[#AEB7C5] mt-4">Watch for</p>
+                  <ul className="mt-1 space-y-1.5 text-[14px] text-[#B7C1CE] list-disc list-inside flex-1">
                     {sc.watchFor.map((w) => (
                       <li key={w}>{w}</li>
                     ))}
@@ -68,7 +68,7 @@ export default function SimulatorPage(): React.ReactElement {
                         <p className="text-[14px] text-[#9AA5B5] mb-2">{st.text}</p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <Link href={`/live/${session.id}/${st.path}`}>
-                            <Button variant="primary" icon="ri-play-line" data-testid={`open-${sc.id}`}>{st.action}</Button>
+                            <Button variant={index === 0 ? "primary" : "secondary"} icon="ri-play-line" data-testid={`open-${sc.id}`}>{st.action}</Button>
                           </Link>
                           {session.lifecycle !== "planned" && (
                             <Button variant="ghost" icon="ri-restart-line" onClick={() => setResetScenarioId(sc.id)} data-testid={`reset-${sc.id}`}>

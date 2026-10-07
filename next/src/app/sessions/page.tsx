@@ -141,7 +141,7 @@ export default function SessionsPage(): React.ReactElement {
                               <Button variant={action.variant} size="sm" icon="ri-arrow-right-line">{action.label}</Button>
                             </Link>
                             <Link href={`/live/new?from=${encodeURIComponent(s.id)}`} aria-label={`Duplicate ${s.title} into a new show`} title="Duplicate the baseline plan into a new show">
-                              <Button variant="ghost" size="sm" aria-label={`Duplicate ${s.title}`}>
+                              <Button variant="ghost" size="sm" aria-label={`Duplicate ${s.title}`} className="min-w-[44px]">
                                 <i className="ri-file-copy-line text-[16px]" aria-hidden="true" />
                               </Button>
                             </Link>
