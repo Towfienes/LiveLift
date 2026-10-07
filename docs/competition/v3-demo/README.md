@@ -30,16 +30,21 @@ Nothing in the demo is presented as real evidence.
 
 ## Before you present (10 minutes, once)
 
-Rehearsal-only setup, no server or account needed:
+Rehearsal-only setup, no room server or account needed. From the repository root:
 
 ```sh
-cd next
-npm ci
-npm run dev        # http://localhost:3130
+./start-livelift-demo        # http://localhost:3130; keep terminal open
+./check-livelift-demo        # run in a second terminal
+./reset-livelift-demo        # opens Simulator; confirm reset there
 ```
 
-Use `npm run dev`. A production build (`npm start`) refuses to boot without deployment
-configuration, by design.
+Install dependencies once with `cd next && npm ci` if prompted. The launcher uses `next dev`
+with REAL authority configuration disabled for its child. A production build (`npm start`)
+refuses to boot without deployment configuration, by design. Authority readiness is expected
+to return 503 in this rehearsal-only runtime; the app, health and Simulator checks must pass.
+Ctrl+C or `./stop-livelift-demo` stops only the managed rehearsal server, retaining browser state.
+The [presenter cheat sheet](../PRESENTER-CHEATSHEET.md) and [emergency kit](../EMERGENCY-DEMO.md)
+are the short presentation/recovery references.
 
 Open `http://localhost:3130/` in a fresh window. With no room server you will see:
 
