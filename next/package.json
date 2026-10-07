@@ -14,7 +14,9 @@
     "ops": "npm run build:ops --silent && node .ops/scripts/ops.js",
     "test:platform": "vitest run src/lib/server/platform.test.ts",
     "test:platform-live": "node scripts/platform-smoke.mjs",
-    "test:phase2-live": "npm run build:ops --silent && node scripts/phase2-live.mjs"
+    "test:phase2-live": "npm run build:ops --silent && node scripts/phase2-live.mjs",
+    "soak:smoke": "node acceptance/soak.mjs --mode smoke",
+    "soak:48h": "node acceptance/soak.mjs --mode rehearsal_48h"
   },
   "dependencies": {
     "next": "16.3.8",

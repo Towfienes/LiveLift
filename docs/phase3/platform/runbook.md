@@ -210,3 +210,82 @@ It contains no DB contents, credentials, tokens, paths, notes or history. Struct
 logs record startup/shutdown, auth failures/revocations, command decisions, storage and
 lifecycle outcomes. Correlate API responses by `X-Request-Id`; unchanged GET polling is quiet.
 No request bodies/cookies/passwords/hashes or exports are logged.
+
+## Live production soak
+
+Run release tooling from a source checkout with Node 22.23.3 and `npm ci` in `next/`.
+The canonical CLI is `node acceptance/soak.mjs`; `npm run soak:smoke` and
+`npm run soak:48h` select its modes. It uses the locked TypeScript compiler before running
+ordinary JavaScript. The production image does not need the compiler or soak tooling.
+
+Configure these environment variables in the invoking shell or a protected operator
+environment file. Do not copy the account passwords into that file.
+
+| Variable | Required / handling |
+|---|---|
+| `LIVELIFT_TEST_SERVER_URL` | Required, deployment HTTPS origin; HTTP permitted only for loopback test peers |
+| `LIVELIFT_WORKSPACE_ID` | Required, actual installation workspace UUID |
+| `LIVELIFT_ROOM_ID` | Required, actual installation room |
+| `LIVELIFT_OPERATOR_USERNAME` | Required, enabled named operator account |
+| `LIVELIFT_OPERATOR_PASSWORD_FILE` | Required, protected operator password file |
+| `LIVELIFT_VIEWER_USERNAME` | Required, enabled named viewer account |
+| `LIVELIFT_VIEWER_PASSWORD_FILE` | Required, protected viewer password file |
+| `LIVELIFT_APP_ORIGIN` | Optional, defaults to deployment URL origin; set the exact configured CSRF origin |
+| `LIVELIFT_GENERATION` | Optional expected generation; otherwise discovered at login and pinned for the run |
+| `NODE_EXTRA_CA_CERTS` | Optional PEM CA file for staging with a private CA; keep TLS verification enabled |
+| `LIVELIFT_SOAK_OPS_EXECUTABLE` | Optional absolute path to a trusted ops wrapper; needed for integrated status/backup coverage |
+
+Both password files must be regular files owned by the invoking UID with mode **0600**.
+Symlinks and group/world access are rejected. Supply one UTF-8 password, 15–128 characters,
+with an optional final LF. Spaces are preserved. Passwords, cookies, tokens and credential
+file paths are never printed or saved by the CLI. Password argv options are rejected, and
+the soak does not use `LIVELIFT_OPERATOR_PASSWORD` or `LIVELIFT_VIEWER_PASSWORD`.
+
+After configuring the environment, run:
+
+```sh
+cd next
+npm ci
+npm run soak:smoke -- --duration 60s
+npm run soak:48h -- --duration 48h
+```
+
+`--duration` accepts positive whole seconds/minutes/hours such as `30s`, `5m`, `1h`, `48h`.
+Malformed, fractional, zero or unsafe values fail. Smoke defaults to 30 seconds; rehearsal
+defaults to 48 hours. `node acceptance/soak.mjs --help` prints configuration and usage
+without credentials or a running deployment.
+
+The runner logs in both roles, polls their full room snapshots, checks sessions and HTTP
+health/readiness, and creates one planned REAL draft named `Release soak <run UUID> A`.
+It then alternates the title of **that draft only** through valid `save_prepare` commands.
+The draft and its durable receipts remain as audit evidence. It never starts/ends a show,
+restores/deletes a workspace or clears history. Leave this draft alone during the soak.
+Absolute session expiry causes an explicit logout/login; revoked accounts and a changed
+generation fail closed. A five-minute recovery budget per operation tolerates ordinary
+temporary connectivity/availability loss; receipt lookup precedes resend of an unknown
+command outcome. The command ID, payload and expected revision stay unchanged on replay.
+
+Startup output lists nonsecret deployment configuration and `credentials: "[REDACTED]"`.
+Progress JSON is bounded to counters (every five seconds for smoke, every minute for 48h).
+The final line records elapsed/configured duration, both roles' logins/polls, commands,
+receipts/reconciliation, reconnects, errors, probes/backups and invariant checks/violations.
+No snapshots, history, arbitrary server error bodies or ops output are printed.
+
+When `LIVELIFT_SOAK_OPS_EXECUTABLE` is configured, the executable is called directly,
+without a shell, with `status --json` at each health interval and `backup` at startup/hourly.
+Point the wrapper at the **same deployment** using the existing ops CLI. Status identity,
+generation, schema, readiness and integrity are validated. Existing `ops backup` verifies
+the online artifact before successful exit. Both calls have a 60-second timeout and bounded,
+suppressed output. The wrapper must return the real ops exit code. No wrapper means backup
+coverage is absent: keep the established daily/off-host backup schedule and its evidence.
+
+Ctrl-C (SIGINT) or SIGTERM stops new cycles, finishes the current bounded operation, and
+prints final `STOPPED`, exiting 130 or 143. A completed run emits `PASS` and exits 0 only
+with both roles active, a committed real mutation, reconciled receipt accounting and no
+invariant failure. Invalid config, invariant failure, unrecoverable authentication/server
+failure, exhausted recovery budget or failed ops checks emits `FAIL` and exits 1.
+
+The smoke and rehearsal entry points were tested against staging with short durations;
+see [live certification](../audit/LIVE_SOAK_CERTIFICATION.md) for exact commands and results.
+A duration override certifies the entry point, not 48 hours of endurance. Require the full
+completed 48-hour output and backup evidence before clearing the final release gate.
