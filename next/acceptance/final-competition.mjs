@@ -16,18 +16,18 @@ export function assertUnchanged(before, after, message = 'Source session changed
   assert.deepEqual(after, before, message);
 }
 
-// A measured zero is real data; a missing actual must have neither a number nor an actual bar.
+// The accessible table carries timing truth; zero does not need a non-zero-width visual mark.
 export function assertTiming(rows) {
   assert(rows.some(row => row.missing), 'Fixture must exercise missing timing');
   assert(rows.some(row => row.zero), 'Fixture must exercise an actual zero');
   for (const row of rows) {
+    assert(!(row.missing && row.zero), `${row.title}: missing cannot also be measured zero`);
     if (row.missing) {
       assert.equal(row.actual, 'Not recorded', `${row.title}: missing actual became a number`);
       assert.equal(row.variance, 'Unknown', `${row.title}: missing variance became a number`);
-      assert.equal(row.actualBars, 0, `${row.title}: missing actual has a bar`);
     } else if (row.zero) {
       assert.equal(row.actual, '0:00', `${row.title}: actual zero was hidden`);
-      assert.equal(row.actualBars, 1, `${row.title}: measured zero lost its actual mark`);
+      assert.match(row.variance, /^[+−]?\d+:\d{2}( · (overrun|underrun))?$/, `${row.title}: measured zero lost its numeric variance`);
     }
   }
 }
@@ -67,6 +67,13 @@ async function journey(browser, runtime, mode, width, report, output) {
   });
   const id = testId => page.getByTestId(testId);
   const click = testId => id(testId).click();
+  const tabTo = async control => {
+    for (let n = 0; n < 20; n++) {
+      if (await control.evaluate(element => element === document.activeElement)) return;
+      await page.keyboard.press('Tab');
+    }
+    assert.fail('Header control is unreachable by Tab');
+  };
   const session = sessionId => page.evaluate(sessionId => JSON.parse(localStorage.getItem('livelift.v3.SIMULATED')).sessions.find(s => s.id === sessionId), sessionId);
   const snapshot = () => page.evaluate(() => localStorage.getItem('livelift.v3.SIMULATED'));
   const check = async (name, action, required = true) => {
@@ -131,7 +138,40 @@ async function journey(browser, runtime, mode, width, report, output) {
       await page.getByLabel('Username').fill(runtime.credentials.username);
       await page.getByLabel('Password', { exact: true }).fill(runtime.credentials.password);
       await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-      await id('account-name').waitFor(); authenticated = true;
+      await page.waitForURL(url => url.pathname !== '/login');
+      authenticated = true;
+      const menu = id('nav-menu-btn');
+      if (width < 1024) {
+        await page.getByRole('button', { name: 'Menu', exact: true, expanded: false }).waitFor();
+        assert(await menu.evaluate(button => document.getElementById(button.getAttribute('aria-controls'))?.contains(document.querySelector('[data-testid="account-control"]'))), 'Menu must disclose the account');
+        await tabTo(menu);
+        await page.keyboard.press('Enter');
+        await page.getByRole('button', { name: 'Close', exact: true, expanded: true }).waitFor();
+      } else {
+        assert.equal(await menu.isVisible(), false);
+      }
+      await id('account-name').waitFor();
+      assert.equal(await id('account-name').innerText(), 'Certification operator');
+      assert.equal(await id('account-name').getAttribute('title'), 'Signed in as Certification operator');
+      const signOut = page.getByRole('button', { name: 'Sign out', exact: true });
+      await signOut.waitFor();
+      await tabTo(signOut);
+      assert(await signOut.evaluate(element => getComputedStyle(element).outlineStyle !== 'none'), 'Sign out keyboard focus is invisible');
+      const account = await id('account-control').ariaSnapshot();
+      assert.match(account, /Certification operator/);
+      assert.match(account, /button "Sign out"/);
+      await capture('authenticated-account');
+      if (width < 1024) {
+        await page.keyboard.press('Escape');
+        assert.equal(await menu.getAttribute('aria-expanded'), 'false');
+        assert(await menu.evaluate(element => element === document.activeElement), 'Escape did not restore menu focus');
+        assert.equal(await signOut.isVisible(), false);
+        // Space also operates the disclosure; leave it closed for the rest of the journey.
+        await page.keyboard.press('Space');
+        await signOut.waitFor();
+        await page.keyboard.press('Escape');
+      }
+      return { account, navigation: width < 1024 ? 'keyboard disclosure; Enter/Space/Escape' : 'visible desktop account', signOut: 'reachable by Tab with visible focus' };
     });
     let zeroId;
     await check('create-labels', async () => {
@@ -241,11 +281,18 @@ async function journey(browser, runtime, mode, width, report, output) {
       await page.getByLabel('Session', { exact: true }).selectOption(zeroId);
       await id('analytics-detail').waitFor();
       const zero = await session(zeroId);
-      const observed = await id('analytics-detail').getByRole('table').first().locator('tbody tr').evaluateAll(rows => rows.map(row => {
+      const table = id('analytics-detail').getByRole('table', { name: 'Segment timing and operator-declared coverage', exact: true });
+      await table.waitFor();
+      const headings = await table.getByRole('columnheader').allTextContents();
+      const actualColumn = headings.indexOf('Actual') - 1, varianceColumn = headings.indexOf('Duration difference') - 1;
+      assert(actualColumn >= 0 && varianceColumn >= 0, 'Accessible timing columns are missing');
+      const observed = await table.locator('tbody tr').evaluateAll((rows, { actualColumn, varianceColumn }) => rows.map(row => {
         const cells = row.querySelectorAll('td');
-        return { title: row.querySelector('th').innerText.split('\n')[0], actual: cells[1].innerText, variance: cells[2].innerText, actualBars: row.querySelectorAll('svg rect[y="15"]').length };
-      }));
+        return { title: row.querySelector('th').innerText.split('\n')[0], actual: cells[actualColumn].innerText, variance: cells[varianceColumn].innerText };
+      }), { actualColumn, varianceColumn });
+      assert.equal(observed.length, zero.plans[0].segments.length, 'Timing table omitted fixture segments');
       const expected = zero.plans[0].segments.map((segment, index) => {
+        assert.equal(observed[index].title, segment.title, 'Timing row does not match its recorded segment');
         const run = zero.runtime.segments[segment.id];
         const missing = run.state !== 'completed' || run.startedAtMs === null || run.endedAtMs === null;
         return { ...observed[index], missing, zero: !missing && run.startedAtMs === run.endedAtMs };
@@ -323,6 +370,27 @@ async function journey(browser, runtime, mode, width, report, output) {
       await check(route.slice(1), async () => { await go(route); assert(await page.getByRole('heading', { level: 1 }).isVisible()); });
       await capture(route.slice(1));
     }
+    await check('responsive-sign-out', async () => {
+      await go('/', 'loop-guide');
+      if (width < 1024) {
+        await tabTo(id('nav-menu-btn'));
+        await page.keyboard.press('Enter');
+      }
+      const signOut = page.getByRole('button', { name: 'Sign out', exact: true });
+      await signOut.waitFor();
+      await tabTo(signOut);
+      authenticated = false;
+      const [response] = await Promise.all([
+        page.waitForResponse(response => response.url().endsWith('/api/v3/auth/logout')),
+        page.keyboard.press('Enter'),
+      ]);
+      assert.equal(response.status(), 200);
+      await id('account-control').waitFor({ state: 'detached' });
+      await go('/login');
+      await page.getByRole('button', { name: 'Sign in', exact: true }).waitFor();
+      assert.equal(await id('login-already').count(), 0, 'Sign out did not end the session');
+      return { keyboardActivation: 'Enter', logoutStatus: response.status(), signedOut: true };
+    });
   } catch {
     report.aborted.push({ mode, width, after: phase });
   } finally {
