@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { StandardShell } from "@/components/shell";
+import { TikTokConnectionPanel } from "@/components/integrations/TikTokConnectionPanel";
+import { useTikTokConnection } from "@/components/integrations/useTikTokConnection";
 import {
   CATEGORIES,
   type CapabilityCategory,
@@ -80,6 +82,10 @@ export default function IntegrationsPage(): React.ReactElement {
     CapabilityCategory | "all"
   >("all");
 
+  const tiktok = useTikTokConnection();
+  // Only a stored authorization with no known problem counts; an unknown or expired one does not.
+  const connectedPlatforms = tiktok.state.kind === "loaded" && tiktok.state.view.state === "connected" ? 1 : 0;
+
   const totalCapabilitiesCount = CATEGORIES.reduce(
     (acc, cat) => acc + cat.items.length,
     0
@@ -155,7 +161,7 @@ export default function IntegrationsPage(): React.ReactElement {
                 </div>
               </div>
               <div className="rounded-[10px] bg-[#1C1F2B] border border-[#3B385E] p-3 text-center min-w-0">
-                <div className="text-[22px] font-bold text-[#C8B2FF]">0</div>
+                <div className="text-[22px] font-bold text-[#C8B2FF]">{connectedPlatforms}</div>
                 <div className="text-[12px] text-[#CAD0DA] font-medium leading-tight mt-0.5">
                   Connected Platforms
                 </div>
@@ -171,7 +177,7 @@ export default function IntegrationsPage(): React.ReactElement {
               />
               <span>
                 Use the operating desk and paste CSV/TSV products today.
-                Platform connections are optional and currently unavailable.
+                Platform connections are optional. TikTok sign-in only identifies the account.
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -192,6 +198,8 @@ export default function IntegrationsPage(): React.ReactElement {
             </div>
           </div>
         </section>
+
+        <TikTokConnectionPanel connection={tiktok} />
 
         {/* Epistemic Truth Ledger Callout */}
         <section
