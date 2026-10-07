@@ -10,6 +10,7 @@ import {
   type ReviewResult,
 } from "@/contracts/ai";
 import type { Session } from "@/contracts";
+import type { LiveIntelligenceSnapshot } from "@/contracts/liveIntelligence";
 import type { RecoveryOption } from "@/lib/domain";
 import { buildOperateContext, buildReviewContext } from "@/lib/ai/context";
 import { buildPrompt } from "@/lib/ai/prompt";
@@ -29,8 +30,9 @@ import { AiProviderError, createOpenAiCompatibleProvider, type AiProvider } from
  * secret or the encryption key into a note, the literal value is removed before anything leaves the server.
  */
 export function deploymentSecrets(env: AiEnv = process.env): string[] {
+  const providerSecrets = new Set(["LIVELIFT_TIKTOK_SHOP_APP_SECRET", "LIVELIFT_TIKTOK_SHOP_ACCESS_TOKEN", "LIVELIFT_TIKTOK_SHOP_CIPHER", "LIVELIFT_TIKTOK_CREATOR_ACCESS_TOKEN"]);
   return Object.entries(env)
-    .filter(([name, value]) => /KEY|SECRET|TOKEN|PASSWORD|PASSWD/i.test(name) && typeof value === "string" && value.length >= 8)
+    .filter(([name, value]) => /KEY|SECRET|TOKEN|PASSWORD|PASSWD|CIPHER|AUTHORIZATION_CODE/i.test(name) && typeof value === "string" && value.length > 0 && (value.length >= 8 || providerSecrets.has(name)))
     .map(([, value]) => value as string)
     .sort((a, b) => b.length - a.length);
 }
@@ -45,6 +47,8 @@ export interface AiDeps {
   env?: AiEnv;
   fetchImpl?: typeof fetch;
   now?: () => number;
+  /** Server-loaded snapshot. runOperate never reads this field. */
+  laterEvidence?: LiveIntelligenceSnapshot | null;
 }
 
 type Failure = Exclude<OperateResult, { status: "available" }>;
@@ -120,7 +124,7 @@ export async function runOperate(session: Session, nowMs: number, priors: AiPrio
 export async function runReview(session: Session, priors: AiPriorSession[], deps: AiDeps = {}): Promise<ReviewResult> {
   const picked = provide(deps);
   if ("failure" in picked) return picked.failure;
-  const built = buildReviewContext(session, { priors });
+  const built = buildReviewContext(session, { priors, laterEvidence: deps.laterEvidence });
   if (!built) return invalid("empty");
   const { context, changeByAlias, review } = built;
   const answer = await converse("review", context, picked.provider, deploymentSecrets(deps.env));
@@ -130,6 +134,7 @@ export async function runReview(session: Session, priors: AiPriorSession[], deps
     factIds: new Set(context.facts.map((f) => f.id)),
     aliases: new Set(changeByAlias.keys()),
     evidence: groundingCorpus(context),
+    providerFacts: context.facts.filter((f) => f.evidenceTier === "provider_observed"),
   });
   if (!verdict.ok) return invalid(verdict.reason);
   const out = verdict.output;
