@@ -108,27 +108,30 @@ export async function sendBounded(
   const doFetch = fetchImpl ?? (typeof fetch === "function" ? fetch : undefined);
   if (!doFetch) return { ok: false, kind: "network", message: "This browser cannot make network requests." };
   const controller = new AbortController();
-  let timedOut = false;
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, timeoutMs);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<FetchFailure>((resolve) => {
+    timer = setTimeout(() => {
+      resolve({ ok: false, kind: "timeout", message: "The server did not answer in time." });
+      controller.abort();
+    }, timeoutMs);
+  });
   try {
-    const res = await doFetch(url, { ...init, cache: "no-store", credentials: "same-origin", signal: controller.signal });
-    const text = await res.text();
-    let body: unknown = null;
-    if (text !== "") {
-      try {
-        body = JSON.parse(text) as unknown;
-      } catch {
-        body = undefined;
+    // Bound both headers and body, even if a fetch implementation ignores abort.
+    return await Promise.race([(async (): Promise<Fetched> => {
+      const res = await doFetch(url, { ...init, cache: "no-store", credentials: "same-origin", signal: controller.signal });
+      const text = await res.text();
+      let body: unknown = null;
+      if (text !== "") {
+        try {
+          body = JSON.parse(text) as unknown;
+        } catch {
+          body = undefined;
+        }
       }
-    }
-    return { ok: true, status: res.status, body, text, headers: res.headers };
+      return { ok: true, status: res.status, body, text, headers: res.headers };
+    })(), timeout]);
   } catch {
-    return timedOut
-      ? { ok: false, kind: "timeout", message: "The server did not answer in time." }
-      : { ok: false, kind: "network", message: "The server could not be reached." };
+    return { ok: false, kind: "network", message: "The server could not be reached." };
   } finally {
     clearTimeout(timer);
   }

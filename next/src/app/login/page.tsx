@@ -56,7 +56,7 @@ function LoginScreen(): React.ReactElement {
             {auth.status === "unavailable" && (
               <div className="rounded-[12px] bg-[#2A2316] p-5 space-y-4" data-testid="login-unavailable">
                 <p className="text-[16px] text-[#F6C875]">
-                  Sign-in is not available right now. {auth.unavailable?.reason === "storage_unavailable" ? "The server's storage is not available." : "The server could not be asked."}{" "}
+                  Sign-in is not available right now. {auth.unavailable?.message ?? "The server could not be asked."}{" "}
                   Nothing about your account has changed.
                 </p>
                 <Button variant="secondary" onClick={() => void authStore.bootstrap()}>

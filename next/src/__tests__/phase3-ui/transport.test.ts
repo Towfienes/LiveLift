@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { CommandEnvelope } from "@/contracts/authority";
 import { createAuthClient, parseAuthSession } from "@/lib/client/authClient";
 import { createAuthorityClient } from "@/lib/client/authorityClient";
@@ -148,6 +148,25 @@ describe("what each production status means for a SUBMITTED command", () => {
 });
 
 describe("auth requests", () => {
+  it.each(["headers", "body"])("bounds a session check stalled on %s, including implementations that ignore abort", async (phase) => {
+    vi.useFakeTimers();
+    try {
+      let signal: AbortSignal | null | undefined;
+      const fetchImpl: typeof fetch = async (_input, init) => {
+        signal = init?.signal;
+        if (phase === "headers") return new Promise(() => {});
+        const response = Response.json(sessionBody);
+        vi.spyOn(response, "text").mockImplementation(() => new Promise(() => {}));
+        return response;
+      };
+      const result = createAuthClient({ fetchImpl, timeoutMs: 100 }).getSession();
+      await vi.advanceTimersByTimeAsync(100);
+      expect(await result).toMatchObject({ kind: "unavailable", reason: "timeout" });
+      expect(signal?.aborted).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
   it("login sends JSON with the marker, the two fields and no context or token", async () => {
     const { fetchImpl, calls } = stub({ status: 200, body: sessionBody });
     const res = await createAuthClient({ fetchImpl }).login({ username: "mai", password: "a long passphrase" });
