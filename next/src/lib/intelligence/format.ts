@@ -1,3 +1,4 @@
+import type { Money, ExactRatio, ProviderMetric } from "@/contracts/liveIntelligence";
 import type { Availability, EvidenceOrigin, MetricKey } from "./types";
 
 /**
@@ -51,36 +52,29 @@ export function formatCount(n: number): string {
   return Number.isInteger(n) ? integer.format(n) : number.format(n);
 }
 
-/** A money amount always names its currency. With no stated currency it stays a bare number, never "$". */
-export function formatMoney(n: number, currency: string | null): string {
-  if (!currency) return formatCount(n);
-  try {
-    // Intl joins the code and the amount with a no-break space; a plain space wraps and reads better in tables.
-    return new Intl.NumberFormat("en-US", { style: "currency", currency, currencyDisplay: "code" })
-      .formatToParts(n)
-      .map((p) => (p.type === "literal" ? " " : p.value))
-      .join("");
-  } catch {
-    return `${formatCount(n)} ${currency}`;
-  }
+/** Exact decimal money: grouping never passes through floating point. */
+export function formatMoney(money: Money): string {
+  const [whole, fraction = ""] = money.amount.split(".");
+  const decimals = fraction.replace(/0+$/, "");
+  return `${money.currency} ${integer.format(BigInt(whole))}${decimals ? `.${decimals}` : ""}`;
 }
 
-/** A provider-supplied fraction as a percentage. */
-export function formatRate(fraction: number): string {
-  const pct = fraction * 100;
-  return `${pct.toFixed(pct >= 10 ? 1 : 2).replace(/\.?0+$/, "")}%`;
+/** Rounded for display only; the authoritative rational remains intact. */
+export function formatRate(ratio: ExactRatio): string {
+  const denominator = BigInt(ratio.denominator);
+  const pct = (BigInt(ratio.numerator) * 10_000n + denominator / 2n) / denominator;
+  return `${pct / 100n}${pct % 100n ? `.${String(pct % 100n).padStart(2, "0").replace(/0+$/, "")}` : ""}%`;
 }
 
-/** value: a number is "recorded" (0 included); null is "missing" unless a more specific availability is given. */
-export function cell(value: number | null, availability: Availability | null, kind: { money?: string | null; rate?: boolean; metric?: MetricKey } = {}): CellText {
-  const a: Availability = availability ?? (value === null ? "missing" : "available");
-  if (a !== "available" || value === null) {
+export function cell(value: ProviderMetric["value"] | undefined, availability: Availability | null, kind: { money?: string | null; rate?: boolean; metric?: MetricKey } = {}): CellText {
+  const a = availability ?? (value == null ? "missing" : "available");
+  if (a !== "available" || value == null) {
     const state = a === "available" ? "missing" : a;
     return { state, text: AVAILABILITY_WORDS[state], spoken: AVAILABILITY_WORDS[state] };
   }
-  const isMoney = kind.metric === "gmv" || kind.money !== undefined;
-  const text = kind.rate ? formatRate(value) : isMoney ? formatMoney(value, kind.money ?? null) : formatCount(value);
-  return { state: value === 0 ? "zero" : "value", text, spoken: value === 0 ? `${text}, recorded as zero` : text };
+  const text = typeof value === "number" ? formatCount(value) : "amount" in value ? formatMoney(value) : kind.rate ? formatRate(value) : `${value.numerator}/${value.denominator}${value.currency ? ` ${value.currency}` : ""}`;
+  const zero = typeof value === "number" ? value === 0 : "amount" in value ? /^0(?:\.0+)?$/.test(value.amount) : BigInt(value.numerator) === 0n;
+  return { state: zero ? "zero" : "value", text, spoken: zero ? `${text}, recorded as zero` : text };
 }
 
 export const ORIGIN_LABEL: Record<EvidenceOrigin, string> = {

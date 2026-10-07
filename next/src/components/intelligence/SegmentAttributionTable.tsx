@@ -26,15 +26,10 @@ const COVERAGE: Record<AttributionCoverage, { text: string; icon: string }> = {
 const HEADLINE: readonly MetricKey[] = ["clicks", "orders", "gmv"];
 const DETAIL_ORDER: readonly MetricKey[] = ["viewers", "impressions", "clicks", "orders", "gmv", "comments"];
 
-const looksLikeCurrency = (u: string | null): u is string => u !== null && /^[A-Z]{3}$/.test(u);
-
-function metricCell(m: ProviderMetric | undefined, snapshot: LiveIntelligenceSnapshot) {
-  if (!m) return cell(null, "missing", { metric: "orders" });
-  const key = m.key as MetricKey;
-  return cell(m.value, m.availability, { metric: key, money: key === "gmv" ? (looksLikeCurrency(m.unit) ? m.unit : snapshot.currency) : undefined });
+function metricCell(m: ProviderMetric | undefined) {
+  return cell(m?.value, m?.availability ?? "missing");
 }
-
-const findMetric = (a: SegmentAttribution | null, key: MetricKey): ProviderMetric | undefined => a?.metrics.find((m) => m.key === key);
+const findMetric = (a: SegmentAttribution | null, key: MetricKey): ProviderMetric | undefined => a?.metrics.find((m) => m.key === (key === "viewers" ? "peak_minute_viewers" : key));
 
 function DurationCell({ row }: { row: ReviewRow }): React.ReactElement {
   if (!row.actual) {
@@ -128,7 +123,7 @@ export function SegmentAttributionTable({ review, snapshot, tz }: { review: Revi
             const ambiguousCount = a?.ambiguousBuckets.length ?? 0;
             const cov = a ? COVERAGE[a.coverage] : null;
             // A segment with no recorded window has nothing to line evidence up with: one quiet line, not a row of dashes.
-            if (!a && !ran) {
+            if (!ran && (row.outcome !== "incomplete" || !a)) {
               const what = row.outcome === "skipped" ? "Skipped" : row.outcome === "incomplete" ? "Incomplete record" : "Did not run";
               return (
                 <div role="rowgroup" key={row.segmentId} data-testid={`attribution-${row.segmentId}`} data-coverage="unattributed">
@@ -167,7 +162,7 @@ export function SegmentAttributionTable({ review, snapshot, tz }: { review: Revi
                             <div key={key} className="flex items-baseline gap-1.5 whitespace-nowrap" data-metric={key}>
                               <dt className="text-[14px] text-[#9AA5B5]">{METRIC_SHORT[key]}</dt>
                               <dd>
-                                <ValueText cell={metricCell(m, snapshot)} />
+                                <ValueText cell={metricCell(m)} />
                               </dd>
                             </div>
                           );
@@ -208,7 +203,7 @@ export function SegmentAttributionTable({ review, snapshot, tz }: { review: Revi
                     <div role="cell" className="px-2 pb-4 pt-1" data-testid={`attribution-details-${row.segmentId}`}>
                       <div className="rounded-[10px] bg-[#101319] px-4 py-3">
                         <p className="text-[13px] text-[#9AA5B5]">
-                          Window {a.actualStartMs !== null && a.actualEndMs !== null ? `${formatClock(a.actualStartMs, tz, true)}–${formatClock(a.actualEndMs, tz, true)}` : "not recorded"} · evidence tier: provider observed
+                          Window {a.actualStartMs !== undefined && a.actualEndMs !== undefined ? `${formatClock(a.actualStartMs, tz, true)}–${formatClock(a.actualEndMs, tz, true)}` : "not recorded"} · evidence tier: provider observed
                         </p>
                         <dl className="mt-2 grid grid-cols-1 gap-x-10 gap-y-2 sm:grid-cols-2 xl:grid-cols-3">
                           {DETAIL_ORDER.map((key) => {
@@ -222,7 +217,7 @@ export function SegmentAttributionTable({ review, snapshot, tz }: { review: Revi
                                   {m?.note && <span className="block text-[12px]">{m.note}</span>}
                                 </dt>
                                 <dd className="shrink-0 text-right">
-                                  <ValueText cell={metricCell(m, snapshot)} className="whitespace-nowrap" />
+                                  <ValueText cell={metricCell(m)} className="whitespace-nowrap" />
                                 </dd>
                               </div>
                             );
@@ -236,13 +231,12 @@ export function SegmentAttributionTable({ review, snapshot, tz }: { review: Revi
                             </p>
                             <ul className="mt-1 space-y-0.5 text-[14px] text-[#B7C1CE]">
                               {a.ambiguousBuckets.map((b) => {
-                                const other = b.otherSegmentId ? (review.rows.find((r) => r.segmentId === b.otherSegmentId)?.title ?? null) : null;
                                 return (
                                   <li key={b.startMs}>
                                     <span className="tabular-nums text-[#CAD0DA]">
                                       {formatClock(b.startMs, tz)}–{formatClock(b.endMs, tz)}
                                     </span>{" "}
-                                    boundary minute: overlaps {other ? <>this segment and “{other}”</> : "two segments"}. Not assigned to either.
+                                    {b.reason === "unknown_timing" ? "Timing bounds are unverified. Not assigned to a segment." : b.reason === "overlapping_actual_windows" ? "Actual windows overlap. Not assigned to either." : "Boundary minute overlaps a segment edge. Not assigned to either."}
                                   </li>
                                 );
                               })}

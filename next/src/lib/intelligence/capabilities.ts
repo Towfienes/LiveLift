@@ -12,6 +12,9 @@ import type { CapabilityState, ProviderCapability } from "./types";
 export const STATE_WORDS: Record<CapabilityState, string> = {
   connected: "CONNECTED",
   available: "AVAILABLE",
+  post_live: "POST-LIVE ACCESS",
+  realtime: "REALTIME ACCESS",
+  access_required: "ACCESS REQUIRED",
   not_connected: "NOT CONNECTED",
   not_configured: "ACCESS NOT CONFIGURED",
   access_not_granted: "ACCESS NOT GRANTED",
@@ -29,6 +32,9 @@ export type StateTone = "ok" | "attention" | "fixed" | "neutral";
 export const STATE_TONE: Record<CapabilityState, StateTone> = {
   connected: "ok",
   available: "ok",
+  post_live: "ok",
+  realtime: "ok",
+  access_required: "attention",
   not_connected: "neutral",
   not_configured: "attention",
   access_not_granted: "attention",
@@ -78,10 +84,11 @@ export function buildLedger({ loginKit, server }: LedgerInput): LedgerRow[] {
   const listed = (key: string): ProviderCapability | null => (Array.isArray(server) ? (server.find((c) => c.key === key) ?? null) : null);
 
   const loginState: CapabilityState = loginKit === null ? "unknown" : LOGIN_KIT_STATE[loginKit];
-  const shop = listed("shop_analytics");
-  const shopState: CapabilityState = shop ? shop.state : Array.isArray(server) ? "not_configured" : "unknown";
-  const creator = listed("creator_realtime");
-  const creatorState: CapabilityState = creator ? creator.state : "partner_access_required";
+  const shop = listed("product_clicks");
+  const fromProvider = (state: ProviderCapability["state"]): CapabilityState => ({ NOT_CONFIGURED: "not_configured", ACCESS_REQUIRED: "access_required", UNSUPPORTED: "unsupported", POST_LIVE: "post_live", REALTIME: "realtime" } as const)[state] ?? "unknown";
+  const shopState: CapabilityState = shop ? fromProvider(shop.state) : Array.isArray(server) ? "not_configured" : "unknown";
+  const creator = listed("audience_concurrency");
+  const creatorState: CapabilityState = creator ? fromProvider(creator.state) : "partner_access_required";
 
   return [
     {

@@ -392,6 +392,7 @@ describe("structure of the critical screens (not axe: the audit this lane can ru
     const Page = { operate: OperatePage, review: ReviewPage, prepare: PreparePage }[page] as PageComponent;
     await renderPage(Page, id);
     await waitFor(() => expect(screen.getByTestId("connection-chip")).toHaveAttribute("data-connection", "connected"));
+    if (page === "review") fireEvent.click(await screen.findByTestId("perspective-later"));
     for (const opener of openers) {
       const btn = await screen.findByTestId(opener);
       await waitFor(() => expect(btn).not.toBeDisabled());

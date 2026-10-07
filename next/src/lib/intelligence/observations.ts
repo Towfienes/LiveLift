@@ -45,7 +45,7 @@ function rate(full: MinuteEvidenceBucket[], key: MetricKey, minMinutes: number):
   const values: number[] = [];
   for (const b of full) {
     const v = b[key];
-    if (v === null) return null;
+    if (typeof v !== "number") return null;
     values.push(v);
   }
   const sum = values.reduce((a, b) => a + b, 0);

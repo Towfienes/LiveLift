@@ -98,15 +98,15 @@ const FACT_SIGNAL: Record<string, { tone: Tone; icon: string; label: string }> =
   operator_reported: { tone: "neutral", icon: "ri-hand-heart-line", label: "Operator reported" },
   gap: { tone: "warn", icon: "ri-question-line", label: "Not established" },
   simulated: { tone: "violet", icon: "ri-flask-line", label: "Simulated" },
-  /** V7: a provider observed this after the LIVE. Not AiFactKind yet; read defensively. */
+  /** Provider provenance is orthogonal to the recorded/SIMULATED fact kind. */
   provider_observed: { tone: "ink", icon: "ri-database-2-line", label: "Provider observed · later" },
 };
 
 /**
  * A fact that came from a provider, fetched after the LIVE. The server may tag it with a `provider_observed` kind or
- * a `provider*` topic; either way it is later evidence and is never presented as something the operator knew.
+ * the shared contract uses evidenceTier and perspective; it is never presented as something the operator knew.
  */
-export const isProviderFact = (f: AiFact): boolean => (f.kind as string) === "provider_observed" || f.topic.startsWith("provider");
+export const isProviderFact = (f: AiFact): boolean => f.evidenceTier === "provider_observed" || f.perspective === "later_evidence";
 
 /** Numbered so an AI statement can say which facts it rests on. `all` keeps the numbers of a filtered list stable. */
 export function FactList({ facts, empty, columns = false, all }: { facts: AiFact[]; empty?: string; columns?: boolean; all?: AiFact[] }): React.ReactElement {
@@ -114,7 +114,7 @@ export function FactList({ facts, empty, columns = false, all }: { facts: AiFact
   return (
     <ol className={columns ? "md:columns-2 md:gap-x-10" : "space-y-1.5"} data-testid="fact-list">
       {facts.map((f, i) => {
-        const s = FACT_SIGNAL[f.kind as string] ?? { tone: "muted" as Tone, icon: "ri-information-line", label: String(f.kind).replaceAll("_", " ") };
+        const s = (isProviderFact(f) ? FACT_SIGNAL.provider_observed : FACT_SIGNAL[f.kind]) ?? { tone: "muted" as Tone, icon: "ri-information-line", label: String(f.kind).replaceAll("_", " ") };
         const at = (all ?? facts).findIndex((x) => x.id === f.id);
         return (
           <li key={f.id} className={`flex gap-2.5 items-start ${columns ? "mb-1.5 break-inside-avoid" : ""}`} data-testid={`fact-${f.topic}`} data-fact-kind={f.kind}>

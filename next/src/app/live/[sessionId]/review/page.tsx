@@ -16,8 +16,9 @@ import { useReviewCopilot } from "@/components/ai/useAiCopilot";
 import { LaterEvidenceView } from "@/components/intelligence/LaterEvidenceView";
 import { PerspectiveTabs, type Perspective } from "@/components/intelligence/PerspectiveTabs";
 import { ReplayTimeline } from "@/components/intelligence/ReplayTimeline";
-import { useLiveIntelligence } from "@/components/intelligence/useLiveIntelligence";
+import { useLiveIntelligence, useHistoricalEvidence } from "@/components/intelligence/useLiveIntelligence";
 import { DEFAULT_FIXTURE_SCENARIO, isFixtureScenario, type FixtureScenarioId } from "@/lib/intelligence/fixtures";
+import { reconstructAsKnownThen } from "@/lib/domain/asKnownThen";
 import { buildReplay } from "@/lib/intelligence/replay";
 import { buildReviewFacts } from "@/lib/ai/context";
 import { buildReview,formatClock, formatDay, formatDuration, proposeChanges } from "@/lib/domain";
@@ -74,13 +75,25 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
   // History is appended after the show: a REAL show only through the room, a pre-Phase-2 archive never.
   const canAppend = ctx.archive ? false : isRemote ? commands.canWrite || commands.pending !== null : true;
   const tz = session.timezone;
-  const review = useMemo(() => buildReview(session), [session]);
+  const historicalSession = useMemo(() => {
+    if (session.runtime.startedAtMs === null || session.runtime.endedAtMs === null) return session;
+    const known = reconstructAsKnownThen(session, session.runtime.endedAtMs);
+    // Missing timing in a retained archive remains missing; replay must not repair an incomplete record.
+    for (const [id, run] of Object.entries(known.runtime.segments)) {
+      const retained = session.runtime.segments[id];
+      if (retained?.startedAtMs === null) run.startedAtMs = null;
+      if (retained?.endedAtMs === null) run.endedAtMs = null;
+    }
+    return { ...session, events: known.events, runtime: known.runtime, plans: session.plans.filter(p => p.kind === "baseline" || known.events.some(e => e.planVersionId === p.id)) };
+  }, [session]);
+  const review = useMemo(() => buildReview(historicalSession), [historicalSession]);
+  const fullReview = useMemo(() => buildReview(session), [session]);
   const proposals = useMemo(() => proposeChanges(session), [session]);
   // Advisory only. A pre-Phase-2 archive is not in the room, so the server cannot read it and the Copilot stays off.
   // REAL shows already sync with the room; a rehearsal's Review stays offline until the operator opens the Copilot.
   const [copilotOpened, setCopilotOpened] = useState(isRemote);
   const copilot = useReviewCopilot({ enabled: copilotOpened && !ctx.archive, resetKey: session.id });
-  const productFacts = useMemo(() => (review ? buildReviewFacts(session, review) : []), [session, review]);
+  const productFacts = useMemo(() => (review ? buildReviewFacts(historicalSession, review) : []), [historicalSession, review]);
   const askAi = (): void => copilot.ask(isRemote ? { sessionId: session.id } : { sessionId: session.id, session });
 
   // Perspective is view state only. "As known then" is the default; later evidence is fetched only once it is opened.
@@ -89,6 +102,7 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
   const wantedScenario = params.get("evidence");
   const [scenario, setScenario] = useState<FixtureScenarioId>(isFixtureScenario(wantedScenario) ? wantedScenario : DEFAULT_FIXTURE_SCENARIO);
   const intelligence = useLiveIntelligence({ session, review, enabled: laterOpened, archive: ctx.archive, scenario });
+  const historical = useHistoricalEvidence(session, perspective === "known" && !ctx.archive);
   const replay = useMemo(() => (review ? buildReplay(session, review) : null), [session, review]);
   const rememberInUrl = (key: string, value: string | null): void => {
     try {
@@ -215,6 +229,9 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
             {perspective === "later" ? (
               <>
                 <LaterEvidenceView session={session} review={review} intelligence={intelligence} scenario={scenario} onScenario={chooseScenario} onRetry={intelligence.reload} />
+                <HistoryList items={fullReview?.history ?? []} tz={tz} canAppend={canAppend}
+                  onNote={text => append({ type: "add_note", text })} onCorrect={(targetEventId, text) => append({ type: "append_correction", targetEventId, text })} />
+
                 <div id="ai-review-copilot" className="scroll-mt-4">
                   <ReviewCopilot copilot={copilot} perspective="later" session={session} source={isRemote ? "remote" : "local"} archive={ctx.archive} facts={productFacts} opened={copilotOpened} onOpen={() => setCopilotOpened(true)} onOpenNextLive={() => setView("next")} />
                 </div>
@@ -240,7 +257,7 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
                   <PlanActualLanes rows={review.rows} tz={tz} />
                 </section>
 
-                {replay && <ReplayTimeline replay={replay} tz={tz} />}
+                {replay && <ReplayTimeline replay={replay} tz={tz} historical={historical} />}
 
                 <section className="rounded-[12px] bg-[#13161C] p-3" aria-label="Segments">
                   <h2 className="text-[18px] font-medium text-[#F5F7FC] px-2 mb-1">Segments</h2>
@@ -304,7 +321,7 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
                 <HistoryList
                   items={review.history}
                   tz={tz}
-                  canAppend={canAppend}
+                  canAppend={false}
                   onNote={(text) => append({ type: "add_note", text })}
                   onCorrect={(targetEventId, text) => append({ type: "append_correction", targetEventId, text })}
                 />

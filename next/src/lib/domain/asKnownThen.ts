@@ -1,11 +1,9 @@
-import type { PlanVersion, Runtime, Session, SessionEvent } from "@/contracts";
+import type { Runtime, Session } from "@/contracts";
 import { InstantSchema } from "@/contracts/liveIntelligence";
 import { emptyCueRun, emptySegmentRun } from "./forecast";
 
-export interface AsKnownThen {
-  sessionId: string; mode: "REAL" | "SIMULATED"; perspective: "as_known_then"; asOfMs: number;
-  plan: PlanVersion; runtime: Runtime; events: SessionEvent[]; evidenceLimits: string[];
-}
+import type { AsKnownThen } from "@/contracts/liveIntelligence";
+export type { AsKnownThen } from "@/contracts/liveIntelligence";
 
 /** Record-time replay: late reports are invisible until recorded, even when their occurredAtMs is earlier. */
 export function reconstructAsKnownThen(session: Session, asOfMs: number): AsKnownThen {

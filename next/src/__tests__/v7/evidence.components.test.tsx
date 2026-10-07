@@ -1,3 +1,4 @@
+import { wireSnapshot } from "./wireFixtures";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -41,7 +42,7 @@ describe("capabilities: unavailable is a stated fact, not a broken control", () 
       <CapabilityLedger
         rows={buildLedger({
           loginKit: "connected",
-          server: [{ key: "shop_analytics", state: "not_configured", note: null, checkedAtMs: null }],
+          server: [{ key: "product_clicks", state: "NOT_CONFIGURED", support: "POST_LIVE", scope: null, note: "" }],
         })}
       />
     );
@@ -114,7 +115,7 @@ describe("provider state panel", () => {
 describe("product performance: no invented matches, no mixed money", () => {
   const product = (id: string, code: string, name: string) => ({ id, code, name, price: null, currency: "USD", priority: "normal" as const, status: "enabled" as const, talkingPoints: [], constraints: [], initials: "PR" });
   const raw = (rows: unknown[]) => {
-    const p = parseSnapshot({ sessionId: "s", mode: "SIMULATED", perspective: "later_evidence", provider: "fixture", fetchedAt: 1, productPerformance: rows });
+    const p = parseSnapshot(wireSnapshot({ productPerformance: rows, productMappings: [{ liveLiftProductId: "p1", providerProductId: "100001" }, { liveLiftProductId: "p2", providerProductId: "100003" }, { liveLiftProductId: "p3", providerProductId: "100003" }] }));
     if (!p.ok) throw new Error("bad");
     return p.snapshot;
   };
@@ -128,15 +129,15 @@ describe("product performance: no invented matches, no mixed money", () => {
   it("shows ambiguous, unmatched, repeated and session-level products exactly as they are", () => {
     const products = [product("p1", "A01", "Zip Hoodie"), product("p2", "B01", "Same name"), product("p3", "B02", "Same name")];
     const snapshot = raw([
-      { productId: "p1", skuId: "A", impressions: 100, clicks: 0, orders: 0, gmv: 0, currency: "VND", availability: "available" },
-      { productId: "p1", skuId: "B", impressions: 40, clicks: 5, orders: 1, gmv: 90000, ctor: 0.2, currency: "VND", availability: "available" },
-      { productLabel: "same name", impressions: 9, availability: "available" },
-      { productId: "tt-9", productLabel: "Unmapped listing", impressions: 7, clicks: null, gmv: 12, currency: "USD", availability: "available" },
+      { productId: "100001", skuId: "A", impressions: 100, clicks: 0, orders: 0, gmv: { amount: "0", currency: "VND" }, availability: "available" },
+      { productId: "100001", skuId: "B", impressions: 40, clicks: 5, orders: 1, gmv: { amount: "90000", currency: "VND" }, ctor: { numerator: "1", denominator: "5" }, availability: "available" },
+      { productId: "100003", productLabel: "same name", impressions: 9, availability: "available" },
+      { productId: "tt-9", productLabel: "Unmapped listing", impressions: 7, clicks: null, gmv: { amount: "12", currency: "USD" }, availability: "available" },
     ]);
     render(<ProductPerformanceTable snapshot={snapshot} products={products} review={review} origin="fixture" />);
     const rows = screen.getAllByTestId("product-row");
     expect(rows.map((r) => r.getAttribute("data-match"))).toEqual(["matched", "matched", "ambiguous", "unmatched"]);
-    expect(rows[0]).toHaveTextContent("Matched to A01 · matched on product id");
+    expect(rows[0]).toHaveTextContent("Matched to A01 · mapped by the server");
     expect(rows[2]).toHaveTextContent("Ambiguous: could be B01 or B02. Not assigned to any.");
     expect(rows[3]).toHaveTextContent("Not matched to a LiveLift product.");
     expect(rows[3]).toHaveTextContent("provider id tt-9"); // the provider's own label and id, not a LiveLift product
@@ -162,11 +163,8 @@ describe("product performance: no invented matches, no mixed money", () => {
     expect(screen.getByTestId("no-product-rows")).toHaveTextContent("not the same as no product activity");
   });
 
-  it("an amount with no stated currency is a bare number and says so", () => {
-    render(<ProductPerformanceTable snapshot={raw([{ productId: "x", productLabel: "Thing", gmv: 1500, availability: "available" }])} products={[]} review={review} origin="provider" />);
-    expect(screen.getByTestId("product-row")).toHaveTextContent("1,500");
-    expect(screen.getByTestId("product-row")).toHaveTextContent("currency not stated");
-    expect(screen.getByTestId("product-row").textContent).not.toMatch(/[$€£]|USD|VND/);
+  it("rejects monetary evidence without a stated currency instead of displaying invented money", () => {
+    expect(parseSnapshot(wireSnapshot({ productPerformance: [{ productId: "x", productLabel: "Thing", gmv: { amount: "1500" }, availability: "available" }] }))).toEqual({ ok: false, reason: "malformed" });
   });
 });
 
@@ -174,7 +172,7 @@ describe("AI: operations evidence, provider evidence, interpretation, recommenda
   const session = ended();
   const facts: AiFact[] = [
     { id: "f1", topic: "timing", kind: "recorded", text: "Zip Hoodie ran 3:00 over its plan." },
-    { id: "f2", topic: "provider_clicks", kind: "provider_observed" as unknown as AiFact["kind"], text: "Provider-observed clicks per minute were higher during Zip Hoodie." },
+    { id: "f2", topic: "provider_clicks", kind: "recorded", evidenceTier: "provider_observed", source: "fixture", fetchedAt: 1, perspective: "later_evidence", text: "Provider-observed clicks per minute were higher during Zip Hoodie." },
   ];
   const result: ReviewAvailable = {
     status: "available",
@@ -221,12 +219,23 @@ describe("AI: operations evidence, provider evidence, interpretation, recommenda
     mount("known");
     expect(screen.queryByTestId("provider-facts")).toBeNull();
     expect(screen.getByTestId("provider-facts-withheld")).toHaveTextContent("1 provider fact belongs to later evidence");
-    expect(screen.getByTestId("ai-withheld-note")).toHaveTextContent("2 AI statements rest on provider evidence the operator did not have");
+    expect(screen.getByTestId("ai-withheld-note")).toHaveTextContent("2 AI statements rest on evidence the operator did not have");
     expect(screen.getByTestId("ai-deviations")).toHaveTextContent("Hoodie overran.");
     expect(screen.getByTestId("ai-deviations")).not.toHaveTextContent("Clicks were higher");
     expect(screen.getAllByTestId("ai-next-live-item")).toHaveLength(1);
     expect(screen.getByTestId("ai-next-live-item")).toHaveAttribute("data-change-id", "c1");
     expect(screen.queryByText(/Move the flash sale/)).toBeNull();
+  });
+
+  it("known: an analysis using post-LIVE operator records stays in the later perspective", () => {
+    const late = structuredClone(session);
+    late.events.push({ ...late.events.at(-1)!, id: "late-note", seq: late.events.length + 1, type: "note_added", recordedAtMs: late.runtime.endedAtMs! + 1, data: { text: "POST LIVE ONLY" } });
+    render(<ReviewCopilot copilot={copilot} perspective="known" session={late} source="local" archive={false} facts={[facts[0]]} opened onOpen={() => undefined} onOpenNextLive={() => undefined} />);
+    expect(screen.getByTestId("ai-summary-withheld")).toHaveTextContent("records appended after the LIVE");
+    expect(screen.queryByTestId("ai-summary")).toBeNull();
+    expect(screen.queryByText("Hoodie overran.")).toBeNull();
+    expect(screen.queryByText("POST LIVE ONLY")).toBeNull();
+    expect(screen.getByTestId("layer-operations")).toBeInTheDocument();
   });
 
   it("the recommendation is advice: recommended, not applied, with nothing to click that applies it", () => {

@@ -14,7 +14,7 @@ function snapshot(kind: typeof FIXTURE_CASES[number] = "normal") {
   return { session, snapshot: reconcileLiveEvidence(session, fixtureEvidence(session, fetchedAt, kind), { snapshotId: randomUUID(), providerSessionId: "100000001", fetchedAt, productMappings: [{ liveLiftProductId: "local-product-a", providerProductId: "100001" }] }) };
 }
 test.each(FIXTURE_CASES)("certifies official-shape fixture %s", (kind) => {
-  if (["malformed", "rate_limit", "auth_expired"].includes(kind)) { expect(() => snapshot(kind)).toThrow(); return; }
+  if (["malformed", "rate_limit", "auth_expired", "not_configured", "access_not_granted", "unavailable", "unsupported"].includes(kind)) { expect(() => snapshot(kind)).toThrow(); return; }
   const result = snapshot(kind);
   expect(result.snapshot.mode).toBe("SIMULATED"); expect(result.snapshot.provider).toBe("fixture");
   expect(result.snapshot.evidenceLimits.join(" ")).toContain("SIMULATED / FIXTURE");

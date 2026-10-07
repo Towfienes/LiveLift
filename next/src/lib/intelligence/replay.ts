@@ -83,7 +83,7 @@ export function buildReplay(session: Session, review: Review): ReplayModel {
   let appendedAfterEnd = 0;
   for (const e of session.events) {
     if (e.type === "clock_advanced") continue;
-    if (e.seq > endedSeq) {
+    if (e.seq > endedSeq || e.recordedAtMs > review.summary.endedAtMs) {
       if (e.type === "note_added" || e.type === "correction_added") appendedAfterEnd += 1;
       continue;
     }

@@ -1,3 +1,4 @@
+import { providerSnapshot } from "./wireFixtures";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import React, { Suspense } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -203,7 +204,7 @@ describe("missing != zero, in the chart, the table and the attribution", () => {
 
   it("a minute that overlaps two segments is a deliberate state: marked, explained, and assigned to neither", async () => {
     await openLater("ambiguous");
-    expect(screen.getByTestId("key-boundary")).toHaveTextContent("Boundary minute: overlaps two segments, not assigned to either");
+    expect(screen.getByTestId("key-boundary")).toHaveTextContent("Boundary minute: overlaps a segment edge, not assigned");
     const hollow = document.querySelectorAll('[data-minute][data-boundary="true"]');
     expect(hollow.length).toBeGreaterThan(0);
     const row = document.querySelector<HTMLElement>('[data-testid^="attribution-"][data-coverage="ambiguous"]');
@@ -284,7 +285,7 @@ describe("REAL shows: provider evidence comes from the server or not at all", ()
   }
 
   it("with no provider configured the later view says so, and shows no numbers and no fixture label", async () => {
-    await openRealReview(() => null); // the fake room has no live-intelligence route: a server without provider evidence
+    await openRealReview(url => url.includes("/intelligence/evidence") ? new Response(JSON.stringify({ state: "NOT_CONFIGURED" }), { status: 200 }) : null); // the fake room has no live-intelligence route: a server without provider evidence
     fireEvent.click(await screen.findByTestId("perspective-later"));
     await waitFor(() => expect(screen.getByTestId("later-evidence-view")).toHaveAttribute("data-state", "not_configured"));
     expect(screen.getByTestId("provider-state")).toHaveTextContent("No provider evidence is set up on this server");
@@ -297,9 +298,9 @@ describe("REAL shows: provider evidence comes from the server or not at all", ()
   it("shows a real provider snapshot as provider-observed, with its provenance, and never as a fixture", async () => {
     let sessionJson: ReturnType<typeof realShow> | null = null;
     const { session } = await openRealReview((url) => {
-      if (!url.includes("/api/v3/live-intelligence/sessions/real-1") || sessionJson === null) return null;
+      if (!url.includes("/api/v3/intelligence/evidence?") || sessionJson === null) return null;
       const review = buildReview(sessionJson)!;
-      return new Response(JSON.stringify({ status: "available", snapshot: buildScenarioRaw(sessionJson, review, "rich", { provider: "tiktok_shop" }) }), { status: 200 });
+      return new Response(JSON.stringify({ state: "AVAILABLE", snapshot: providerSnapshot(buildScenarioRaw({ ...sessionJson, environment: "SIMULATED" }, review, "rich")) }), { status: 200 });
     });
     sessionJson = session;
     fireEvent.click(await screen.findByTestId("perspective-later"));
@@ -315,9 +316,9 @@ describe("REAL shows: provider evidence comes from the server or not at all", ()
   it("refuses fixture evidence sent for a REAL show instead of displaying it", async () => {
     let sessionJson: ReturnType<typeof realShow> | null = null;
     const { session } = await openRealReview((url) => {
-      if (!url.includes("/api/v3/live-intelligence/sessions/real-1") || sessionJson === null) return null;
+      if (!url.includes("/api/v3/intelligence/evidence?") || sessionJson === null) return null;
       const review = buildReview(sessionJson)!;
-      return new Response(JSON.stringify({ status: "available", snapshot: buildScenarioRaw(sessionJson, review, "rich") }), { status: 200 }); // provider: "fixture"
+      return new Response(JSON.stringify({ state: "AVAILABLE", snapshot: buildScenarioRaw({ ...sessionJson, environment: "SIMULATED" }, review, "rich") }), { status: 200 }); // provider: "fixture"
     });
     sessionJson = session;
     fireEvent.click(await screen.findByTestId("perspective-later"));
@@ -328,7 +329,7 @@ describe("REAL shows: provider evidence comes from the server or not at all", ()
   });
 
   it("access not granted and rate limiting arrive as their own states, with no data", async () => {
-    await openRealReview((url) => (url.includes("/live-intelligence/sessions/") ? new Response(JSON.stringify({ status: "access_not_granted" }), { status: 200 }) : null));
+    await openRealReview((url) => (url.includes("/intelligence/evidence") ? new Response(JSON.stringify({ state: "ACCESS_NOT_GRANTED" }), { status: 200 }) : null));
     fireEvent.click(await screen.findByTestId("perspective-later"));
     await waitFor(() => expect(screen.getByTestId("provider-state")).toHaveAttribute("data-kind", "access_not_granted"));
     expect(screen.getByTestId("provider-state")).toHaveTextContent("never shown as 0");

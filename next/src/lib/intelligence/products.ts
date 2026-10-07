@@ -1,43 +1,21 @@
 import type { ProductSnapshot } from "@/contracts";
 import type { Review } from "@/lib/domain";
+import type { ProductMapping } from "@/contracts/liveIntelligence";
 import type { ProductPerformance } from "./types";
 
-/**
- * Provider product rows <-> LiveLift products. A match is only claimed on an exact identifier, or an exact name when
- * no identifier is available, and only when exactly one LiveLift product qualifies. Anything else is shown as
- * "ambiguous" or "not matched": a match is never invented.
- */
-
-export type MatchBasis = "server" | "id" | "code" | "name";
+/** Provider product rows resolve only through the canonical explicit identity mapping. */
+export type MatchBasis = "server";
 
 export type ProductMatch =
   | { kind: "matched"; product: ProductSnapshot; basis: MatchBasis }
   | { kind: "ambiguous"; candidates: ProductSnapshot[]; basis: MatchBasis }
   | { kind: "unmatched" };
 
-const norm = (s: string | null): string => (s ?? "").trim().toLowerCase();
-
-export function matchProduct(row: ProductPerformance, products: ProductSnapshot[]): ProductMatch {
-  if (row.matchedProductId) {
-    const found = products.find((p) => p.id === row.matchedProductId);
-    if (found) return { kind: "matched", product: found, basis: "server" };
-  }
-  const pid = norm(row.productId);
-  if (pid !== "") {
-    const byId = products.filter((p) => norm(p.id) === pid);
-    if (byId.length === 1) return { kind: "matched", product: byId[0], basis: "id" };
-    if (byId.length > 1) return { kind: "ambiguous", candidates: byId, basis: "id" };
-    const byCode = products.filter((p) => norm(p.code) === pid);
-    if (byCode.length === 1) return { kind: "matched", product: byCode[0], basis: "code" };
-    if (byCode.length > 1) return { kind: "ambiguous", candidates: byCode, basis: "code" };
-  }
-  const label = norm(row.productLabel);
-  if (label !== "" && pid === "") {
-    const byName = products.filter((p) => norm(p.name) === label);
-    if (byName.length === 1) return { kind: "matched", product: byName[0], basis: "name" };
-    if (byName.length > 1) return { kind: "ambiguous", candidates: byName, basis: "name" };
-  }
-  return { kind: "unmatched" };
+/** Only the server's explicit stable identity mapping can associate provider performance with a local product. */
+export function matchProduct(row: ProductPerformance, products: ProductSnapshot[], mappings: ProductMapping[] = []): ProductMatch {
+  const ids = mappings.filter(m => m.providerProductId === row.productId).map(m => m.liveLiftProductId);
+  const found = products.filter(p => ids.includes(p.id));
+  return found.length === 1 ? { kind: "matched", product: found[0], basis: "server" } : found.length > 1 ? { kind: "ambiguous", candidates: found, basis: "server" } : { kind: "unmatched" };
 }
 
 export interface ProductRowModel {
@@ -51,8 +29,8 @@ export interface ProductRowModel {
   siblingRows: number;
 }
 
-export function buildProductRows(rows: ProductPerformance[], products: ProductSnapshot[], review: Review): ProductRowModel[] {
-  const matches = rows.map((r) => matchProduct(r, products));
+export function buildProductRows(rows: ProductPerformance[], products: ProductSnapshot[], review: Review, mappings: ProductMapping[] = []): ProductRowModel[] {
+  const matches = rows.map((r) => matchProduct(r, products, mappings));
   const perProduct = new Map<string, number>();
   for (const m of matches) if (m.kind === "matched") perProduct.set(m.product.id, (perProduct.get(m.product.id) ?? 0) + 1);
   return rows.map((row, i) => {
@@ -69,9 +47,4 @@ export function buildProductRows(rows: ProductPerformance[], products: ProductSn
   });
 }
 
-export const MATCH_BASIS_WORDS: Record<MatchBasis, string> = {
-  server: "mapped by the server",
-  id: "matched on product id",
-  code: "matched on product code",
-  name: "matched on exact name",
-};
+export const MATCH_BASIS_WORDS: Record<MatchBasis, string> = { server: "mapped by the server" };

@@ -11,8 +11,8 @@ import { TierLabel, ValueText } from "./EvidenceParts";
 /**
  * Per-product provider performance, for the whole LIVE.
  *
- * Never invented: a provider row is only tied to a LiveLift product on an exact identifier (or exact name when there
- * is no identifier) and only when exactly one product qualifies. Otherwise it says "not matched" or "ambiguous".
+ * Never invented: a provider row is only tied to a LiveLift product through the explicit canonical identity mapping
+ * and only when exactly one product qualifies. Otherwise it says "not matched" or "ambiguous".
  * A product that ran in several segments is a session-level figure; it is not split. Amounts always carry their own
  * currency and are never added across rows.
  */
@@ -29,8 +29,8 @@ function Metric({ label, children }: { label: string; children: React.ReactNode 
 }
 
 function ctorCell(row: ProductRowModel["row"]): CellText {
-  if (row.ctor === null && row.clicks === 0) return { state: "unknown", text: "Not defined (0 clicks)", spoken: "Not defined, zero clicks" };
-  return cell(row.ctor, row.ctor === null ? "missing" : "available", { rate: true });
+  if (row.ctor == null && row.clicks === 0) return { state: "unknown", text: "Not defined (0 clicks)", spoken: "Not defined, zero clicks" };
+  return cell(row.ctor, row.ctor == null ? "missing" : "available", { rate: true });
 }
 
 function matchLine(m: ProductRowModel["match"]): string {
@@ -51,8 +51,8 @@ export function ProductPerformanceTable({
   origin: EvidenceOrigin;
 }): React.ReactElement {
   const uid = useId();
-  const rows = buildProductRows(snapshot.productPerformance, products, review);
-  const currencies = new Set(rows.flatMap((r) => (r.row.gmv !== null ? [r.row.currency ?? snapshot.currency ?? "unstated"] : [])));
+  const rows = buildProductRows(snapshot.productPerformance, products, review, snapshot.productMappings);
+  const currencies = new Set(rows.flatMap((r) => (r.row.gmv ? [r.row.gmv.currency] : [])));
 
   return (
     <section className="rounded-[12px] bg-[#13161C] p-3 sm:p-4" aria-labelledby={`${uid}-h`} data-testid="product-performance">
@@ -87,7 +87,7 @@ export function ProductPerformanceTable({
           <div className="divide-y divide-[#1F2530]">
             {rows.map((m) => {
               const r = m.row;
-              const currency = r.currency ?? snapshot.currency;
+              const currency = r.gmv?.currency;
               const matched = m.match.kind === "matched" ? m.match.product : null;
               return (
                 <div role="rowgroup" key={m.key} data-testid="product-row" data-match={m.match.kind}>
@@ -114,20 +114,20 @@ export function ProductPerformanceTable({
                     </div>
                     <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3 lg:contents">
                       <Metric label="Impressions">
-                        <ValueText cell={cell(r.impressions, r.impressions === null ? "missing" : "available")} />
+                        <ValueText cell={cell(r.impressions, r.impressions == null ? "missing" : "available")} />
                       </Metric>
                       <Metric label="Clicks">
-                        <ValueText cell={cell(r.clicks, r.clicks === null ? "missing" : "available")} />
+                        <ValueText cell={cell(r.clicks, r.clicks == null ? "missing" : "available")} />
                       </Metric>
                       <Metric label="CTOR">
                         <ValueText cell={ctorCell(r)} />
                       </Metric>
                       <Metric label="Orders">
-                        <ValueText cell={cell(r.orders, r.orders === null ? "missing" : "available")} />
+                        <ValueText cell={cell(r.orders, r.orders == null ? "missing" : "available")} />
                       </Metric>
                       <Metric label="GMV">
-                        <ValueText cell={cell(r.gmv, r.gmv === null ? "missing" : "available", { metric: "gmv", money: currency })} className="whitespace-nowrap" />
-                        {r.gmv !== null && !currency && <span className="block text-[12px] text-[#9AA5B5]">currency not stated</span>}
+                        <ValueText cell={cell(r.gmv, r.gmv == null ? "missing" : "available", { metric: "gmv", money: currency })} className="whitespace-nowrap" />
+                        {r.gmv != null && !currency && <span className="block text-[12px] text-[#9AA5B5]">currency not stated</span>}
                       </Metric>
                       <Metric label="Evidence">
                         {r.availability === "available" ? <TierLabel origin={origin} compact /> : <ValueText cell={cell(null, r.availability)} />}

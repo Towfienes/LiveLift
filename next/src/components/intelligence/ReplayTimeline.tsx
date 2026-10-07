@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useId, useState } from "react";
+import { cell } from "@/lib/intelligence/format";
+import { ValueText } from "./EvidenceParts";
+import type { HistoricalEvidence } from "@/contracts/liveIntelligence";
 import { formatClock } from "@/lib/domain";
 import { LANE_LABEL, type ReplayEntry, type ReplayLane, type ReplayModel } from "@/lib/intelligence/replay";
 
@@ -44,7 +47,7 @@ function Entry({ e, tz }: { e: ReplayEntry; tz: string }): React.ReactElement {
   );
 }
 
-export function ReplayTimeline({ replay, tz }: { replay: ReplayModel; tz: string }): React.ReactElement {
+export function ReplayTimeline({ replay, tz, historical }: { replay: ReplayModel; tz: string; historical?: { state: string; evidence: HistoricalEvidence | null } }): React.ReactElement {
   const uid = useId();
   const [all, setAll] = useState(false);
   const shown = all ? replay.entries : replay.entries.filter((e) => KEY_LANES.includes(e.lane));
@@ -74,12 +77,14 @@ export function ReplayTimeline({ replay, tz }: { replay: ReplayModel; tz: string
           </button>
         )}
       </div>
+      {historical?.evidence?.providerEvidence.map(e => <ul key={e.telemetryId} className="mt-2 text-[14px] text-[#B4C6DD]" data-testid="known-provider-observations">
+        {e.metrics.map(m => <li key={m.key}>{m.source === "fixture" ? "SIMULATED / FIXTURE" : "Provider observed"} · {m.key.replaceAll("_", " ")} · <ValueText cell={cell(m.value, m.availability)} /> · recorded {formatClock(e.recordedAt, tz, true)}</li>)}
+      </ul>)}
 
       <div className="mt-3 flex items-start gap-2 rounded-[8px] bg-[#101319] px-3 py-2.5 text-[14px] leading-snug text-[#B7C1CE]" data-testid="provider-then-note">
         <i className="ri-database-2-line mt-0.5 text-[#9AA5B5]" aria-hidden="true" />
         <p>
-          <strong className="font-medium text-[#F5F7FC]">Provider evidence available then:</strong> none recorded in LiveLift. LiveLift cannot see what TikTok&apos;s own screens showed the operator; only what
-          the operator reported appears below.
+          <strong className="font-medium text-[#F5F7FC]">Provider evidence available then:</strong> {historical?.state === "fetching" ? "checking recorded history…" : historical?.state === "unavailable" ? "server history unavailable; unknown, not zero." : historical?.evidence?.providerEvidence.length ? "recorded provider observations shown here. Provider observed is not platform confirmed." : "none recorded in LiveLift. LiveLift cannot see what TikTok’s own screens showed the operator; only what the operator reported appears below."}
         </p>
       </div>
 

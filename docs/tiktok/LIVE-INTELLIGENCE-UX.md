@@ -1,7 +1,7 @@
 # LiveLift V7: LIVE intelligence experience (UX)
 
-Branch `orca/v7-live-intelligence-ui`. This document describes the user-facing half of V7. The provider/server half
-(TikTok Shop transport, signing, credentials, reconciliation) belongs to the provider-core lane and is **not** in this branch.
+Originally delivered on `orca/v7-live-intelligence-ui`; now integrated with Provider Core on `orca/v7-final-integration`.
+The final canonical contract, production API and certification results are recorded in [V7 integration acceptance](V7-INTEGRATION-ACCEPTANCE.md).
 
 V7 adds a second layer to LiveLift's loop. Operate records what the operator did and reported while the LIVE ran. Review
 can then show, beside it, what a provider observed **afterwards**. The one idea the interface protects:
@@ -44,8 +44,8 @@ The default perspective. It shows the existing Review (plan vs actual, segments,
   *counted* ("N notes recorded after the LIVE ended… not replayed") but never placed on the timeline;
 - lanes: Plan, Actual, Decision (lime), Operator report; each decision/report shows **what the plan expected and what was
   actually running at that moment**, which answers "why did I decide that, then?";
-- a standing line: *Provider evidence available then: none recorded in LiveLift.* LiveLift cannot see what TikTok's own
-  screens showed the operator, so it says exactly that and no more;
+- historical Creator receipt records come from the actual server path, constrained by recorded and observed times. If none
+  were recorded, the view says so; post-LIVE snapshots are excluded. LiveLift cannot see what TikTok’s own screens showed;
 - progressive disclosure: decisions and reports first; "Show every recorded step (N more)" reveals segment starts/ends.
 
 The AI Copilot, in this perspective, hides provider facts and any AI statement that rests on one, and counts what it hid.
@@ -160,7 +160,7 @@ by the client adapter, which rejects fixture-labelled data for a REAL show).
 ## 12. File map
 
 ```
-next/src/lib/intelligence/        client-local types, parser, HTTP client, formatting, fixtures, derivations (no server code)
+next/src/lib/intelligence/        canonical type re-exports, strict shared parser, thin HTTP client, formatting and shared-core fixtures
 next/src/components/intelligence/ PerspectiveTabs, EvidenceTimeline, SegmentAttributionTable, ProductPerformanceTable,
                                   ReplayTimeline, LaterEvidenceView, PlatformEvidencePanel, CapabilityLedger, ProviderState,
                                   EvidenceParts, useLiveIntelligence
@@ -169,27 +169,16 @@ next/src/__tests__/v7/            intelligence.lib, review.perspective, quickrep
 next/acceptance/live-intelligence-browser.mjs   browser acceptance for the V7 surfaces
 ```
 
-## 13. Integration notes for the provider-core lane
+## 13. Final integrated contract
 
-The client assumes this seam and nothing more. Everything is in `lib/intelligence/types.ts` (types) and `client.ts` (routes
-and envelope); swapping in the shared contract should be a one-file change each.
+`next/src/contracts/liveIntelligence.ts` is authoritative. The prototype lane seam was removed, including its local structural types, tolerant timestamp/number coercion, guessed product matches and competing attribution implementation.
 
-- `GET /api/v3/live-intelligence/sessions/{sessionId}` → either the snapshot itself, or
-  `{ status: "available", snapshot }`, or `{ status: "not_configured" | "access_not_granted" | "auth_expired" | "unsupported" |
-  "rate_limited" (retryAfterSec) | "unavailable" (message) | "pending" }`. HTTP 401 → signed out; 403 → forbidden; 429 (+
-  `Retry-After`) → rate limited; 501 or an empty 404 → "not set up"; a JSON 404 with an error code → "no evidence on file".
-- `POST …/sessions/{id}/refresh` → same answer; operators only.
-- `GET /api/v3/live-intelligence/capabilities` → `{ capabilities: [{ key, state, note?, checkedAtMs? }] }` for keys
-  `shop_analytics`, `creator_realtime` (states: available · connected · not_connected · not_configured · access_not_granted ·
-  partner_access_required · rate_limited · auth_expired · unavailable · unsupported · unknown). `raw_chat` and `pin_control` are fixed
-  facts and cannot be overridden.
-- Snapshot: timestamps may be epoch ms or ISO; `fetchedAt`/`fetchedAtMs` both work; numbers may be numeric strings; absent
-  numbers are *missing*. Metric keys `product_clicks`, `product_impressions`, `comment_count`, … are normalised.
-  Optional: `currency` (snapshot or product row), `matchedProductId` on a product row (the server's own mapping to a LiveLift
-  product wins over id/code/name matching), `ambiguousBuckets` as numbers or `{startMs,endMs,otherSegmentId}`.
-- **The UI treats `provider` containing "fixture", `fixture: true` or `mode: "SIMULATED"` as fixture data and refuses it for a REAL
-  show.** Do not label real data that way.
-- AI: to feed provider evidence to Review AI, tag those facts `kind: "provider_observed"` (or topic `provider_*`). The UI
-  groups, labels and (in *As known then*) withholds them. `contracts/ai.ts` was not modified.
-- Until the routes exist the UI shows "No provider evidence is set up on this server" (a 404 on `/api/v3/live-intelligence/*`
-  is therefore *expected*). The final-competition harness accepts exactly that 404 (see `acceptance/final-competition.mjs`).
+- `GET /api/v3/intelligence/status` returns the canonical uppercase provider state and 13-entry capability matrix.
+- `GET /api/v3/intelligence/evidence` reads authoritative REAL evidence by room/session identity; `POST` reads explicitly supplied SIMULATED rehearsal state. Both support historical and later perspectives, with immutable snapshots addressable by UUID.
+- `POST /api/v3/intelligence/refresh` carries command UUID, room/session identity, expected revision, explicit provider LIVE identity for REAL and optional stable product mappings. Existing cookie/context/CSRF/operator checks apply.
+- Timestamps are integer epoch milliseconds. Money is exact decimal `{ amount, currency }`; ratios are exact numerator/denominator strings. Missing stays missing. No ISO dates, numeric-string counts, aliases or guessed currency are accepted.
+- Review AI receives canonical provenance fields (`evidenceTier`, `source`, `fetchedAt`, `perspective`); `kind` remains recorded/simulated. Later-cited statements and analyses using post-LIVE appended records are withheld in As known then. Operate never loads later snapshots.
+- SIMULATED demos reuse Provider Core’s pure fixture parser/reconciliation. Operators may fetch and persist an explicitly labelled fixture through the actual server. REAL never requests or falls back to fixtures.
+- Browser certification uses production LiveLift routes. Only the upstream TikTok/AI hosts are doubled inside disposable certification runtimes; no LiveLift API is intercepted. Missing provider routes are unexpected HTTP failures.
+
+See [V7 integration acceptance](V7-INTEGRATION-ACCEPTANCE.md) for the final results and external provider-access limits.

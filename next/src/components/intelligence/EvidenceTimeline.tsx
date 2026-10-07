@@ -4,7 +4,7 @@ import React, { useId, useMemo, useState } from "react";
 import { formatClock } from "@/lib/domain";
 import { cell, formatCount, METRIC_LABEL, METRIC_SHORT } from "@/lib/intelligence/format";
 import type { LiveIntelligenceSnapshot, MetricKey, MinuteEvidenceBucket } from "@/lib/intelligence/types";
-import { MINUTE_MS, boundaryStarts, isInside, seriesStat, type RecordedWindow, type SeriesStat } from "@/lib/intelligence/windows";
+import { MINUTE_MS, chartValue, boundaryStarts, isInside, seriesStat, type RecordedWindow, type SeriesStat } from "@/lib/intelligence/windows";
 import { ValueText } from "./EvidenceParts";
 
 /** The six metrics worth a chart. Likes and shares stay in the data, out of the way. */
@@ -22,7 +22,6 @@ type MetricState = SeriesStat["state"] | "unsupported";
 
 function metricState(snapshot: LiveIntelligenceSnapshot, key: MetricKey, stat: SeriesStat): MetricState {
   const unsupported =
-    snapshot.evidenceLimits.some((l) => l.metricKey === key && l.availability === "unsupported") ||
     (snapshot.segmentAttributions.length > 0 && snapshot.segmentAttributions.every((a) => a.metrics.some((m) => m.key === key && m.availability === "unsupported")));
   return unsupported && stat.state === "all_missing" ? "unsupported" : stat.state;
 }
@@ -35,6 +34,7 @@ const STATE_NOTE: Record<Exclude<MetricState, "values">, string> = {
 
 /** What each provider minute is, relative to the recorded segments. */
 function minuteWhere(b: MinuteEvidenceBucket, windows: RecordedWindow[], boundary: Set<number>): string {
+  if (b.timing === "unverified_bounds") return "Timing bounds unverified; not assigned";
   if (boundary.has(b.startMs)) {
     const titles = windows.filter((w) => b.startMs < w.endMs && w.startMs < b.endMs).map((w) => w.title);
     return titles.length >= 2 ? `Boundary: ${titles.join(" | ")}` : "Boundary minute";
@@ -61,8 +61,9 @@ export function EvidenceTimeline({
   const states = useMemo(() => Object.fromEntries(CHART_METRICS.map((k) => [k, metricState(snapshot, k, stats[k])])) as Record<MetricKey, MetricState>, [snapshot, stats]);
   const [chosen, setChosen] = useState<MetricKey | null>(null);
   const metric: MetricKey = chosen ?? CHART_METRICS.find((k) => states[k] === "values") ?? "clicks";
+  const mixedMoney = metric === "gmv" && new Set(buckets.flatMap(b => b.gmv ? [b.gmv.currency] : [])).size > 1;
   const stat = stats[metric];
-  const state = states[metric];
+  const state = mixedMoney ? "all_missing" : states[metric];
 
   const serverAmbiguous = useMemo(() => snapshot.segmentAttributions.flatMap((a) => a.ambiguousBuckets.map((b) => b.startMs)), [snapshot.segmentAttributions]);
   const boundary = useMemo(() => boundaryStarts(buckets, windows, serverAmbiguous), [buckets, windows, serverAmbiguous]);
@@ -93,8 +94,9 @@ export function EvidenceTimeline({
     counts.missing > 0 ? `${counts.missing} not recorded` : null,
     counts.boundary > 0 ? `${counts.boundary} boundary` : null,
   ].filter(Boolean);
-  const summary = `${METRIC_LABEL[metric]} per provider minute, ${formatClock(t0, tz)} to ${formatClock(t1, tz)}. ${parts.join(", ")}.${stat.max !== null && stat.maxAtMs !== null ? ` Peak ${formatCount(stat.max)} at ${formatClock(stat.maxAtMs, tz)}.` : ""}`;
-  const unit = metric === "gmv" ? (snapshot.currency ? ` (${snapshot.currency})` : " (currency not stated)") : "";
+  const peakText = cell(buckets.find(b => b.startMs === stat.maxAtMs)?.[metric], "available").text;
+  const summary = `${METRIC_LABEL[metric]} per provider minute, ${formatClock(t0, tz)} to ${formatClock(t1, tz)}. ${parts.join(", ")}.${stat.max !== null && stat.maxAtMs !== null ? ` Peak ${peakText} at ${formatClock(stat.maxAtMs, tz)}.` : ""}`;
+  const unit = metric === "gmv" ? (new Set(buckets.flatMap(b => b.gmv ? [b.gmv.currency] : [])).size === 1 ? ` (${buckets.find(b => b.gmv)?.gmv?.currency})` : " (different currencies; see exact table)") : "";
 
   return (
     <section className="rounded-[12px] bg-[#13161C] p-4" aria-labelledby={`${uid}-h`} data-testid="evidence-timeline" data-metric={metric}>
@@ -133,7 +135,7 @@ export function EvidenceTimeline({
         <p className="mt-3 rounded-[8px] bg-[#101319] px-3 py-3 text-[15px] text-[#CAD0DA]" data-testid="metric-missing-note" data-state={state}>
           {state === "unsupported"
             ? `${METRIC_LABEL[metric]} is not offered by the provider for this show.`
-            : `${METRIC_LABEL[metric]} was not recorded for any provider minute.`}{" "}
+            : mixedMoney ? "GMV uses different currencies and cannot share a chart axis. Exact amounts remain in the table." : `${METRIC_LABEL[metric]} was not recorded for any provider minute.`}{" "}
           <strong className="font-medium text-[#F5F7FC]">This is not zero.</strong> The minute table below shows every minute exactly as received.
         </p>
       ) : (
@@ -163,10 +165,10 @@ export function EvidenceTimeline({
                 <div key={ms} className="absolute bottom-0 top-0 w-px bg-[#2A303A]" style={{ left: `${pct(ms)}%` }} aria-hidden="true" />
               ))}
               {buckets.map((b) => {
-                const v = b[metric];
+                const v = chartValue(buckets, b, metric);
                 const isBoundary = boundary.has(b.startMs);
                 const clock = formatClock(b.startMs, tz);
-                const label = `${clock} · ${v === null ? "not recorded" : v === 0 ? "recorded as 0" : formatCount(v)}${isBoundary ? " · boundary minute, not assigned to a segment" : ""}`;
+                const label = `${clock} · ${cell(b[metric], b[metric] == null ? "missing" : "available").spoken}${isBoundary ? " · boundary minute, not assigned to a segment" : ""}`;
                 return (
                   <div key={b.startMs} className="absolute bottom-0 top-0" style={{ left: `${pct(b.startMs)}%`, width: `${(MINUTE_MS / span) * 100}%` }} title={label} data-minute={b.startMs} data-state={v === null ? "missing" : v === 0 ? "zero" : "value"} data-boundary={isBoundary ? "true" : undefined}>
                     {v === null ? (
@@ -216,7 +218,7 @@ export function EvidenceTimeline({
             {counts.boundary > 0 && (
               <li className="inline-flex items-center gap-1.5" data-testid="key-boundary">
                 <span className="h-3 w-2 rounded-t-[2px] border border-dashed border-[#B4C6DD]" aria-hidden="true" />
-                Boundary minute: overlaps two segments, not assigned to either ({counts.boundary})
+                {buckets.some(b => b.timing === "unverified_bounds") ? "Ambiguous minute: timing bounds unverified, not assigned" : "Boundary minute: overlaps a segment edge, not assigned"} ({counts.boundary})
               </li>
             )}
           </ul>
@@ -225,7 +227,7 @@ export function EvidenceTimeline({
 
       {stat.max !== null && stat.maxAtMs !== null && state === "values" && (
         <p className="mt-2 text-[14px] text-[#B7C1CE]">
-          Peak <span className="tabular-nums text-[#F5F7FC]">{formatCount(stat.max)}</span> at <span className="tabular-nums">{formatClock(stat.maxAtMs, tz)}</span>.
+          Peak <span className="tabular-nums text-[#F5F7FC]">{peakText}</span> at <span className="tabular-nums">{formatClock(stat.maxAtMs, tz)}</span>.
         </p>
       )}
 
@@ -255,7 +257,7 @@ export function EvidenceTimeline({
                   <th scope="row" className="whitespace-nowrap px-3 py-1.5 font-normal tabular-nums text-[#CAD0DA]">{formatClock(b.startMs, tz)}</th>
                   {CHART_METRICS.map((k) => (
                     <td key={k} className={`px-3 py-1.5 ${k === metric ? "" : "hidden md:table-cell"}`}>
-                      <ValueText cell={cell(b[k], null, { metric: k, money: snapshot.currency })} />
+                      <ValueText cell={cell(b[k], null, { metric: k,  })} />
                     </td>
                   ))}
                   <td className="px-3 py-1.5 text-[#B7C1CE]">{minuteWhere(b, windows, boundary)}</td>

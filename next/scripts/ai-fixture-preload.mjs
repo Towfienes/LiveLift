@@ -5,7 +5,7 @@
 // without an AI account:
 //
 //   NODE_OPTIONS="--import $PWD/scripts/ai-fixture-preload.mjs" \
-//   LIVELIFT_AI_BASE_URL=https://ai.fixture.test/v1 LIVELIFT_AI_API_KEY=fixture-key-0123456789 LIVELIFT_AI_MODEL=fixture-model-1 \
+//   LIVELIFT_AI_BASE_URL=https://ai.fixture.test/v1 LIVELIFT_AI_API_KEY=<server-only-fixture-key> LIVELIFT_AI_MODEL=fixture-model-1 \
 //   LIVELIFT_AI_FIXTURE_CONTROL=/tmp/ai-fixture.json  npm run start
 //
 // The fixture reads the evidence in the request and answers like a well-behaved model would. It is NOT an AI and
@@ -41,9 +41,10 @@ function answer(user, mode) {
       limitations: ["LiveLift holds no viewer or sales data for this show."],
     });
   }
+  const providerFact = ctx.laterEvidence ? ctx.facts.find(f => f.evidenceTier === "provider_observed") : null;
   const text = mode === "claim" ? "Product D04 performed poorly." : mode === "number" ? "The show ran 947 seconds over." : "The show ran with timing deviations and several operator reports.";
   return JSON.stringify({
-    summary: { text, cites: cite },
+    summary: { text: providerFact?.text ?? text, cites: providerFact ? [providerFact.id] : cite },
     deviations: [{ text: "Some segments ran against their baseline targets.", cites: cite }],
     gaps: [{ text: "Some cues have no operator report; that is unknown, not failed.", cites: cite }],
     evidenceLimits: [{ text: "LiveLift has no platform confirmation, so product outcomes are not established.", cites: cite }],

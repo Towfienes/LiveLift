@@ -66,7 +66,7 @@ try {
 
   const fixtures = FIXTURE_CASES.map(kind => {
     const fixture = providerFixtureSession(kind);
-    if (['malformed', 'rate_limit', 'auth_expired'].includes(kind)) {
+    if (['malformed', 'rate_limit', 'auth_expired', 'not_configured', 'access_not_granted', 'unavailable', 'unsupported'].includes(kind)) {
       assert.throws(() => fixtureEvidence(fixture, FIXTURE_START + 500_000, kind));
     } else {
       const snapshot = reconcileLiveEvidence(fixture, fixtureEvidence(fixture, FIXTURE_START + 500_000, kind), {

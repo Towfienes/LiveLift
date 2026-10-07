@@ -12,7 +12,7 @@ import type { LiveIntelligenceSnapshot } from "@/lib/intelligence/types";
 import { recordedWindows, seriesStat } from "@/lib/intelligence/windows";
 import { CapabilityLedger } from "./CapabilityLedger";
 import { EvidenceTimeline } from "./EvidenceTimeline";
-import { FixtureBanner, FixturePicker, LaterDisclosure, ValueText } from "./EvidenceParts";
+import { EvidenceRefreshControl, FixtureBanner, FixturePicker, LaterDisclosure, ValueText } from "./EvidenceParts";
 import { ObservationsSection } from "./LaterEvidenceView";
 import { ProductPerformanceTable } from "./ProductPerformanceTable";
 import { ProviderStatePanel } from "./ProviderState";
@@ -62,7 +62,7 @@ function TrendTable({ sessions, scenario, tz }: { sessions: Session[]; scenario:
     return (
       <>
         {s.missing > 0 && <span className="text-[#CAD0DA]">≥ </span>}
-        <ValueText cell={cell(s.sum, "available", { metric: key, money: snap.currency })} />
+        <ValueText cell={cell(s.sum, "available", { metric: key,  })} />
         {s.missing > 0 && <span className="block text-[12px] text-[#9AA5B5]">{formatCount(s.missing)} min not recorded</span>}
       </>
     );
@@ -112,7 +112,7 @@ export function PlatformEvidencePanel({ session, sameEnvironmentSessions }: { se
   const requested = session !== null && requestedFor === session.id;
   const simulated = session?.environment === "SIMULATED";
   const intelligence = useLiveIntelligence({
-    session: session ?? { id: "", environment: "REAL", products: [] },
+    session,
     review,
     enabled: requested && session !== null,
     scenario,
@@ -156,6 +156,7 @@ export function PlatformEvidencePanel({ session, sameEnvironmentSessions }: { se
         </div>
       ) : (
         <div className="space-y-4" data-testid="platform-evidence-body" data-state={state.kind}>
+          <EvidenceRefreshControl intelligence={intelligence} session={session} />
           {simulated && (
             <FixtureBanner>
               <FixturePicker value={scenario} onChange={setScenario} />
@@ -163,7 +164,7 @@ export function PlatformEvidencePanel({ session, sameEnvironmentSessions }: { se
           )}
           {state.kind === "available" && review ? (
             <>
-              <LaterDisclosure origin={state.origin} provider={state.snapshot.provider} fetchedAtMs={state.snapshot.fetchedAtMs} tz={tz} />
+              <LaterDisclosure origin={state.origin} provider={state.snapshot.provider} fetchedAtMs={state.snapshot.fetchedAt} tz={tz} />
               <EvidenceTimeline snapshot={state.snapshot} windows={recordedWindows(review)} startedAtMs={review.summary.startedAtMs} endedAtMs={review.summary.endedAtMs} tz={tz} />
               <SegmentAttributionTable review={review} snapshot={state.snapshot} tz={tz} />
               <ObservationsSection snapshot={state.snapshot} review={review} tz={tz} origin={state.origin} />

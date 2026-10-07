@@ -1,3 +1,4 @@
+import { wireSnapshot, wireBucket, wireProduct } from "./wireFixtures";
 import { describe, expect, it } from "vitest";
 import type { Session } from "@/contracts";
 import { applyCommand, buildReview, createScenarioSession, lastRecordedMs, runScript, type Review } from "@/lib/domain";
@@ -32,19 +33,7 @@ const reviewOf = (s: Session): Review => {
 
 const res = (status: number, body: unknown, headers: Record<string, string> = {}) => ({ ok: true as const, status, body, text: "", headers: new Headers(headers) });
 
-const base = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
-  sessionId: "s1",
-  mode: "REAL",
-  perspective: "later_evidence",
-  provider: "tiktok_shop",
-  fetchedAt: 1_000_000,
-  reconciliationVersion: "r1",
-  minuteBuckets: [],
-  segmentAttributions: [],
-  productPerformance: [],
-  evidenceLimits: [],
-  ...over,
-});
+const base = wireSnapshot;
 
 describe("missing != zero (parser)", () => {
   it("keeps a recorded 0 as 0 and an absent value as null, bucket by bucket", () => {
@@ -53,34 +42,19 @@ describe("missing != zero (parser)", () => {
     const b = p.snapshot.minuteBuckets[0];
     expect(b.clicks).toBe(0);
     expect(b.orders).toBeNull();
-    expect(b.gmv).toBeNull();
+    expect(b.gmv).toBeUndefined();
     expect(b.viewers).toBe(12);
-    expect(b.comments).toBeNull();
+    expect(b.comments).toBeUndefined();
   });
 
-  it("never lets a metric that is not available carry a value, and turns an available-without-number into missing", () => {
-    const p = parseSnapshot(
-      base({
-        segmentAttributions: [
-          {
-            segmentId: "a",
-            coverage: "partial",
-            metrics: [
-              { key: "product_clicks", value: 7, availability: "missing" },
-              { key: "orders", availability: "available" },
-              { key: "comment_count", value: 0, availability: "available" },
-              { key: "gmv", value: 5, availability: "unsupported" },
-            ],
-          },
-        ],
-      })
-    );
-    if (!p.ok) throw new Error("should parse");
-    const m = Object.fromEntries(p.snapshot.segmentAttributions[0].metrics.map((x) => [x.key, x]));
-    expect(m.clicks).toMatchObject({ value: null, availability: "missing" }); // alias normalised, value dropped
-    expect(m.orders).toMatchObject({ value: null, availability: "missing" });
-    expect(m.comments).toMatchObject({ value: 0, availability: "available" }); // a real zero survives
-    expect(m.gmv).toMatchObject({ value: null, availability: "unsupported" });
+  it("rejects contradictions between value and availability instead of repairing provider evidence", () => {
+    for (const metric of [
+      { key: "clicks", value: 7, availability: "missing" },
+      { key: "orders", availability: "available" },
+      { key: "gmv", value: 5, availability: "unsupported" },
+    ]) expect(parseSnapshot(base({ segmentAttributions: [{ segmentId: "a", coverage: "partial", metrics: [metric] }] }))).toEqual({ ok: false, reason: "malformed" });
+    const p = parseSnapshot(base({ segmentAttributions: [{ segmentId: "a", coverage: "partial", metrics: [{ key: "comments", value: 0, availability: "available" }] }] }));
+    expect(p.ok && p.snapshot.segmentAttributions[0].metrics[0]).toMatchObject({ value: 0, availability: "available" });
   });
 
   it("rejects a snapshot that is not later evidence, or uses an availability word it does not know", () => {
@@ -89,19 +63,15 @@ describe("missing != zero (parser)", () => {
     expect(parseSnapshot(base({ segmentAttributions: [{ segmentId: "a", coverage: "none", metrics: [{ key: "gmv", availability: "maybe" }] }] }))).toEqual({ ok: false, reason: "malformed" });
   });
 
-  it("accepts ISO times, numeric strings, and refuses negative counts as missing", () => {
-    const p = parseSnapshot(base({ fetchedAt: "2026-10-07T10:00:00Z", minuteBuckets: [{ start: "2026-10-07T09:00:00Z", end: "2026-10-07T09:01:00Z", clicks: "5", orders: -3 }] }));
-    if (!p.ok) throw new Error("should parse");
-    expect(p.snapshot.fetchedAtMs).toBe(Date.parse("2026-10-07T10:00:00Z"));
-    expect(p.snapshot.minuteBuckets[0].clicks).toBe(5);
-    expect(p.snapshot.minuteBuckets[0].orders).toBeNull();
+  it("rejects ISO timestamps, numeric strings and negative counts outside the canonical contract", () => {
+    for (const over of [{ fetchedAt: "2026-10-07T10:00:00Z" }, { minuteBuckets: [{ startMs: 0, endMs: 60_000, clicks: "5" }] }, { minuteBuckets: [{ startMs: 0, endMs: 60_000, orders: -3 }] }]) expect(parseSnapshot(base(over))).toEqual({ ok: false, reason: "malformed" });
   });
 
   it("a sum of nothing is not zero", () => {
-    const stat = seriesStat([{ startMs: 0, endMs: 1, viewers: null, impressions: null, clicks: null, orders: null, gmv: null, comments: null, likes: null, shares: null }], "clicks");
+    const stat = seriesStat([wireBucket({ clicks: null })], "clicks");
     expect(stat.sum).toBeNull();
     expect(stat.state).toBe("all_missing");
-    const zero = seriesStat([{ startMs: 0, endMs: 1, viewers: null, impressions: null, clicks: 0, orders: null, gmv: null, comments: null, likes: null, shares: null }], "clicks");
+    const zero = seriesStat([wireBucket({ clicks: 0 })], "clicks");
     expect(zero.sum).toBe(0);
     expect(zero.state).toBe("all_zero");
   });
@@ -110,62 +80,63 @@ describe("missing != zero (parser)", () => {
 describe("client adapter states", () => {
   const id = "s1";
   it("names every way the evidence can be absent", () => {
-    expect(interpretSnapshotResponse(res(200, { status: "not_configured" }), id)).toEqual({ kind: "not_configured" });
-    expect(interpretSnapshotResponse(res(200, { status: "access_not_granted" }), id)).toEqual({ kind: "access_not_granted" });
-    expect(interpretSnapshotResponse(res(200, { status: "auth_expired" }), id)).toEqual({ kind: "auth_expired" });
-    expect(interpretSnapshotResponse(res(200, { status: "unsupported" }), id)).toEqual({ kind: "unsupported" });
-    expect(interpretSnapshotResponse(res(200, { status: "rate_limited", retryAfterSec: 30 }), id)).toEqual({ kind: "rate_limited", retryAfterSec: 30 });
+    expect(interpretSnapshotResponse(res(200, { state: "NOT_CONFIGURED" }), id)).toEqual({ kind: "not_configured" });
+    expect(interpretSnapshotResponse(res(200, { state: "ACCESS_NOT_GRANTED" }), id)).toEqual({ kind: "access_not_granted" });
+    expect(interpretSnapshotResponse(res(200, { state: "AUTH_EXPIRED" }), id)).toEqual({ kind: "auth_expired" });
+    expect(interpretSnapshotResponse(res(200, { state: "UNSUPPORTED" }), id)).toEqual({ kind: "unsupported" });
+    expect(interpretSnapshotResponse(res(200, { state: "RATE_LIMITED", retryAfterSec: 30 }), id)).toEqual({ kind: "rate_limited", retryAfterSec: 30 });
     expect(interpretSnapshotResponse(res(429, null, { "retry-after": "120" }), id)).toEqual({ kind: "rate_limited", retryAfterSec: 120 });
     expect(interpretSnapshotResponse(res(401, null), id)).toEqual({ kind: "signed_out" });
     expect(interpretSnapshotResponse(res(403, { error: { code: "forbidden" } }), id)).toEqual({ kind: "forbidden" });
-    expect(interpretSnapshotResponse(res(501, null), id)).toEqual({ kind: "not_configured" });
-    expect(interpretSnapshotResponse(res(404, undefined), id)).toEqual({ kind: "not_configured" }); // a server without the route
+    expect(interpretSnapshotResponse(res(501, null), id)).toMatchObject({ kind: "unavailable", reason: "server" });
+    expect(interpretSnapshotResponse(res(404, undefined), id)).toMatchObject({ kind: "unavailable", reason: "not_found" }); // a server without the route
     expect(interpretSnapshotResponse(res(404, { error: { code: "not_found", message: "x" } }), id)).toMatchObject({ kind: "unavailable", reason: "not_found" });
     expect(interpretSnapshotResponse(res(503, { error: { code: "authority_unavailable" } }), id)).toMatchObject({ kind: "unavailable", reason: "server" });
-    expect(interpretSnapshotResponse(res(200, { status: "pending" }), id)).toMatchObject({ kind: "unavailable", reason: "settling" });
+    expect(interpretSnapshotResponse(res(200, { state: "UNAVAILABLE" }), id)).toMatchObject({ kind: "unavailable", reason: "server" });
     expect(interpretSnapshotResponse({ ok: false, kind: "timeout", message: "slow" }, id)).toEqual({ kind: "unavailable", reason: "timeout", message: "slow" });
   });
 
   it("accepts a real provider snapshot, in an envelope or bare", () => {
-    for (const body of [{ status: "available", snapshot: base() }, base()]) {
+    for (const body of [{ state: "AVAILABLE", snapshot: base() }, { snapshot: base(), status: { state: "AVAILABLE" } }]) {
       const r = interpretSnapshotResponse(res(200, body), id);
       expect(r).toMatchObject({ kind: "available", origin: "provider" });
     }
   });
 
   it("refuses fixture or SIMULATED evidence for a REAL show, and evidence for a different show", () => {
-    expect(interpretSnapshotResponse(res(200, base({ provider: "fixture" })), id)).toMatchObject({ kind: "unavailable", reason: "rejected_fixture" });
-    expect(interpretSnapshotResponse(res(200, base({ fixture: true })), id)).toMatchObject({ kind: "unavailable", reason: "rejected_fixture" });
-    expect(interpretSnapshotResponse(res(200, base({ mode: "SIMULATED" })), id)).toMatchObject({ kind: "unavailable", reason: "rejected_fixture" });
-    expect(interpretSnapshotResponse(res(200, base({ sessionId: "other" })), id)).toMatchObject({ kind: "unavailable", reason: "session_mismatch" });
-    expect(interpretSnapshotResponse(res(200, base({ perspective: "live" })), id)).toMatchObject({ kind: "unavailable", reason: "wrong_perspective" });
+    expect(interpretSnapshotResponse(res(200, { state: "AVAILABLE", snapshot: base({ provider: "fixture" }) }), id)).toMatchObject({ kind: "unavailable", reason: "rejected_fixture" });
+    expect(interpretSnapshotResponse(res(200, { state: "AVAILABLE", snapshot: base({ fixture: true }) }), id)).toMatchObject({ kind: "unavailable", reason: "rejected_fixture" });
+    expect(interpretSnapshotResponse(res(200, { state: "AVAILABLE", snapshot: base({ mode: "SIMULATED" }) }), id)).toMatchObject({ kind: "unavailable", reason: "rejected_fixture" });
+    expect(interpretSnapshotResponse(res(200, { state: "AVAILABLE", snapshot: base({ sessionId: "other" }) }), id)).toMatchObject({ kind: "unavailable", reason: "session_mismatch" });
+    expect(interpretSnapshotResponse(res(200, { state: "AVAILABLE", snapshot: base({ perspective: "live" }) }), id)).toMatchObject({ kind: "unavailable", reason: "wrong_perspective" });
   });
 
-  it("sends the CSRF marker and workspace context, GET for reads and POST for a refresh, and parses capabilities", async () => {
+  it("sends the canonical routes, identity/revision, CSRF and workspace context", async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
+    const status = { provider: "tiktok_shop", state: "READY", mode: "real", configIssues: [], fixtureLabel: null, capabilities: [{ key: "product_clicks", support: "POST_LIVE", state: "ACCESS_REQUIRED", scope: "data.shop_analytics.public.read", note: "Seller access required." }] };
     const fetchImpl = (async (url: string, init: RequestInit) => {
       calls.push({ url: String(url), init });
-      const body = String(url).endsWith("/capabilities") ? { capabilities: [{ key: "shop_analytics", state: "access_not_granted", note: "Seller has not granted access." }] } : base();
-      return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+      return new Response(JSON.stringify(String(url).endsWith("/status") ? status : { state: "AVAILABLE", snapshot: base() }), { status: 200, headers: { "content-type": "application/json" } });
     }) as typeof fetch;
     const client = createLiveIntelligenceClient({ fetchImpl });
     const ctx = { workspaceId: "ws-1", generation: "g1" };
-    expect((await client.getSnapshot(ctx, "s 1")).kind).toBe("unavailable"); // base() is for s1, the id was s 1: mismatch is caught
-    expect(calls[0].url).toBe(INTELLIGENCE_ROUTES.snapshot("s 1"));
-    expect(calls[0].url).toContain("s%201");
+    expect((await client.getSnapshot(ctx, { roomId: "room-1", sessionId: "s 1", environment: "REAL" })).kind).toBe("unavailable");
+    expect(calls[0].url).toBe(`${INTELLIGENCE_ROUTES.evidence}?roomId=room-1&sessionId=s+1&perspective=later_evidence`);
     expect(calls[0].init.method).toBe("GET");
     expect((calls[0].init.headers as Record<string, string>)["X-LiveLift-Request"]).toBe("1");
     expect((calls[0].init.headers as Record<string, string>)["X-LiveLift-Workspace"]).toBe("ws-1");
-    expect((await client.requestRefresh(ctx, "s1")).kind).toBe("available");
+    expect((await client.requestRefresh(ctx, { commandId: "00000000-0000-4000-8000-000000000001", roomId: "room-1", sessionId: "s1", expectedSessionRevision: 7, providerSessionId: "123", productMappings: [], action: "post_live" }, "REAL")).kind).toBe("available");
+    expect(calls[1].url).toBe(INTELLIGENCE_ROUTES.refresh);
     expect(calls[1].init.method).toBe("POST");
-    expect(await client.getCapabilities(ctx)).toEqual({ kind: "ok", capabilities: [{ key: "shop_analytics", state: "access_not_granted", note: "Seller has not granted access.", checkedAtMs: null }] });
+    expect(JSON.parse(String(calls[1].init.body))).toMatchObject({ expectedSessionRevision: 7, roomId: "room-1", providerSessionId: "123" });
+    expect(await client.getCapabilities(ctx)).toEqual({ kind: "ok", capabilities: status.capabilities, status });
   });
 });
 
 describe("fixture provider evidence", () => {
   it("never exists for a REAL show, whatever the scenario", () => {
     const s = ended();
-    const real = { id: s.id, environment: "REAL" as const, products: s.products };
+    const real = { ...s, environment: "REAL" as const };
     for (const sc of FIXTURE_SCENARIOS) expect(fixtureResultFor(real, reviewOf(s), sc.id)).toBeNull();
   });
 
@@ -180,7 +151,7 @@ describe("fixture provider evidence", () => {
     expect(a.snapshot.provider).toBe("fixture");
     expect(a.snapshot.perspective).toBe("later_evidence");
     expect(a.snapshot.minuteBuckets.length).toBeGreaterThan(5);
-    expect(a.snapshot.fetchedAtMs).toBeGreaterThan(r.summary.endedAtMs); // fetched afterwards, never during
+    expect(a.snapshot.fetchedAt).toBeGreaterThan(r.summary.endedAtMs); // fetched afterwards, never during
   });
 
   const snap = (id: FixtureScenarioId): LiveIntelligenceSnapshot => {
@@ -204,7 +175,7 @@ describe("fixture provider evidence", () => {
 
   it("zero GMV is a recorded 0 and missing GMV is not recorded (orders can still be recorded)", () => {
     const zero = snap("zero_gmv");
-    expect(zero.minuteBuckets.every((b) => b.gmv === 0 && b.orders === 0)).toBe(true);
+    expect(zero.minuteBuckets.every((b) => b.gmv?.amount === "0.00" && b.orders === 0)).toBe(true);
     const missing = snap("missing_gmv");
     expect(missing.minuteBuckets.every((b) => b.gmv === null)).toBe(true);
     expect(missing.minuteBuckets.some((b) => (b.orders ?? 0) > 0)).toBe(true);
@@ -215,8 +186,8 @@ describe("fixture provider evidence", () => {
     const s = snap("unsupported_comments");
     expect(s.minuteBuckets.every((b) => b.comments === null)).toBe(true);
     expect(metric(s, "comments").every((m) => m.availability === "unsupported" && m.value === null)).toBe(true);
-    expect(s.evidenceLimits.some((l) => l.metricKey === "comments" && l.availability === "unsupported")).toBe(true);
-    expect(snap("rich").evidenceLimits.some((l) => /raw live chat text/i.test(l.text))).toBe(true);
+    expect(s.evidenceLimits.some((l) => /unsupported.*fixture/.test(l))).toBe(true);
+    expect(snap("rich").evidenceLimits.some((l) => /raw live chat text/i.test(l))).toBe(true);
   });
 
   it("a minute that overlaps two segments is listed as ambiguous and is NOT counted for either", () => {
@@ -234,10 +205,10 @@ describe("fixture provider evidence", () => {
       const inside = snapshot.minuteBuckets.filter((b) => b.startMs >= window.startMs && b.endMs <= window.endMs);
       const expected = inside.reduce((n, b) => n + (b.orders ?? 0), 0);
       const reported = a.metrics.find((m) => m.key === "orders")!;
-      expect(reported.value).toBe(expected); // only full minutes: the boundary minute is not added
+      expect(reported.value).toBe(inside.length ? expected : null); // only full minutes: the boundary minute is not added
       for (const amb of a.ambiguousBuckets) {
         expect(inside.some((b) => b.startMs === amb.startMs)).toBe(false);
-        expect(amb.otherSegmentId).not.toBeNull();
+        expect(amb.reason).toBe("segment_boundary");
       }
     }
   });
@@ -253,22 +224,22 @@ describe("fixture provider evidence", () => {
 
 describe("product matching never invents a match", () => {
   const product = (id: string, code: string, name: string) => ({ id, code, name, price: null, currency: "USD", priority: "normal" as const, status: "enabled" as const, talkingPoints: [], constraints: [], initials: "PR" });
-  const row = (over: Record<string, unknown>) => ({ matchedProductId: null, productId: null, skuId: null, productLabel: null, impressions: null, clicks: null, orders: null, gmv: null, ctor: null, currency: null, availability: "available" as const, evidenceTier: null, limitations: [], ...over });
+  const row = wireProduct;
 
   it("matches only on an exact identifier, or an exact name when there is no identifier", () => {
     const ps = [product("p1", "A01", "Zip Hoodie"), product("p2", "A02", "Tee")];
-    expect(matchProduct(row({ productId: "p1" }), ps)).toMatchObject({ kind: "matched", basis: "id" });
-    expect(matchProduct(row({ productId: "a02" }), ps)).toMatchObject({ kind: "matched", basis: "code" });
-    expect(matchProduct(row({ productLabel: " zip hoodie " }), ps)).toMatchObject({ kind: "matched", basis: "name" });
+    expect(matchProduct(row({ productId: "p1" }), ps, [{ liveLiftProductId: "p1", providerProductId: "p1" }])).toMatchObject({ kind: "matched", basis: "server" });
+    expect(matchProduct(row({ productId: "a02" }), ps)).toEqual({ kind: "unmatched" });
+    expect(matchProduct(row({ productLabel: " zip hoodie " }), ps)).toEqual({ kind: "unmatched" });
     expect(matchProduct(row({ productId: "tt-1", productLabel: "Zip Hoodie" }), ps)).toEqual({ kind: "unmatched" }); // a foreign id is never rescued by a similar name
     expect(matchProduct(row({ productLabel: "Zip Hoodies" }), ps)).toEqual({ kind: "unmatched" });
   });
 
-  it("says ambiguous when more than one product qualifies, and prefers the server's own mapping", () => {
+  it("requires an explicit mapping even for a unique name, and rejects ambiguous mappings", () => {
     const ps = [product("p1", "A01", "Same"), product("p2", "A02", "Same")];
-    expect(matchProduct(row({ productLabel: "same" }), ps)).toMatchObject({ kind: "ambiguous", basis: "name" });
-    expect((matchProduct(row({ productLabel: "same" }), ps) as { candidates: unknown[] }).candidates).toHaveLength(2);
-    expect(matchProduct(row({ matchedProductId: "p2", productLabel: "same" }), ps)).toMatchObject({ kind: "matched", basis: "server" });
+    expect(matchProduct(row({ productLabel: "same" }), ps)).toEqual({ kind: "unmatched" });
+    expect(matchProduct(row({ productId: "123" }), ps, [{ liveLiftProductId: "p1", providerProductId: "123" }, { liveLiftProductId: "p2", providerProductId: "123" }])).toMatchObject({ kind: "ambiguous", basis: "server" });
+    expect(matchProduct(row({ productId: "123" }), ps, [{ liveLiftProductId: "p2", providerProductId: "123" }])).toMatchObject({ kind: "matched", basis: "server" });
   });
 
   it("flags a product that ran in several segments as session-level, and two provider rows for one product as siblings", () => {
@@ -280,10 +251,19 @@ describe("product matching never invents a match", () => {
         { productId: "p1", title: "Hoodie skipped", actual: null, outcome: "skipped" },
       ],
     } as unknown as Review;
-    const rows = buildProductRows([row({ productId: "p1", skuId: "A" }), row({ productId: "p1", skuId: "B" })], ps, review);
+    const rows = buildProductRows([row({ productId: "p1", skuId: "A" }), row({ productId: "p1", skuId: "B" })], ps, review, [{ liveLiftProductId: "p1", providerProductId: "p1" }]);
     expect(rows[0].segmentTitles).toEqual(["Hoodie pitch", "Hoodie recap"]); // a skipped segment did not run
     expect(rows.every((r) => r.siblingRows === 2)).toBe(true);
   });
+});
+
+it("GMV peak selection and sums retain decimal differences beyond Number precision", () => {
+  const buckets = [
+    wireBucket({ gmv: { amount: "9007199254740992.1", currency: "VND" } }),
+    wireBucket({ startMs: 60_000, endMs: 120_000, gmv: { amount: "9007199254740992.2", currency: "VND" } }),
+  ];
+  expect(Number(buckets[0].gmv!.amount)).toBe(Number(buckets[1].gmv!.amount));
+  expect(seriesStat(buckets, "gmv")).toMatchObject({ maxAtMs: 60_000, sum: { amount: "18014398509481984.3", currency: "VND" } });
 });
 
 describe("observations are associations, never causes", () => {
@@ -327,7 +307,7 @@ describe("observations are associations, never causes", () => {
     const withBoundary = parseSnapshot(
       base({
         minuteBuckets: [2, 2, 900, 10, 10, 10].map((c, i) => bucket(i, c)),
-        segmentAttributions: [{ segmentId: "A", coverage: "ambiguous", metrics: [], ambiguousBuckets: [{ startMs: 120_000, endMs: 180_000, otherSegmentId: "B" }] }],
+        segmentAttributions: [{ segmentId: "A", coverage: "ambiguous", metrics: [], ambiguousBuckets: [{ startMs: 120_000, endMs: 180_000, reason: "segment_boundary" }] }],
       })
     );
     if (!withBoundary.ok) throw new Error("bad fixture");
@@ -373,7 +353,7 @@ describe("As known then: the replay never contains later knowledge", () => {
 describe("capability ledger", () => {
   const row = (rows: ReturnType<typeof buildLedger>, key: string) => rows.find((r) => r.key === key)!;
   it("states unsupported things as fixed facts that no server answer can change", () => {
-    const rows = buildLedger({ loginKit: "connected", server: [{ key: "raw_chat", state: "available", note: null, checkedAtMs: null }, { key: "pin_control", state: "available", note: null, checkedAtMs: null }] });
+    const rows = buildLedger({ loginKit: "connected", server: [{ key: "raw_comment_text", state: "POST_LIVE", support: "POST_LIVE", scope: null, note: "" }, { key: "pin_unpin_control", state: "POST_LIVE", support: "POST_LIVE", scope: null, note: "" }] });
     expect(row(rows, "raw_chat")).toMatchObject({ state: "unsupported", fixed: true });
     expect(row(rows, "pin_control")).toMatchObject({ state: "unsupported", fixed: true });
     expect(row(rows, "login_kit").state).toBe("connected");
@@ -383,7 +363,7 @@ describe("capability ledger", () => {
     expect(row(buildLedger({ loginKit: null, server: null }), "shop_analytics").state).toBe("unknown");
     expect(row(buildLedger({ loginKit: null, server: "unreachable" }), "shop_analytics").state).toBe("unknown");
     expect(row(buildLedger({ loginKit: null, server: [] }), "shop_analytics").state).toBe("not_configured");
-    expect(row(buildLedger({ loginKit: null, server: [{ key: "shop_analytics", state: "access_not_granted", note: null, checkedAtMs: null }] }), "shop_analytics").state).toBe("access_not_granted");
+    expect(row(buildLedger({ loginKit: null, server: [{ key: "product_clicks", state: "ACCESS_REQUIRED", support: "POST_LIVE", scope: null, note: "" }] }), "shop_analytics").state).toBe("access_required");
     expect(row(buildLedger({ loginKit: null, server: null }), "creator_realtime").state).toBe("partner_access_required");
   });
 });

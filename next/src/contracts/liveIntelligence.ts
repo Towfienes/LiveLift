@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { RuntimeSchema, SessionEventSchema } from "./session";
+import { PlanVersionSchema } from "./plan";
 
 export const INTELLIGENCE_ROUTES = {
   status: "/api/v3/intelligence/status",
@@ -74,7 +76,7 @@ export const ProviderFailureSchema = z.object({
   retryAfterSec: z.number().int().positive().max(86400).optional(),
 }).strict();
 export type ProviderFailure = z.infer<typeof ProviderFailureSchema>;
-export const FIXTURE_CASES = ["normal", "zero_clicks", "missing_clicks", "zero_gmv", "missing_gmv", "boundary", "not_reached", "repeated_product", "unknown_product", "malformed", "rate_limit", "auth_expired", "empty", "comment_count", "realtime_viewers"] as const;
+export const FIXTURE_CASES = ["normal", "zero_clicks", "missing_clicks", "zero_gmv", "missing_gmv", "boundary", "not_reached", "repeated_product", "unknown_product", "malformed", "rate_limit", "auth_expired", "empty", "comment_count", "realtime_viewers", "not_configured", "access_not_granted", "unavailable", "unsupported_comments", "unsupported", "shifted_boundary"] as const;
 export const RefreshRequestSchema = z.object({
   commandId: z.string().uuid(), roomId: z.string().min(1).max(128), sessionId: z.string().min(1).max(128),
   expectedSessionRevision: CountSchema, providerSessionId: z.string().regex(/^\d{1,30}$/).optional(),
@@ -86,15 +88,26 @@ export const RefreshRequestSchema = z.object({
 export type RefreshRequest = z.infer<typeof RefreshRequestSchema>;
 export const CAPABILITY_KEYS = ["audience_concurrency", "minute_viewers", "product_impressions", "product_clicks", "orders", "gmv", "comment_count", "likes", "shares", "raw_comment_text", "product_pin_state", "pin_unpin_control", "giveaway_control"] as const;
 export type CapabilityKey = typeof CAPABILITY_KEYS[number];
-export interface ProviderCapability {
-  key: CapabilityKey;
-  support: "REALTIME" | "POST_LIVE" | "UNSUPPORTED";
-  state: "REALTIME" | "POST_LIVE" | "ACCESS_REQUIRED" | "UNSUPPORTED" | "NOT_CONFIGURED";
-  scope: string | null;
-  note: string;
-}
-export interface ProviderStatus {
-  provider: "tiktok_shop"; state: ProviderState; mode: "off" | "real" | "fixture";
-  configIssues: string[]; capabilities: ProviderCapability[];
-  fixtureLabel: "SIMULATED / FIXTURE" | null;
-}
+export const ProviderCapabilitySchema = z.object({
+  key: z.enum(CAPABILITY_KEYS), support: z.enum(["REALTIME", "POST_LIVE", "UNSUPPORTED"]),
+  state: z.enum(["REALTIME", "POST_LIVE", "ACCESS_REQUIRED", "UNSUPPORTED", "NOT_CONFIGURED"]),
+  scope: z.string().nullable(), note: z.string(),
+}).strict();
+export type ProviderCapability = z.infer<typeof ProviderCapabilitySchema>;
+export const ProviderStatusSchema = z.object({
+  provider: z.literal("tiktok_shop"), state: ProviderStateSchema, mode: z.enum(["off", "real", "fixture"]),
+  configIssues: z.array(z.string()), capabilities: z.array(ProviderCapabilitySchema), fixtureLabel: z.literal("SIMULATED / FIXTURE").nullable(),
+}).strict();
+export type ProviderStatus = z.infer<typeof ProviderStatusSchema>;
+
+export const CreatorEvidenceSchema = z.object({ telemetryId: z.string().uuid(), sessionId: z.string(), mode: z.enum(["REAL", "SIMULATED"]),
+  providerSessionId: z.string().regex(/^\d{1,30}$/), observedAt: InstantSchema, recordedAt: InstantSchema, metrics: z.array(ProviderMetricSchema).max(2),
+}).strict().refine(e => e.metrics.every(m => m.source === (e.mode === "REAL" ? "tiktok_creator" : "fixture")), "Invalid telemetry source");
+export type CreatorEvidence = z.infer<typeof CreatorEvidenceSchema>;
+export const AsKnownThenSchema = z.object({
+  sessionId: z.string(), mode: z.enum(["REAL", "SIMULATED"]), perspective: z.literal("as_known_then"), asOfMs: InstantSchema,
+  plan: PlanVersionSchema, runtime: RuntimeSchema, events: z.array(SessionEventSchema), evidenceLimits: z.array(z.string()),
+}).strict();
+export type AsKnownThen = z.infer<typeof AsKnownThenSchema>;
+export const HistoricalEvidenceSchema = AsKnownThenSchema.extend({ providerEvidence: z.array(CreatorEvidenceSchema).max(1000) }).strict();
+export type HistoricalEvidence = z.infer<typeof HistoricalEvidenceSchema>;

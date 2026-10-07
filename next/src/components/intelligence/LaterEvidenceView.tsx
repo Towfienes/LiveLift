@@ -7,9 +7,8 @@ import type { FixtureScenarioId } from "@/lib/intelligence/fixtures";
 import { deriveObservations } from "@/lib/intelligence/observations";
 import type { EvidenceOrigin, LiveIntelligenceSnapshot } from "@/lib/intelligence/types";
 import { recordedWindows } from "@/lib/intelligence/windows";
-import { Button } from "@/components/ui";
 import { EvidenceTimeline } from "./EvidenceTimeline";
-import { FixtureBanner, FixturePicker, LaterDisclosure, TierLabel, providerName } from "./EvidenceParts";
+import { EvidenceRefreshControl, FixtureBanner, FixturePicker, LaterDisclosure, TierLabel, providerName } from "./EvidenceParts";
 import { ProductPerformanceTable } from "./ProductPerformanceTable";
 import { ProviderStatePanel } from "./ProviderState";
 import { SegmentAttributionTable } from "./SegmentAttributionTable";
@@ -51,9 +50,10 @@ export function ObservationsSection({ snapshot, review, tz, origin }: { snapshot
 function Provenance({ snapshot, origin, tz }: { snapshot: LiveIntelligenceSnapshot; origin: EvidenceOrigin; tz: string }): React.ReactElement {
   const w = snapshot.providerWindow;
   const rows: Array<[string, React.ReactNode]> = [
+    ["Snapshot", <span key="s" className="break-all font-mono text-[12px]">{snapshot.snapshotId}</span>],
     ["Source", providerName(snapshot.provider)],
     ["Evidence tier", <TierLabel key="t" origin={origin} />],
-    ["Fetched", `${formatDay(snapshot.fetchedAtMs, tz)} ${formatClock(snapshot.fetchedAtMs, tz, true)}`],
+    ["Fetched", `${formatDay(snapshot.fetchedAt, tz)} ${formatClock(snapshot.fetchedAt, tz, true)}`],
     ["Provider window", w ? `${formatClock(w.startMs, tz)}–${formatClock(w.endMs, tz)}` : "Not stated"],
     ["Provider session", snapshot.providerSessionId ? <span key="p" className="font-mono text-[13px]">{snapshot.providerSessionId}</span> : "Not stated"],
     ["Reconciliation", snapshot.reconciliationVersion],
@@ -79,7 +79,7 @@ function Limits({ snapshot }: { snapshot: LiveIntelligenceSnapshot }): React.Rea
       <h3 className="text-[16px] font-medium text-[#F5F7FC]">What this cannot tell you</h3>
       <ul className="mt-2 list-disc space-y-1.5 pl-5 text-[14px] leading-snug text-[#B7C1CE]">
         {snapshot.evidenceLimits.map((l) => (
-          <li key={l.text}>{l.text}</li>
+          <li key={l}>{l}</li>
         ))}
         <li>Association is not causation. Nothing here says a segment caused a click, an order or a sale.</li>
         <li>A missing value is not zero. “Not recorded” means the provider sent nothing.</li>
@@ -115,15 +115,12 @@ export function LaterEvidenceView({
       {state.kind === "available" && (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 basis-[420px]">
-            <LaterDisclosure origin={state.origin} provider={state.snapshot.provider} fetchedAtMs={state.snapshot.fetchedAtMs} tz={tz} />
+            <LaterDisclosure origin={state.origin} provider={state.snapshot.provider} fetchedAtMs={state.snapshot.fetchedAt} tz={tz} />
           </div>
-          {intelligence.canRefresh && (
-            <Button variant="secondary" size="md" icon="ri-refresh-line" disabled={intelligence.refreshing} onClick={intelligence.refresh} data-testid="evidence-refresh-btn">
-              {intelligence.refreshing ? "Fetching…" : "Fetch again"}
-            </Button>
-          )}
+
         </div>
       )}
+      <EvidenceRefreshControl intelligence={intelligence} session={session} />
       {simulated && (
         <FixtureBanner>
           <FixturePicker value={scenario} onChange={onScenario} />

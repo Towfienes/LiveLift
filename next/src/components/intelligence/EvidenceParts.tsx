@@ -1,4 +1,9 @@
-import React, { useId } from "react";
+"use client";
+
+import type { Session } from "@/contracts";
+import type { LiveIntelligenceView } from "./useLiveIntelligence";
+import { Button } from "@/components/ui";
+import React, { useId, useState } from "react";
 import { formatClock, formatDay } from "@/lib/domain";
 import type { CellText } from "@/lib/intelligence/format";
 import { FIXTURE_SCENARIOS, type FixtureScenarioId } from "@/lib/intelligence/fixtures";
@@ -145,5 +150,25 @@ export function LaterDisclosure({
         </p>
       </div>
     </div>
+  );
+}
+
+/** The real refresh needs an explicit provider LIVE identity; it never changes the show. */
+export function EvidenceRefreshControl({ intelligence, session }: { intelligence: LiveIntelligenceView; session: Session }): React.ReactElement | null {
+  const [providerId, setProviderId] = useState("");
+  const uid = useId();
+  if (!intelligence.canRefresh) return null;
+  const snapshot = intelligence.state.kind === "available" ? intelligence.state.snapshot : null;
+  const simulated = session.environment === "SIMULATED";
+  const mappedId = snapshot?.providerSessionId ?? providerId;
+  return (
+    <form className="flex flex-wrap items-end gap-3" aria-label="Fetch later provider evidence" onSubmit={e => { e.preventDefault(); intelligence.refresh(simulated ? undefined : mappedId); }}>
+      {!simulated && !snapshot && <label htmlFor={`${uid}-provider`} className="min-w-0 text-[14px] text-[#B7C1CE]">Provider LIVE session ID
+        <input id={`${uid}-provider`} value={providerId} onChange={e => setProviderId(e.target.value)} inputMode="numeric" pattern="[0-9]{1,30}" maxLength={30} required className="mt-1 block min-h-[44px] w-full rounded-[8px] border border-[#39414D] bg-[#101319] px-3 text-[16px] text-[#F5F7FC]" />
+      </label>}
+      <Button type="submit" variant="secondary" size="md" icon="ri-refresh-line" disabled={intelligence.refreshing || !simulated && !/^[0-9]{1,30}$/.test(mappedId)} data-testid="evidence-refresh-btn">
+        {intelligence.refreshing ? "Fetching…" : simulated ? "Fetch fixture from server" : snapshot ? "Fetch again" : "Fetch provider evidence"}
+      </Button>
+    </form>
   );
 }

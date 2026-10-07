@@ -2,15 +2,12 @@ import { DatabaseSync } from "node:sqlite";
 import { constants, closeSync, existsSync, lstatSync, mkdirSync, openSync } from "node:fs";
 import { dirname, isAbsolute } from "node:path";
 import { z } from "zod";
-import { InstantSchema, LiveIntelligenceSnapshotSchema, ProviderFailureSchema, ProviderMetricSchema, type LiveIntelligenceSnapshot, type ProviderFailure } from "@/contracts/liveIntelligence";
+import { LiveIntelligenceSnapshotSchema, ProviderFailureSchema, CreatorEvidenceSchema, type CreatorEvidence, type LiveIntelligenceSnapshot, type ProviderFailure } from "@/contracts/liveIntelligence";
 import { AuthorityError } from "../config";
 
 export interface EvidenceIdentity { workspaceId: string; generation: string; roomId: string }
 export interface EvidenceScope extends EvidenceIdentity { sessionId: string; mode: "REAL" | "SIMULATED" }
-export const CreatorEvidenceSchema = z.object({ telemetryId: z.string().uuid(), sessionId: z.string(), mode: z.enum(["REAL", "SIMULATED"]),
-  providerSessionId: z.string().regex(/^\d{1,30}$/), observedAt: InstantSchema, recordedAt: InstantSchema, metrics: z.array(ProviderMetricSchema).max(2),
-}).strict().refine((e) => e.metrics.every((m) => m.source === (e.mode === "REAL" ? "tiktok_creator" : "fixture")), "Invalid telemetry source");
-export type CreatorEvidence = z.infer<typeof CreatorEvidenceSchema>;
+export { CreatorEvidenceSchema, type CreatorEvidence } from "@/contracts/liveIntelligence";
 export type RefreshResult = { state: "AVAILABLE"; snapshot?: LiveIntelligenceSnapshot; telemetry?: CreatorEvidence } | ProviderFailure;
 export function parseRefreshResult(raw: unknown): RefreshResult {
   const result = z.union([z.object({ state: z.literal("AVAILABLE"), snapshot: LiveIntelligenceSnapshotSchema }).strict(), z.object({ state: z.literal("AVAILABLE"), telemetry: CreatorEvidenceSchema }).strict(), ProviderFailureSchema]).parse(raw);

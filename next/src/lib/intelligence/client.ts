@@ -1,161 +1,93 @@
-import { buildHeaders, classifyCode, readError, sendBounded, type Fetched, type FetchFailure, type RequestContext } from "@/lib/client/productionTransport";
+import type { Session } from "@/contracts";
+import { INTELLIGENCE_ROUTES, ProviderStatusSchema, HistoricalEvidenceSchema, type HistoricalEvidence, RefreshRequestSchema, type ProviderCapability, type ProviderStatus, type RefreshRequest } from "@/contracts/liveIntelligence";
+import { buildHeaders, readError, sendBounded, type Fetched, type FetchFailure, type RequestContext } from "@/lib/client/productionTransport";
 import { parseSnapshot } from "./parse";
-import type { CapabilityState, LiveIntelligenceResult, ProviderCapability } from "./types";
+import type { LiveIntelligenceResult } from "./types";
+export { INTELLIGENCE_ROUTES } from "@/contracts/liveIntelligence";
 
-/**
- * Typed client for the V7 later-evidence endpoints the provider-core lane is expected to serve.
- *
- * This is the one place that knows route names and the response envelope. Integration should only need to adjust
- * `INTELLIGENCE_ROUTES` and, if the server's envelope differs, `fromEnvelope`.
- *
- * Same rules as the other production clients: the session is an HttpOnly cookie the server owns, every request
- * carries the CSRF marker and workspace context, nothing here can see a provider token, and a failure is a value
- * (unknown), never a zero.
- *
- * REAL only. This client is never asked about a SIMULATED rehearsal, and a snapshot that identifies itself as a
- * fixture or as SIMULATED is REFUSED: fixture metrics must never appear in a REAL show.
- */
-
-export const INTELLIGENCE_ROUTES = {
-  capabilities: "/api/v3/live-intelligence/capabilities",
-  snapshot: (sessionId: string): string => `/api/v3/live-intelligence/sessions/${encodeURIComponent(sessionId)}`,
-  refresh: (sessionId: string): string => `/api/v3/live-intelligence/sessions/${encodeURIComponent(sessionId)}/refresh`,
-} as const;
-
-export type CapabilitiesResult =
-  | { kind: "ok"; capabilities: ProviderCapability[] }
-  | { kind: "signed_out" }
-  | { kind: "not_configured" }
-  | { kind: "unavailable"; message: string };
-
+export type EvidenceTarget = { roomId: string; sessionId: string; environment: Session["environment"]; session?: Session; snapshotId?: string };
+export type CapabilitiesResult = { kind: "ok"; capabilities: ProviderCapability[]; status: ProviderStatus } | { kind: "signed_out" | "not_configured" } | { kind: "unavailable"; message: string };
 export interface LiveIntelligenceClient {
-  getSnapshot(context: RequestContext, sessionId: string): Promise<LiveIntelligenceResult>;
-  /** Asks the server to fetch again. Never changes the show; the answer has the same shape as getSnapshot. */
-  requestRefresh(context: RequestContext, sessionId: string): Promise<LiveIntelligenceResult>;
+  getSnapshot(context: RequestContext, target: EvidenceTarget): Promise<LiveIntelligenceResult>;
+  requestRefresh(context: RequestContext, command: RefreshRequest, environment: Session["environment"]): Promise<LiveIntelligenceResult>;
   getCapabilities(context: RequestContext): Promise<CapabilitiesResult>;
+  getHistorical(context: RequestContext, target: EvidenceTarget, asOfMs: number): Promise<HistoricalEvidence | null>;
 }
-
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
-const CAPABILITY_STATES: readonly CapabilityState[] = [
-  "available",
-  "connected",
-  "not_connected",
-  "not_configured",
-  "access_not_granted",
-  "partner_access_required",
-  "rate_limited",
-  "auth_expired",
-  "unavailable",
-  "unsupported",
-  "unknown",
-];
-
-function retryAfter(headers: Headers | undefined, body: unknown): number | null {
-  const fromHeader = Number(headers?.get("retry-after"));
-  if (Number.isFinite(fromHeader) && fromHeader > 0) return Math.round(fromHeader);
-  const fromBody = isRecord(body) ? Number(body.retryAfterSec) : NaN;
-  return Number.isFinite(fromBody) && fromBody > 0 ? Math.round(fromBody) : null;
-}
-
-const SETTLING = "TikTok has not finished settling this show's metrics. Post-LIVE data can take up to 48 hours to become final.";
-
-/** The server's statement about a show, as a result. Accepts the `{status}` envelope or a bare snapshot. */
-function fromEnvelope(body: unknown, sessionId: string, headers?: Headers): LiveIntelligenceResult {
-  if (!isRecord(body)) return { kind: "unavailable", reason: "malformed", message: "The server sent a later-evidence answer LiveLift could not read." };
-  const status = typeof body.status === "string" ? body.status : null;
-  switch (status) {
-    case "not_configured":
-      return { kind: "not_configured" };
-    case "access_not_granted":
-      return { kind: "access_not_granted" };
-    case "auth_expired":
-      return { kind: "auth_expired" };
-    case "unsupported":
-      return { kind: "unsupported" };
-    case "rate_limited":
-      return { kind: "rate_limited", retryAfterSec: retryAfter(headers, body) };
-    case "pending":
-    case "settling":
-      return { kind: "unavailable", reason: "settling", message: SETTLING };
-    case "unavailable":
-      return { kind: "unavailable", reason: "server", message: typeof body.message === "string" ? body.message : "The provider could not be reached." };
-    default:
-      break;
-  }
-  const raw = status === "available" ? body.snapshot : body.snapshot !== undefined ? body.snapshot : body;
-  const parsed = parseSnapshot(raw);
-  if (!parsed.ok) {
-    const message =
-      parsed.reason === "wrong_perspective"
-        ? "The server's answer was not marked as later evidence, so LiveLift did not show it."
-        : "The server sent later evidence LiveLift could not trust, so it was not shown.";
-    return { kind: "unavailable", reason: parsed.reason, message };
-  }
-  const { snapshot, origin } = parsed;
-  if (snapshot.sessionId !== sessionId) {
-    return { kind: "unavailable", reason: "session_mismatch", message: "The evidence the server sent belongs to a different show, so LiveLift discarded it." };
-  }
-  if (origin === "fixture" || /^simulated$/i.test(snapshot.mode)) {
-    return { kind: "unavailable", reason: "rejected_fixture", message: "The server sent fixture or SIMULATED evidence for a REAL show. LiveLift discarded it: fixture metrics never appear in a REAL show." };
-  }
-  return { kind: "available", snapshot, origin };
-}
-
-export function interpretSnapshotResponse(res: Fetched | FetchFailure, sessionId: string): LiveIntelligenceResult {
+/** Translate the server's read/status or refresh envelope; snapshot values stay in the shared contract. */
+export function interpretSnapshotResponse(res: Fetched | FetchFailure, sessionId: string, environment: Session["environment"] = "REAL"): LiveIntelligenceResult {
   if (!res.ok) return { kind: "unavailable", reason: res.kind, message: res.message };
   const { status, body } = res;
-  if (status >= 200 && status < 300) return fromEnvelope(body, sessionId, res.headers);
-  const code = classifyCode(status, body);
   if (status === 401) return { kind: "signed_out" };
-  if (status === 429) return { kind: "rate_limited", retryAfterSec: retryAfter(res.headers, body) };
-  if (code === "provider_not_configured" || status === 501) return { kind: "not_configured" };
-  if (code === "provider_access_not_granted") return { kind: "access_not_granted" };
-  if (code === "provider_auth_expired") return { kind: "auth_expired" };
-  if (status === 403 && code !== "csrf_failed") return { kind: "forbidden" };
-  if (status === 404) {
-    // A JSON 404 is the server saying it has no evidence for this show; an HTML/empty 404 is a server without the route.
-    return isRecord(body) && readError(body).code !== null
-      ? { kind: "unavailable", reason: "not_found", message: "The server has no later evidence on file for this show." }
-      : { kind: "not_configured" };
+  if (status === 403) return { kind: "forbidden" };
+  if (status === 429) return { kind: "rate_limited", retryAfterSec: Number(res.headers?.get("retry-after")) || null };
+  if (status < 200 || status >= 300) return { kind: "unavailable", reason: status === 404 ? "not_found" : "server", message: readError(body).message ?? `The server answered ${status}.` };
+  if (!isRecord(body)) return { kind: "unavailable", reason: "malformed", message: "The server sent evidence LiveLift could not read." };
+  const state = isRecord(body.status) ? body.status.state : body.state;
+  // A failed refresh must not masquerade as an available result just because an older snapshot exists.
+  if (body.snapshot == null || body.state !== undefined && body.state !== "AVAILABLE" || isRecord(body.status) && !["READY", "AVAILABLE"].includes(String(state))) {
+    switch (state) {
+      case "NOT_CONFIGURED": return { kind: "not_configured" };
+      case "ACCESS_NOT_GRANTED": return { kind: "access_not_granted" };
+      case "AUTH_EXPIRED": return { kind: "auth_expired" };
+      case "RATE_LIMITED": return { kind: "rate_limited", retryAfterSec: typeof body.retryAfterSec === "number" ? body.retryAfterSec : null };
+      case "UNSUPPORTED": return { kind: "unsupported" };
+      case "FETCHING": return { kind: "fetching" };
+      case "READY": return { kind: "unavailable", reason: "not_found", message: "No later evidence has been fetched for this show. An operator can fetch it using its provider LIVE session ID." };
+      default: return { kind: "unavailable", reason: "server", message: "Provider evidence is unavailable. Show performance is unknown, not zero." };
+    }
   }
-  return { kind: "unavailable", reason: "server", message: readError(body).message ?? `The server answered ${status}.` };
-}
-
-function parseCapabilities(body: unknown): ProviderCapability[] | null {
-  const list = isRecord(body) ? body.capabilities : null;
-  if (!Array.isArray(list)) return null;
-  const out: ProviderCapability[] = [];
-  for (const item of list) {
-    if (!isRecord(item) || typeof item.key !== "string" || typeof item.state !== "string" || !CAPABILITY_STATES.includes(item.state as CapabilityState)) return null;
-    out.push({
-      key: item.key,
-      state: item.state as CapabilityState,
-      note: typeof item.note === "string" ? item.note : null,
-      checkedAtMs: typeof item.checkedAtMs === "number" && Number.isFinite(item.checkedAtMs) ? item.checkedAtMs : null,
-    });
-  }
-  return out;
+  const raw = body.snapshot;
+  // Reject wrong environment before parsing: even malformed fixture payloads cannot enter a REAL view.
+  if (environment === "REAL" && isRecord(raw) && (typeof raw.provider === "string" && /fixture/i.test(raw.provider) || raw.mode === "SIMULATED" || raw.fixture === true)) return { kind: "unavailable", reason: "rejected_fixture", message: "The server sent fixture or SIMULATED evidence for a REAL show. LiveLift discarded it." };
+  const parsed = parseSnapshot(raw);
+  if (!parsed.ok) return { kind: "unavailable", reason: parsed.reason, message: "The server sent evidence LiveLift could not trust, so it was not shown." };
+  if (parsed.snapshot.sessionId !== sessionId || parsed.snapshot.mode !== environment) return { kind: "unavailable", reason: "session_mismatch", message: "The evidence belongs to a different show or environment, so LiveLift discarded it." };
+  return { kind: "available", snapshot: parsed.snapshot, origin: parsed.origin };
 }
 
 export function createLiveIntelligenceClient(options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {}): LiveIntelligenceClient {
-  const timeoutMs = options.timeoutMs ?? 15_000;
-
+  const send = (url: string, init: RequestInit) => sendBounded(options.fetchImpl, url, init, options.timeoutMs ?? 30_000);
   return {
-    getSnapshot: async (context, sessionId) =>
-      interpretSnapshotResponse(await sendBounded(options.fetchImpl, INTELLIGENCE_ROUTES.snapshot(sessionId), { method: "GET", headers: buildHeaders({ unsafe: false, context }) }, timeoutMs), sessionId),
-    requestRefresh: async (context, sessionId) =>
-      interpretSnapshotResponse(await sendBounded(options.fetchImpl, INTELLIGENCE_ROUTES.refresh(sessionId), { method: "POST", headers: buildHeaders({ unsafe: true, context }), body: "{}" }, timeoutMs), sessionId),
-    getCapabilities: async (context) => {
-      const res = await sendBounded(options.fetchImpl, INTELLIGENCE_ROUTES.capabilities, { method: "GET", headers: buildHeaders({ unsafe: false, context }) }, timeoutMs);
+    getHistorical: async (context, target, asOfMs) => {
+      const input = { roomId: target.roomId, sessionId: target.sessionId, perspective: "as_known_then", asOfMs };
+      const res = await send(target.environment === "SIMULATED" ? INTELLIGENCE_ROUTES.evidence : `${INTELLIGENCE_ROUTES.evidence}?${new URLSearchParams({ ...input, asOfMs: String(asOfMs) })}`, {
+        method: target.environment === "SIMULATED" ? "POST" : "GET", headers: buildHeaders({ unsafe: target.environment === "SIMULATED", context }),
+        ...(target.environment === "SIMULATED" ? { body: JSON.stringify({ ...input, session: target.session }) } : {}),
+      });
+      if (!res.ok || res.status !== 200) return null;
+      const parsed = HistoricalEvidenceSchema.safeParse(res.body);
+      if (!parsed.success || parsed.data.sessionId !== target.sessionId || parsed.data.mode !== target.environment || parsed.data.asOfMs !== asOfMs) return null;
+      const cutoff = Math.min(asOfMs, parsed.data.runtime.endedAtMs ?? asOfMs);
+      if (parsed.data.events.some(e => e.recordedAtMs > cutoff) || parsed.data.providerEvidence.some(e => e.sessionId !== target.sessionId || e.mode !== target.environment || e.recordedAt > cutoff || e.observedAt > cutoff || e.metrics.some(m => m.observedAt > cutoff))) return null;
+      return parsed.data;
+    },
+    getSnapshot: async (context, target) => {
+      const { environment, ...input } = target;
+      if (environment === "REAL" && input.session) return { kind: "unavailable", reason: "rejected_fixture", message: "REAL evidence is read from the authority by identity only." };
+      const query = new URLSearchParams({ roomId: input.roomId, sessionId: input.sessionId, perspective: "later_evidence", ...(input.snapshotId ? { snapshotId: input.snapshotId } : {}) });
+      const res = await send(environment === "SIMULATED" ? INTELLIGENCE_ROUTES.evidence : `${INTELLIGENCE_ROUTES.evidence}?${query}`, {
+        method: environment === "SIMULATED" ? "POST" : "GET", headers: buildHeaders({ unsafe: environment === "SIMULATED", context }),
+        ...(environment === "SIMULATED" ? { body: JSON.stringify({ ...input, perspective: "later_evidence" }) } : {}),
+      });
+      return interpretSnapshotResponse(res, input.sessionId, environment);
+    },
+    requestRefresh: async (context, command, environment) => {
+      const parsed = RefreshRequestSchema.safeParse(command);
+      if (!parsed.success || environment === "REAL" && (command.session || command.fixtureCase)) return { kind: "unavailable", reason: "malformed", message: "The provider refresh command is invalid." };
+      return interpretSnapshotResponse(await send(INTELLIGENCE_ROUTES.refresh, { method: "POST", headers: buildHeaders({ unsafe: true, context }), body: JSON.stringify(parsed.data) }), command.sessionId, environment);
+    },
+    getCapabilities: async context => {
+      const res = await send(INTELLIGENCE_ROUTES.status, { method: "GET", headers: buildHeaders({ unsafe: false, context }) });
       if (!res.ok) return { kind: "unavailable", message: res.message };
-      if (res.status >= 200 && res.status < 300) {
-        const capabilities = parseCapabilities(res.body);
-        return capabilities ? { kind: "ok", capabilities } : { kind: "unavailable", message: "The server sent a capability list LiveLift could not read." };
-      }
       if (res.status === 401) return { kind: "signed_out" };
-      if (res.status === 404 || res.status === 501) return { kind: "not_configured" };
-      return { kind: "unavailable", message: readError(res.body).message ?? `The server answered ${res.status}.` };
+      if (res.status >= 200 && res.status < 300 && isRecord(res.body) && Array.isArray(res.body.capabilities)) {
+        // Keys/states are rendered conservatively by buildLedger; unknown answers never become available.
+        const parsed = ProviderStatusSchema.safeParse(res.body);
+        if (parsed.success) return { kind: "ok", capabilities: parsed.data.capabilities, status: parsed.data };
+      }
+      return { kind: "unavailable", message: "The server sent a capability list LiveLift could not read." };
     },
   };
 }

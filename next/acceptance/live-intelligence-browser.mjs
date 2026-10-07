@@ -2,9 +2,8 @@
 // V7 LIVE intelligence: browser acceptance. Tooling only; every product interaction uses the real UI and production routes.
 // Needs: Node 22.23.3, npm ci, npm run build, an external Playwright (NODE_PATH), Chromium and OpenSSL.
 //   node acceptance/live-intelligence-browser.mjs        (LIVELIFT_BROWSER_EVIDENCE=<dir> keeps screenshots, CHROMIUM_PATH picks Chromium)
-// The provider-core server routes do not exist in this branch, so REAL-show provider answers are served by this script
-// (a test double, labelled as such); the SIMULATED path uses the UI's own deterministic fixtures.
-/* global document */
+// Both modes use actual Provider Core routes. REAL upstream requests are doubled only inside a disposable certification server.
+/* global document, localStorage, window, crypto, fetch */
 import assert from 'node:assert/strict';
 import console from 'node:console';
 import fs from 'node:fs';
@@ -12,54 +11,23 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { fileURLToPath, URL } from 'node:url';
+import { fileURLToPath, pathToFileURL, URL, URLSearchParams } from 'node:url';
 import { app, startRuntime } from './final-runtime.mjs';
 
 const WIDTHS = [[375, 667], [768, 900], [1440, 900]];
-
-/** A small, honest provider snapshot for one ended show: one real zero, holes, no attribution. A test double, never "fixture". */
-export function snapshotFor(session, provider = 'tiktok_shop') {
-  const start = session.runtime.startedAtMs, end = session.runtime.endedAtMs;
-  const g0 = Math.floor(start / 60_000) * 60_000;
-  const count = Math.max(1, Math.ceil((end - g0) / 60_000));
-  const minuteBuckets = Array.from({ length: count }, (_, i) => ({
-    startMs: g0 + i * 60_000, endMs: g0 + (i + 1) * 60_000, viewers: 100 + i, clicks: i === 0 ? 0 : null, orders: 1 + i, gmv: null,
-  }));
-  return {
-    sessionId: session.id, mode: session.environment, perspective: 'later_evidence', provider, providerSessionId: 'ACCEPTANCE-DOUBLE-1',
-    fetchedAt: end + 3_600_000, currency: 'VND', minuteBuckets, segmentAttributions: [], productPerformance: [],
-    evidenceLimits: [{ text: 'Raw LIVE chat text is not available from the official API.' }], reconciliationVersion: 'acceptance-1',
-  };
-}
 
 async function journey(browser, runtime, width, height, report, output) {
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width, height } });
   const page = await context.newPage();
   page.setDefaultTimeout(20_000);
   const errors = [], httpErrors = [];
-  let authenticated = false, mode = 'none', latestSessions = [];
+  let authenticated = false;
   page.on('pageerror', e => errors.push(String(e)));
   page.on('response', response => {
     if (response.status() < 400) return;
     const route = new URL(response.url()).pathname;
-    const expected = (!authenticated && route === '/api/v3/auth/session' && response.status() === 401)
-      || (route.startsWith('/api/v3/live-intelligence/') && response.status() === 404 && mode === 'none');
+    const expected = !authenticated && route === '/api/v3/auth/session' && response.status() === 401;
     if (!expected) httpErrors.push({ route, status: response.status() });
-  });
-  await page.route('**/api/v3/room?*', async route => {
-    const response = await route.fetch();
-    try { const body = await response.json(); if (body.sessions) latestSessions = body.sessions; } catch { /* not JSON */ }
-    await route.fulfill({ response });
-  });
-  await page.route('**/api/v3/live-intelligence/**', async route => {
-    const url = route.request().url();
-    if (mode === 'none') return route.continue();
-    const json = (status, body, headers = {}) => route.fulfill({ status, contentType: 'application/json', headers, body: JSON.stringify(body) });
-    if (url.endsWith('/capabilities')) return json(200, { capabilities: [{ key: 'shop_analytics', state: 'access_not_granted', note: null }] });
-    const session = latestSessions.find(s => url.includes(`/sessions/${s.id}`));
-    if (mode === 'access_not_granted') return json(200, { status: 'access_not_granted' });
-    if (mode === 'rate_limited') return json(429, { error: { code: 'rate_limited', message: 'slow down' } }, { 'retry-after': '75' });
-    return json(200, { status: 'available', snapshot: snapshotFor(session, mode === 'fixture-for-real' ? 'fixture' : 'tiktok_shop') });
   });
   const tid = id => page.getByTestId(id);
   const check = async (name, fn) => {
@@ -69,6 +37,7 @@ async function journey(browser, runtime, width, height, report, output) {
   const noOverflow = async name => {
     const d = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
     assert.equal(d.scroll, d.client, `${name}: horizontal overflow ${d.scroll} > ${d.client}`);
+    await page.screenshot({ path: path.join(output, `${width}-${name.replace(/\W+/g, '-')}.png`) });
   };
   const ready = () => page.waitForFunction(() => document.querySelector('[data-testid=later-evidence-view]')?.getAttribute('data-state') !== 'fetching', null, { timeout: 15_000 });
 
@@ -86,7 +55,7 @@ async function journey(browser, runtime, width, height, report, output) {
     await tid('perspective-switch').waitFor();
     assert.equal(await tid('perspective-known').getAttribute('aria-selected'), 'true');
     assert.equal(await tid('evidence-timeline').count(), 0);
-    assert.match(await tid('provider-then-note').textContent(), /none recorded in LiveLift/);
+    await page.waitForFunction(() => document.querySelector('[data-testid=provider-then-note]')?.textContent.includes('none recorded in LiveLift'));
     await tid('known-then-replay').waitFor();
     await noOverflow('review known');
   });
@@ -112,8 +81,19 @@ async function journey(browser, runtime, width, height, report, output) {
     assert.match(await tid('metric-missing-note').textContent(), /This is not zero\./);
     assert.equal(await tid('evidence-chart').count(), 0, 'a missing metric must not draw an empty chart');
     const cells = await page.locator('[data-testid^="attribution-"][data-coverage] [data-metric="clicks"] [data-state]').evaluateAll(es => es.map(e => [e.getAttribute('data-state'), e.textContent]));
-    assert(cells.length > 0 && cells.every(([s, t]) => s === 'missing' && t === 'Not recorded'));
+    assert(cells.length > 0 && cells.some(([s, t]) => s === 'missing' && t === 'Not recorded') && cells.every(([s]) => ['missing', 'unknown'].includes(s)));
     await noOverflow('missing clicks');
+  });
+  await check('zero GMV and missing GMV remain distinct in minutes and products', async () => {
+    await tid('fixture-select').selectOption('zero_gmv'); await tid('metric-gmv').check({ force: true });
+    const zero = await page.locator('[data-testid=evidence-chart] [data-minute]').evaluateAll(es => es.map(e => e.getAttribute('data-state')));
+    assert(zero.length > 5 && zero.every(s => s === 'zero'));
+    assert.match(await tid('product-performance').innerText(), /VND 0/);
+    await noOverflow('zero GMV');
+    await tid('fixture-select').selectOption('missing_gmv'); await tid('metric-gmv').check({ force: true });
+    assert.equal(await tid('evidence-chart').count(), 0); assert.match(await tid('metric-missing-note').innerText(), /not zero/);
+    assert(!/VND 0/.test(await tid('product-performance').innerText()));
+    await noOverflow('missing GMV');
   });
   await check('an ambiguous boundary minute is shown and assigned to neither segment', async () => {
     await tid('fixture-select').selectOption('ambiguous');
@@ -171,13 +151,14 @@ async function journey(browser, runtime, width, height, report, output) {
   await check('Integrations states what TikTok does and does not offer', async () => {
     await page.goto(runtime.origin + '/integrations');
     await tid('provider-evidence-access').waitFor();
+    await page.waitForFunction(() => document.querySelector('[data-testid=capability-creator_realtime]')?.getAttribute('data-state') === 'not_configured');
     assert.equal(await tid('capability-raw_chat').getAttribute('data-state'), 'unsupported');
     assert.equal(await tid('capability-pin_control').getAttribute('data-state'), 'unsupported');
-    assert.equal(await tid('capability-creator_realtime').getAttribute('data-state'), 'partner_access_required');
+    assert.equal(await tid('capability-creator_realtime').getAttribute('data-state'), 'not_configured');
     await noOverflow('integrations');
   });
 
-  // ---- REAL: created and ended through the UI; provider answers come from this script ------------------------------
+  // ---- REAL: created and ended through the UI; the actual core refuses fixture fallback ------------------------------
   await check('REAL show with no provider says so, and shows no fixture or numbers', async () => {
     await page.goto(runtime.origin + '/live/new');
     await tid('start-template').check({ force: true });
@@ -202,58 +183,166 @@ async function journey(browser, runtime, width, height, report, output) {
     report.realUrl = page.url().replace(/\?.*$/, '');
     await noOverflow('real not configured');
   });
-  await check('REAL provider snapshot is provider-observed, never a fixture; fixture data for a REAL show is refused', async () => {
-    mode = 'provider';
-    await page.goto(report.realUrl + '?perspective=later');
-    await tid('evidence-timeline').waitFor();
-    const origin = await tid('later-evidence-view').getAttribute('data-origin');
-    assert.equal(origin, 'provider', `data-origin was ${origin}`);
-    assert.equal(await tid('fixture-banner').count(), 0);
-    assert.match(await tid('later-evidence-disclosure').textContent(), /not available to the operator during the LIVE/);
-    await tid('metric-clicks').check({ force: true }); // one recorded 0 and nothing else: the picker does not default to it
-    const first = await page.locator('[data-testid=evidence-chart] [data-minute]').first().getAttribute('data-state');
-    assert.equal(first, 'zero', `the recorded clicks 0 was drawn as ${first}`);
-    await tid('metric-gmv').check({ force: true });
-    assert.match(await tid('metric-missing-note').textContent(), /This is not zero\./);
-    await noOverflow('real provider');
-    await tid('perspective-known').click();
-    await tid('review-summary').waitFor();
-    assert.equal(await tid('evidence-timeline').count(), 0, 'As known then shows no provider data');
-    mode = 'fixture-for-real';
-    await page.goto(report.realUrl + '?perspective=later');
-    await page.waitForFunction(() => document.querySelector('[data-testid=later-evidence-view]')?.getAttribute('data-state') === 'unavailable');
-    assert.match(await tid('provider-state').textContent(), /fixture or SIMULATED evidence for a REAL show/);
-    assert.equal(await tid('evidence-timeline').count(), 0);
-  });
-  await check('REAL access-not-granted and rate-limited answers are their own states', async () => {
-    for (const m of ['access_not_granted', 'rate_limited']) {
-      mode = m;
-      await page.goto(report.realUrl + '?perspective=later');
-      // `idle` is the instant before the request starts; wait for the answer itself.
-      await page.waitForFunction(want => document.querySelector('[data-testid=later-evidence-view]')?.getAttribute('data-state') === want, m, { timeout: 15_000 });
-      assert.equal(await tid('later-evidence-view').getAttribute('data-state'), m);
-    }
-    mode = 'access_not_granted';
-    await page.goto(runtime.origin + '/integrations');
-    await page.waitForFunction(() => document.querySelector('[data-testid=capability-shop_analytics]')?.getAttribute('data-state') === 'access_not_granted');
-  });
-  await check('REAL Insights fetches evidence only when asked, and offers no fixture', async () => {
-    mode = 'provider';
-    const sessionCalls = [];
-    page.on('request', r => { if (/live-intelligence\/sessions\//.test(r.url())) sessionCalls.push(r.url()); });
-    await page.goto(runtime.origin + '/insights');
-    await tid('insights').waitFor();
-    await page.waitForTimeout(600);
-    assert.equal(sessionCalls.length, 0, 'nothing is fetched before the operator asks');
-    assert.equal(/fixture/i.test(await tid('platform-evidence').textContent()), false);
-    await tid('platform-evidence-request').click();
-    await tid('evidence-timeline').waitFor();
-    assert.equal(await tid('platform-evidence-body').getAttribute('data-state'), 'available');
-  });
-  // A refused or rate-limited answer is a non-2xx the product handles on purpose: those are the test double's own 429s.
-  await check('no runtime exceptions or unexpected HTTP errors', async () => { assert.deepEqual(errors, []); assert.deepEqual(httpErrors.filter(e => !(e.status === 429 && e.route.startsWith('/api/v3/live-intelligence/'))), []); });
+  await check('no runtime exceptions or unexpected HTTP errors', async () => { assert.deepEqual(errors, []); assert.deepEqual(httpErrors, []); });
   await context.close();
 }
+
+// Extra checks use the same browser cookie, CSRF marker and authority context as the product.
+async function integrated(browser, runtime, width, height, report, output, real) {
+  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width, height } });
+  const page = await context.newPage();
+  page.setDefaultTimeout(20_000);
+  const errors = [], httpErrors = [];
+  page.on('pageerror', error => errors.push(String(error)));
+  let signedIn = false;
+  page.on('response', response => {
+    if (response.status() < 400) return;
+    const route = new URL(response.url()).pathname;
+    if (!signedIn && route === '/api/v3/auth/session' && response.status() === 401) return;
+    // The two deliberately invalid REAL injection attempts below must fail with 400.
+    if (real && route === '/api/v3/intelligence/refresh' && response.status() === 400) return;
+    httpErrors.push({ route, status: response.status() });
+  });
+  const tid = id => page.getByTestId(id);
+  const check = async (name, action) => {
+    try { await action(); report.checks.push({ width, name, status: 'PASS' }); console.log(`PASS ${width} ${name}`); }
+    catch (error) { report.checks.push({ width, name, status: 'FAIL', error: error.message }); await page.screenshot({ path: path.join(output, `${width}-${real ? 'real' : 'fixture'}-FAIL.png`) }).catch(() => {}); throw error; }
+  };
+  const call = (route, body) => page.evaluate(async ({ route, body }) => {
+    const auth = await (await fetch('/api/v3/auth/session', { headers: { 'X-LiveLift-Request': '1' } })).json();
+    const response = await fetch(route, { method: body === undefined ? 'GET' : 'POST', headers: { 'X-LiveLift-Request': '1', 'X-LiveLift-Workspace': auth.workspaceId, 'X-LiveLift-Generation': auth.generation, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    return { status: response.status, body: await response.json() };
+  }, { route, body }).then(result => { runtime.assertNoSecrets(JSON.stringify(result.body)); return result; });
+  const inspectLayout = async name => {
+    const d = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+    assert.equal(d.scroll, d.client, `${name}: horizontal overflow`);
+    runtime.assertNoSecrets(await page.locator('body').innerText());
+    await page.screenshot({ path: path.join(output, `${width}-${real ? 'real' : 'fixture'}-${name}.png`) });
+    await page.evaluate(fs.readFileSync(process.env.AXE_PATH || '/tmp/livelift-competition-qa/node_modules/axe-core/axe.min.js', 'utf8'));
+    const violations = await page.evaluate(async () => (await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } })).violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) })));
+    assert.deepEqual(violations, [], `${name}: axe violations`);
+  };
+  try {
+    await page.goto(runtime.origin + '/login');
+    await page.getByLabel('Username').fill(runtime.credentials.username);
+    await page.getByLabel('Password', { exact: true }).fill(runtime.credentials.password);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await tid('account-name').waitFor({ state: 'attached' }); signedIn = true;
+    let session;
+    if (real) {
+      await page.goto(runtime.origin + '/live/new');
+      await tid('start-template').check({ force: true });
+      await page.getByLabel(/Session title/).fill('REAL integrated provider transport certification');
+      await tid('submit-create-live-btn').click(); await page.waitForURL(/\/prepare/);
+      await tid('start-live-cta-btn').click();
+      if (await tid('start-keep-planned').isVisible().catch(() => false)) await tid('start-keep-planned').click();
+      await page.waitForURL(/operate/);
+      await tid('quick-report-btn').click(); await tid('quick-cue-price_questions').click(); await tid('command-ack-banner').waitFor();
+      const sessionId = new URL(page.url()).pathname.split('/')[2];
+      await check('REAL Operate AI contains no future provider evidence', async () => {
+        const result = await call('/api/v3/ai/operate', { sessionId });
+        assert.equal(result.status, 200); assert.equal(result.body.status, 'available');
+        assert(!result.body.facts.some(f => f.perspective === 'later_evidence' || f.evidenceTier === 'provider_observed'));
+      });
+      await page.waitForTimeout(1200);
+      await tid('end-live-header-btn').click(); await page.getByRole('button', { name: 'End tracking' }).click(); await page.waitForURL(/review/);
+      const auth = (await call('/api/v3/auth/session')).body;
+      const room = await call(`/api/v3/room?roomId=${auth.roomId}`);
+      session = room.body.sessions.find(s => s.id === sessionId);
+      assert(session, 'authoritative REAL session');
+      fs.writeFileSync(runtime.intelligenceControl, JSON.stringify({ state: 'available', startMs: session.runtime.startedAtMs, endMs: session.runtime.endedAtMs }), { mode: 0o600 });
+    } else {
+      await page.goto(runtime.origin + '/live/sim-buffered-done/review'); await tid('perspective-switch').waitFor();
+      session = await page.evaluate(() => JSON.parse(localStorage.getItem('livelift.v3.SIMULATED')).sessions.find(s => s.id === 'sim-buffered-done'));
+    }
+    const auth = (await call('/api/v3/auth/session')).body;
+    const read = (extra = {}) => real ? call(`/api/v3/intelligence/evidence?${new URLSearchParams({ roomId: auth.roomId, sessionId: session.id, ...extra })}`) : call('/api/v3/intelligence/evidence', { roomId: auth.roomId, sessionId: session.id, session, ...extra, ...(extra.asOfMs ? { asOfMs: Number(extra.asOfMs) } : {}) });
+    const original = JSON.stringify(session);
+    let first;
+    await check(`${real ? 'REAL' : 'SIMULATED'} UI refresh persists canonical immutable evidence`, async () => {
+      await tid('perspective-later').click();
+      await tid('evidence-refresh-btn').waitFor();
+      if (real) await page.getByLabel('Provider LIVE session ID').fill('123');
+      const [response] = await Promise.all([page.waitForResponse(r => new URL(r.url()).pathname === '/api/v3/intelligence/refresh'), tid('evidence-refresh-btn').click()]);
+      assert.equal(response.status(), 200); first = (await response.json()).snapshot;
+      assert(first, 'AVAILABLE must contain canonical snapshot');
+      assert.equal(first.mode, real ? 'REAL' : 'SIMULATED'); assert.equal(first.provider, real ? 'tiktok_shop' : 'fixture');
+      assert(first.minuteBuckets.every(b => b.source === first.provider && b.evidenceTier === 'provider_observed'));
+      await page.waitForFunction(() => document.querySelector('[data-testid=later-evidence-view]')?.getAttribute('data-state') === 'available');
+      assert.match(await tid('provenance').innerText(), new RegExp(first.snapshotId));
+      assert.equal(await tid('fixture-banner').count(), real ? 0 : 1);
+      assert.match(await tid('later-evidence-disclosure').innerText(), /not available to the operator during the LIVE/);
+      await inspectLayout('later-evidence');
+      const prior = await read({ snapshotId: first.snapshotId }); assert.equal(prior.status, 200); assert.deepEqual(prior.body.snapshot, first);
+      await page.reload(); await tid('perspective-later').click();
+      await tid('provenance').waitFor(); assert.match(await tid('provenance').innerText(), new RegExp(first.snapshotId));
+    });
+    await check(`${real ? 'REAL' : 'SIMULATED'} historical server path excludes later snapshots`, async () => {
+      const known = await read({ perspective: 'as_known_then', asOfMs: String(session.runtime.endedAtMs) });
+      assert.equal(known.status, 200); assert.equal(known.body.perspective, 'as_known_then');
+      assert.equal(known.body.snapshot, undefined); assert.deepEqual(known.body.providerEvidence, []);
+      assert(known.body.events.every(e => e.recordedAtMs <= session.runtime.endedAtMs));
+    });
+    await check(`${real ? 'REAL' : 'SIMULATED'} Review AI cites later evidence and hides it As Known Then`, async () => {
+      const surface = tid('review-copilot');
+      if (await surface.getByTestId('copilot-open-btn').isVisible().catch(() => false)) await surface.getByTestId('copilot-open-btn').click();
+      await surface.getByTestId('copilot-ask-btn').waitFor();
+      const [response] = await Promise.all([page.waitForResponse(r => new URL(r.url()).pathname === '/api/v3/ai/review'), surface.getByTestId('copilot-ask-btn').click()]);
+      const result = await response.json(); assert.equal(result.status, 'available');
+      const later = result.facts.filter(f => f.perspective === 'later_evidence');
+      assert(later.length > 0 && later.every(f => f.evidenceTier === 'provider_observed' && f.source === first.provider && f.fetchedAt === first.fetchedAt));
+      assert(result.output.summary.cites.some(id => later.some(f => f.id === id)), 'AI actually received later evidence');
+      await tid('ai-summary').waitFor();
+      await tid('perspective-known').click(); await tid('ai-summary-withheld').waitFor();
+      assert.equal(await tid('evidence-timeline').count(), 0);
+      await inspectLayout('known-then');
+    });
+    await check(`${real ? 'REAL' : 'SIMULATED'} refetch keeps prior snapshot and original source record`, async () => {
+      if (real) {
+        fs.writeFileSync(runtime.intelligenceControl, JSON.stringify({ state: 'limited' }), { mode: 0o600 });
+        await tid('perspective-later').click(); await tid('evidence-refresh-btn').click();
+        await page.waitForFunction(() => document.querySelector('[data-testid=provider-state]')?.getAttribute('data-kind') === 'rate_limited');
+        const prior = await read({ snapshotId: first.snapshotId }); assert.deepEqual(prior.body.snapshot, first); assert.equal(prior.body.status.state, 'RATE_LIMITED');
+        const room = await call(`/api/v3/room?roomId=${auth.roomId}`); assert.equal(JSON.stringify(room.body.sessions.find(s => s.id === session.id)), original);
+        const bad = { commandId: await page.evaluate(() => crypto.randomUUID()), roomId: auth.roomId, sessionId: session.id, expectedSessionRevision: session.revision, providerSessionId: '123', fixtureCase: 'normal' };
+        assert.equal((await call('/api/v3/intelligence/refresh', bad)).status, 400);
+        assert.equal((await call('/api/v3/intelligence/refresh', { ...bad, commandId: await page.evaluate(() => crypto.randomUUID()), session })).status, 400);
+        await inspectLayout('rate-limited');
+      } else {
+        await tid('perspective-later').click(); await tid('fixture-select').selectOption('zero_clicks');
+        const [response] = await Promise.all([page.waitForResponse(r => new URL(r.url()).pathname === '/api/v3/intelligence/refresh'), tid('evidence-refresh-btn').click()]);
+        const newer = (await response.json()).snapshot; assert(newer && newer.snapshotId !== first.snapshotId); assert(newer.minuteBuckets.every(b => b.clicks === 0));
+        assert.deepEqual((await read({ snapshotId: first.snapshotId })).body.snapshot, first);
+        const current = await page.evaluate(id => JSON.parse(localStorage.getItem('livelift.v3.SIMULATED')).sessions.find(s => s.id === id), session.id); assert.equal(JSON.stringify(current), original);
+      }
+    });
+    if (!real) await check('canonical fixture exercises repeated products, not-reached and unknown mapping in the UI', async () => {
+      const { providerFixtureSession } = await import(pathToFileURL(path.join(runtime.fixtureTools, 'lib/server/liveIntelligence/fixtureSession.js')));
+      const repeated = providerFixtureSession('repeated_product');
+      await page.evaluate(repeated => {
+        const state = JSON.parse(localStorage.getItem('livelift.v3.SIMULATED'));
+        state.sessions.push(repeated); localStorage.setItem('livelift.v3.SIMULATED', JSON.stringify(state));
+      }, repeated);
+      await page.goto(runtime.origin + `/live/${repeated.id}/review`); await tid('perspective-later').click();
+      await tid('product-performance').waitFor();
+      assert.match(await tid('product-performance').innerText(), /2 segments|several segments/);
+      assert.match(await tid(`attribution-${repeated.id}:s3`).innerText(), /Did not run|Not reached/);
+      const [response] = await Promise.all([page.waitForResponse(r => new URL(r.url()).pathname === '/api/v3/intelligence/refresh'), tid('evidence-refresh-btn').click()]);
+      const stored = (await response.json()).snapshot; assert.equal(stored.productPerformance[0].association, 'ambiguous'); assert.equal(stored.productPerformance[0].segmentId, undefined);
+      await inspectLayout('repeated-product');
+      const unknown = await call('/api/v3/intelligence/refresh', { commandId: await page.evaluate(() => crypto.randomUUID()), roomId: auth.roomId, sessionId: repeated.id, expectedSessionRevision: repeated.revision, session: repeated, fixtureCase: 'unknown_product', productMappings: [{ liveLiftProductId: repeated.products[0].id, providerProductId: '100001' }] });
+      assert.equal(unknown.status, 200); assert.equal(unknown.body.snapshot.productPerformance[0].association, 'session_only');
+      await page.reload(); await tid('perspective-later').click(); await tid('product-performance').waitFor();
+      assert.match(await tid('product-performance').innerText(), /Not matched to a LiveLift product/);
+      await inspectLayout('unknown-product');
+      const retained = await page.evaluate(id => JSON.parse(localStorage.getItem('livelift.v3.SIMULATED')).sessions.find(s => s.id === id), repeated.id);
+      assert.deepEqual(retained, repeated);
+    });
+    await check(`${real ? 'REAL' : 'SIMULATED'} integrated browser has no runtime or unexpected HTTP errors`, async () => { assert.deepEqual(errors, []); assert.deepEqual(httpErrors, []); runtime.verifyPrivateArtifacts(); });
+  } finally { await context.close(); }
+}
+const integratedFixture = (...args) => integrated(...args, false);
+const integratedReal = (...args) => integrated(...args, true);
 
 export async function main() {
   if (process.argv.includes('--help')) {
@@ -265,12 +354,18 @@ export async function main() {
   const { chromium } = createRequire(import.meta.url)('playwright');
   const output = process.env.LIVELIFT_BROWSER_EVIDENCE || fs.mkdtempSync(path.join(os.tmpdir(), 'livelift-v7-ui-'));
   fs.mkdirSync(output, { recursive: true, mode: 0o700 });
-  const report = { result: 'FAIL', checks: [], output };
+  const report = { result: 'FAIL', node: process.version, checks: [], output, provenance: 'All LiveLift routes are actual production routes; REAL transport certification uses an explicitly isolated upstream double.', visualRegression: 'INCONCLUSIVE: no committed screenshot baseline' };
   let browser, runtime;
   try {
     browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true });
-    runtime = await startRuntime('fixture', output);
-    for (const [width, height] of WIDTHS) await journey(browser, runtime, width, height, report, output);
+    for (const [width, height] of WIDTHS) {
+      runtime = await startRuntime('fixture', output, { intelligenceFixture: true });
+      try { await journey(browser, runtime, width, height, report, output); await integratedFixture(browser, runtime, width, height, report, output); }
+      finally { await runtime.stop(); runtime = null; }
+      runtime = await startRuntime('fixture', output, { intelligenceTransport: true });
+      try { await integratedReal(browser, runtime, width, height, report, output); }
+      finally { await runtime.stop(); runtime = null; }
+    }
     report.result = report.checks.length > 0 && report.checks.every(c => c.status === 'PASS') ? 'PASS' : 'FAIL';
   } finally {
     await runtime?.stop(); await browser?.close();

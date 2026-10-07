@@ -52,11 +52,12 @@ export function ReviewCopilot({
   const unopened = !archive && !opened;
   const message = archive || unopened ? null : phaseMessage(copilot.phase, copilot.failure);
   const ask = (): void => copilot.ask(source === "remote" ? { sessionId: session.id } : { sessionId: session.id, session });
-  const shown = result && !stale ? result.facts : facts;
-  // Provider evidence is later evidence. It is labelled everywhere, and withheld entirely from the "as known then" view.
   const known = perspective === "known";
+  const lateRecords = session.runtime.endedAtMs !== null && session.events.some(e => e.recordedAtMs > session.runtime.endedAtMs!);
+  const shown = known ? facts : result && !stale ? result.facts : facts;
+  // Provider evidence is later evidence. It is labelled everywhere, and withheld entirely from the "as known then" view.
   const allFacts = result ? result.facts : facts;
-  const restsOnLater = (cites: string[]): boolean => cites.some((c) => allFacts.some((f) => f.id === c && isProviderFact(f)));
+  const restsOnLater = (cites: string[]): boolean => lateRecords || cites.some((c) => allFacts.some((f) => f.id === c && isProviderFact(f)));
   const keep = <T extends { cites: string[] }>(items: T[]): T[] => (known ? items.filter((i) => !restsOnLater(i.cites)) : items);
   const providerShown = shown.filter(isProviderFact);
   const operationsShown = shown.filter((f) => !isProviderFact(f));
@@ -141,7 +142,7 @@ export function ReviewCopilot({
               <LayerLabel kind="interpretation" extra="summary · can be wrong" />
               {known && restsOnLater(result.output.summary.cites) ? (
                 <p className="text-[16px] leading-snug text-[#B7C1CE]" data-testid="ai-summary-withheld">
-                  This summary rests on provider evidence fetched after the LIVE. Open “With later evidence” to read it.
+                  {lateRecords ? "This analysis uses records appended after the LIVE." : "This summary rests on provider evidence fetched after the LIVE."} Open “With later evidence” to read it.
                 </p>
               ) : (
                 <>
@@ -153,7 +154,7 @@ export function ReviewCopilot({
             {withheld > 0 && (
               <p className="text-[16px] leading-snug text-[#B4C6DD]" data-testid="ai-withheld-note">
                 <i className="ri-time-line mr-1.5" aria-hidden="true" />
-                {withheld} AI statement{withheld === 1 ? "" : "s"} rest{withheld === 1 ? "s" : ""} on provider evidence the operator did not have during the LIVE. {withheld === 1 ? "It is" : "They are"} shown under “With later evidence”.
+                {withheld} AI statement{withheld === 1 ? "" : "s"} rest{withheld === 1 ? "s" : ""} on evidence the operator did not have during the LIVE. {withheld === 1 ? "It is" : "They are"} shown under “With later evidence”.
               </p>
             )}
 

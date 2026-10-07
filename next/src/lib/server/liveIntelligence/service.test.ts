@@ -4,6 +4,7 @@ import { chmodSync, existsSync, mkdtempSync, rmSync, statSync, symlinkSync } fro
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { createLiveIntelligenceClient } from "@/lib/intelligence/client";
 import { SessionSchema, type Session } from "@/contracts";
 import { ENV } from "./config";
 import { providerFixtureSession, FIXTURE_START } from "./fixtureSession";
@@ -104,6 +105,8 @@ test("provider failures are normalized and do not replace previously fetched evi
   const limited = await refreshRoute(request("/api/v3/intelligence/refresh", op, { ...body, commandId: randomUUID(), fixtureCase: "rate_limit" }));
   expect(await limited.json()).toMatchObject({ state: "RATE_LIMITED", code: "rate_limited" }); expect(limited.headers.get("retry-after")).toBe("60");
   const read = await (await evidencePost(request("/api/v3/intelligence/evidence", op, readBody(body.session)))).json(); expect(read.snapshot.snapshotId).toBe(first.snapshot.snapshotId); expect(read.status.state).toBe("RATE_LIMITED");
+  const { client, context } = integratedClient();
+  expect((await client.getSnapshot(context, { roomId: cfg.roomId, sessionId: body.sessionId, environment: "SIMULATED", session: body.session })).kind).toBe("rate_limited");
 });
 test("later snapshots are excluded from as-known-then even when fetchedAt is inside requested historical range", async () => {
   const body = bodyFor(); await refreshRoute(request("/api/v3/intelligence/refresh", op, body));
@@ -183,4 +186,63 @@ test("explicit administrator workspace deletion erases its separate provider evi
   const path = join(folder, "provider-evidence.sqlite"); expect(existsSync(path)).toBe(true);
   await closeRuntime(); deleteWorkspace(cfg, cfg.workspaceId, false);
   expect(existsSync(path)).toBe(false); expect(existsSync(cfg.dbPath)).toBe(false);
+});
+
+// Exercise the browser adapter against production handlers, not a parallel fake wire definition.
+function integratedClient() {
+  const context = { workspaceId: op["X-LiveLift-Workspace"], generation: op["X-LiveLift-Generation"] };
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = new URL(String(input), cfg.origin);
+    const req = new Request(url, { ...init, headers: { ...Object.fromEntries(new Headers(init?.headers)), Cookie: op.Cookie, Origin: cfg.origin } });
+    if (url.pathname.endsWith("/status")) return statusRoute(req);
+    if (url.pathname.endsWith("/refresh")) return refreshRoute(req);
+    return init?.method === "POST" ? evidencePost(req) : evidenceGet(req);
+  };
+  return { client: createLiveIntelligenceClient({ fetchImpl }), context };
+}
+test.each([
+  ["normal", "available"], ["not_configured", "not_configured"], ["access_not_granted", "access_not_granted"],
+  ["auth_expired", "auth_expired"], ["rate_limit", "rate_limited"], ["unavailable", "unavailable"], ["unsupported", "unsupported"],
+] as const)("actual route to client provider state: %s", async (fixtureCase, kind) => {
+  const { client, context } = integratedClient(), command = bodyFor();
+  const result = await client.requestRefresh(context, { ...command, fixtureCase, action: "post_live" }, "SIMULATED");
+  expect(result.kind).toBe(kind);
+  if (result.kind === "available") {
+    expect(result.snapshot.provider).toBe("fixture");
+    const known = await client.getHistorical(context, { roomId: cfg.roomId, sessionId: command.sessionId, environment: "SIMULATED", session: command.session }, command.session.runtime.endedAtMs!);
+    expect(known).not.toBeNull(); expect(known!.providerEvidence).toEqual([]);
+    expect(known).not.toHaveProperty("snapshot");
+  }
+});
+test("integrated REAL adapter stays empty when fixture mode is enabled and cannot request fixture fallback", async () => {
+  const { client, context } = integratedClient(), real = await insertReal();
+  const target = { roomId: cfg.roomId, sessionId: real.id, environment: "REAL" as const };
+  expect((await client.getSnapshot(context, target)).kind).toBe("not_configured");
+  const command = { commandId: randomUUID(), roomId: cfg.roomId, sessionId: real.id, expectedSessionRevision: real.revision, providerSessionId: "123", productMappings: [], action: "post_live" as const };
+  expect((await client.requestRefresh(context, command, "REAL")).kind).toBe("not_configured");
+  expect(await client.requestRefresh(context, { ...command, fixtureCase: "normal" }, "REAL")).toMatchObject({ kind: "unavailable", reason: "malformed" });
+  expect((await client.getHistorical(context, target, real.runtime.endedAtMs!))!.providerEvidence).toEqual([]);
+  expect((await client.getSnapshot(context, target)).kind).toBe("not_configured");
+});
+test("integrated historical API exposes Creator observations only once recorded during LIVE, never later Shop snapshots", async () => {
+  configureReal(); mockRealEvidence();
+  const real = await insertReal(), rt = await getRuntime(), identity = deployment(rt.authority.db);
+  const scope = { ...identity, roomId: cfg.roomId, sessionId: real.id, mode: "REAL" as const };
+  const store = new EvidenceStore(join(folder, "provider-evidence.sqlite"), identity);
+  try {
+    for (const recordedAt of [FIXTURE_START + 30_000, real.runtime.endedAtMs! + 1]) {
+      const commandId = randomUUID(); store.claim(scope, commandId, "v7-op", commandId, Date.now());
+      store.finish(scope, commandId, { state: "AVAILABLE", telemetry: { telemetryId: randomUUID(), sessionId: real.id, mode: "REAL", providerSessionId: "123", observedAt: FIXTURE_START + 20_000, recordedAt,
+        metrics: [{ key: "current_visitor_count", value: 0, availability: "available", unit: "count", observedAt: FIXTURE_START + 20_000, source: "tiktok_creator", evidenceTier: "provider_observed" }] } });
+    }
+  } finally { store.close(); }
+  const { client, context } = integratedClient();
+  const target = { roomId: cfg.roomId, sessionId: real.id, environment: "REAL" as const };
+  expect((await client.getHistorical(context, target, FIXTURE_START + 25_000))!.providerEvidence).toEqual([]);
+  const before = await client.getHistorical(context, target, FIXTURE_START + 30_000);
+  expect(before!.providerEvidence).toHaveLength(1); expect(before!.providerEvidence[0].metrics[0].value).toBe(0);
+  expect((await client.requestRefresh(context, { commandId: randomUUID(), roomId: cfg.roomId, sessionId: real.id, expectedSessionRevision: real.revision, providerSessionId: "123", productMappings: [], action: "post_live" }, "REAL")).kind).toBe("available");
+  expect(await client.getHistorical(context, target, FIXTURE_START + 30_000)).toEqual(before);
+  const atEnd = await client.getHistorical(context, target, real.runtime.endedAtMs!);
+  expect(atEnd!.providerEvidence).toHaveLength(1); expect(atEnd).not.toHaveProperty("snapshot");
 });
