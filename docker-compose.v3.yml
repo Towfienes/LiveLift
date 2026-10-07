@@ -35,6 +35,12 @@ services:
       LIVELIFT_BACKUP_DIR: /var/backups/livelift
       LIVELIFT_TRUST_PROXY: caddy
       LIVELIFT_APP_COMMIT: ${LIVELIFT_APP_COMMIT:-unknown}
+      # Optional TikTok Login Kit (docs/tiktok/SANDBOX-SETUP.md). Empty keeps TikTok "Not configured".
+      LIVELIFT_TIKTOK_CLIENT_KEY: ${LIVELIFT_TIKTOK_CLIENT_KEY:-}
+      LIVELIFT_TIKTOK_CLIENT_SECRET: ${LIVELIFT_TIKTOK_CLIENT_SECRET:-}
+      LIVELIFT_TIKTOK_REDIRECT_URI: ${LIVELIFT_TIKTOK_REDIRECT_URI:-}
+      LIVELIFT_PROVIDER_ENCRYPTION_KEY: ${LIVELIFT_PROVIDER_ENCRYPTION_KEY:-}
+      LIVELIFT_TIKTOK_SCOPES: ${LIVELIFT_TIKTOK_SCOPES:-}
     volumes:
       - authority:/var/lib/livelift
       - backups:/var/backups/livelift
