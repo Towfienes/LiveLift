@@ -11,7 +11,10 @@ import { PlanActualLanes } from "@/components/ops/PlanActualLanes";
 import { ActionResults, CueResults, HistoryList, PlanActualRows, ReviewSummary } from "@/components/ops/ReviewTable";
 import { NextLivePanel } from "@/components/ops/NextLivePanel";
 import { Signal } from "@/components/ops/StatusChips";
-import { buildReview, formatClock, formatDay, formatDuration, proposeChanges } from "@/lib/domain";
+import { ReviewCopilot } from "@/components/ai/ReviewCopilot";
+import { useReviewCopilot } from "@/components/ai/useAiCopilot";
+import { buildReviewFacts } from "@/lib/ai/context";
+import { buildReview,formatClock, formatDay, formatDuration, proposeChanges } from "@/lib/domain";
 import { useRemoteCommands, useSessionActions } from "@/lib/store/hooks";
 import type { RuntimeCommandBody } from "@/contracts/authority";
 
@@ -67,6 +70,12 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
   const tz = session.timezone;
   const review = useMemo(() => buildReview(session), [session]);
   const proposals = useMemo(() => proposeChanges(session), [session]);
+  // Advisory only. A pre-Phase-2 archive is not in the room, so the server cannot read it and the Copilot stays off.
+  // REAL shows already sync with the room; a rehearsal's Review stays offline until the operator opens the Copilot.
+  const [copilotOpened, setCopilotOpened] = useState(isRemote);
+  const copilot = useReviewCopilot({ enabled: copilotOpened && !ctx.archive, resetKey: session.id });
+  const productFacts = useMemo(() => (review ? buildReviewFacts(session, review) : []), [session, review]);
+  const askAi = (): void => copilot.ask(isRemote ? { sessionId: session.id } : { sessionId: session.id, session });
 
   if (!review) {
     return (
@@ -170,6 +179,8 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
           <div className="px-4 lg:px-6 py-4 max-w-[1760px] w-full mx-auto space-y-4">
             <ReviewSummary review={review} tz={tz} />
 
+            <ReviewCopilot copilot={copilot} session={session} source={isRemote ? "remote" : "local"} archive={ctx.archive} facts={productFacts} opened={copilotOpened} onOpen={() => setCopilotOpened(true)} onOpenNextLive={() => setView("next")} />
+
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4 items-start">
               <div className="space-y-4 min-w-0">
                 <section className="rounded-[12px] bg-[#13161C] p-4" aria-label="Plan vs Actual timeline">
@@ -256,7 +267,7 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
           </div>
         ) : (
           <div className="px-4 lg:px-6 py-4 max-w-[1760px] w-full mx-auto">
-            <NextLivePanel key={session.id} session={session} ctx={ctx} />
+            <NextLivePanel key={session.id} session={session} ctx={ctx} aiCopilot={ctx.archive || !copilotOpened ? undefined : copilot} onAskAi={askAi} />
           </div>
         )}
       </div>

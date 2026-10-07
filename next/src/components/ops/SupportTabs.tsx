@@ -5,7 +5,7 @@ import type { ProductSnapshot, Session, SessionEvent } from "@/contracts";
 import { baselinePlan, currentPlan, emptySegmentRun, formatClock } from "@/lib/domain";
 import { Signal, type Tone } from "./StatusChips";
 
-type TabId = "history" | "coverage" | "changes";
+type TabId = "history" | "coverage" | "changes" | "copilot";
 
 const EVENT_ICON: Partial<Record<SessionEvent["type"], string>> = {
   session_started: "ri-play-circle-line",
@@ -29,15 +29,27 @@ const EVENT_TONE: Partial<Record<SessionEvent["type"], Tone>> = {
   correction_added: "violet",
 };
 
-/** The one secondary region: actual history, coverage, and plan changes. Read-only. */
+/**
+ * The one secondary region: actual history, coverage, plan changes and (optionally) the AI Copilot. Read-only.
+ * The Copilot's content and state belong to the caller, so switching tabs never loses an analysis.
+ */
 export function SupportTabs({
   session,
   products,
   tz,
+  copilot,
+  copilotAvailable = false,
+  onCopilotOpen,
 }: {
   session: Session;
   products: ProductSnapshot[];
   tz: string;
+  /** The AI Copilot panel. Without it there is no AI tab. */
+  copilot?: React.ReactNode;
+  /** An analysis is waiting: the tab is marked so it is noticed without stealing the view. */
+  copilotAvailable?: boolean;
+  /** The Copilot tab was opened (the caller starts nothing before this). */
+  onCopilotOpen?: () => void;
 }): React.ReactElement {
   const [tab, setTab] = useState<TabId>("history");
   const plan = currentPlan(session);
@@ -48,6 +60,7 @@ export function SupportTabs({
     { id: "history", label: "History", icon: "ri-history-line" },
     { id: "coverage", label: "Coverage", icon: "ri-checkbox-multiple-line" },
     { id: "changes", label: "Plan changes", icon: "ri-file-edit-line" },
+    ...(copilot ? [{ id: "copilot" as const, label: "AI Copilot", icon: "ri-sparkling-2-line" }] : []),
   ];
 
   return (
@@ -61,7 +74,10 @@ export function SupportTabs({
             id={`tab-${t.id}`}
             aria-selected={tab === t.id}
             aria-controls={`panel-${t.id}`}
-            onClick={() => setTab(t.id)}
+            onClick={() => {
+              setTab(t.id);
+              if (t.id === "copilot") onCopilotOpen?.();
+            }}
             data-testid={`support-tab-${t.id}`}
             className={`min-h-[44px] px-3 rounded-[8px] text-[16px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
               tab === t.id ? "bg-[#252A34] text-[#DFFF00]" : "text-[#AFB8C7] hover:text-white"
@@ -69,6 +85,12 @@ export function SupportTabs({
           >
             <i className={t.icon} aria-hidden="true" />
             <span>{t.label}</span>
+            {t.id === "copilot" && copilotAvailable && (
+              <>
+                <span className="w-2 h-2 rounded-full bg-[#DFFF00]" aria-hidden="true" data-testid="copilot-tab-dot" />
+                <span className="sr-only">analysis ready</span>
+              </>
+            )}
           </button>
         ))}
       </div>
@@ -138,6 +160,8 @@ export function SupportTabs({
             </li>
           </ul>
         )}
+
+        {tab === "copilot" && copilot}
 
         {tab === "changes" && (
           <div data-testid="changes-list">
