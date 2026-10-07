@@ -8,6 +8,8 @@ import { Button, EnvironmentBadge } from "@/components/ui";
 import { RoomStatusPanel } from "@/components/ops/ConnectionStatus";
 import { SegmentTile } from "@/components/ops/SegmentTile";
 import { Signal } from "@/components/ops/StatusChips";
+import { FirstRunHero, IdleCard, LoopGuideStrip, TruthPanel } from "@/components/onboarding/HomeOnboarding";
+import { deriveLoopGuide } from "@/components/onboarding/loop";
 import {
   baselinePlan,
   buildReview,
@@ -41,6 +43,13 @@ export default function HomePage(): React.ReactElement {
     [sessions]
   );
   const lead = active[0] ?? null;
+  const guide = useMemo(() => deriveLoopGuide(sessions), [sessions]);
+  // Rehearsals ship with the app, so "first run" means the operator has no REAL show of their own yet.
+  const hasOwnShows = sessions.some((s) => s.environment === "REAL");
+  const sampleReview = ended.find((s) => s.environment === "SIMULATED") ?? null;
+  // The guide ranks the operator's own shows ahead of rehearsals, so the next move follows their loop.
+  const currentStep = guide.steps.find((s) => s.id === guide.current);
+  const idleNext = currentStep?.href && guide.current !== "create" ? { href: currentStep.href, label: currentStep.action } : null;
   const leadSegment = lead
     ? currentPlan(lead).segments.find((s) => s.id === lead.runtime.currentSegmentId) ?? null
     : null;
@@ -50,8 +59,8 @@ export default function HomePage(): React.ReactElement {
       <div className="flex-1 overflow-y-auto w-full max-w-[1160px] mx-auto px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-[34px] leading-[1.2] font-medium tracking-[-0.6px] text-[#F5F7FC]">Home</h1>
-            <p className="text-[16px] leading-6 text-[#B7C1CE] mt-1.5">Your next useful action, in one place.</p>
+            <h1 className="text-[34px] leading-[1.2] font-medium tracking-[-0.6px] text-[#F5F7FC]">Your LIVE desk</h1>
+            <p className="text-[16px] leading-6 text-[#B7C1CE] mt-1.5">The operating desk for a TikTok Shop LIVE: plan it, run it, review it, and carry what you learn into the next.</p>
           </div>
           <Link href="/live/new">
             <Button variant="ghost" icon="ri-add-line">Create LIVE</Button>
@@ -105,28 +114,13 @@ export default function HomePage(): React.ReactElement {
               </Link>
             </div>
           </div>
+        ) : hasOwnShows ? (
+          <IdleCard next={idleNext} />
         ) : (
-          <div className="mt-8 rounded-[12px] bg-[#13161C] p-8" data-testid="first-run">
-            <span className="text-[14px] font-semibold tracking-[1.7px] text-[#DFFF00] uppercase">Your next LIVE</span>
-            <h2 className="text-[34px] leading-tight font-medium tracking-[-0.6px] text-[#F5F7FC] mt-3">
-              Plan the show.
-              <br />
-              Stay in control.
-            </h2>
-            <p className="text-[17px] leading-relaxed text-[#CAD0DA] mt-3 max-w-[640px]">
-              A timed Run of Show with hard anchors, an operating desk that shows what to do when it drifts, and a review that turns what
-              actually happened into tomorrow&apos;s plan. It works with or without integrations.
-            </p>
-            <div className="flex items-center gap-4 mt-6 flex-wrap">
-              <Link href="/live/new">
-                <Button variant="primary" size="lg" icon="ri-add-line">Create LIVE</Button>
-              </Link>
-              <Link href="/simulator">
-                <Button variant="ghost" size="lg" icon="ri-flask-line" data-testid="try-simulator-btn">Try Simulator</Button>
-              </Link>
-            </div>
-          </div>
+          <FirstRunHero reviewHref={sampleReview ? `/live/${sampleReview.id}/review` : null} />
         )}
+
+        {hydrated && <LoopGuideStrip guide={guide} compact={hasOwnShows} showCurrent={!(roomProblem && !lead)} />}
 
         {hydrated && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
@@ -156,7 +150,10 @@ export default function HomePage(): React.ReactElement {
                   ))}
                 </ul>
               ) : (
-                <p className="text-[15px] text-[#9AA5B5] py-4">No prepared shows.</p>
+                <p className="text-[15px] text-[#9AA5B5] py-4" data-testid="prepared-empty">
+                  Nothing prepared yet. A LIVE you create waits here until you start it.{" "}
+                  <Link href="/live/new" className="underline underline-offset-4 text-[#CAD0DA] hover:text-[#DFFF00]">Create a LIVE</Link>
+                </p>
               )}
             </div>
 
@@ -197,19 +194,15 @@ export default function HomePage(): React.ReactElement {
                   })}
                 </ul>
               ) : (
-                <p className="text-[15px] text-[#9AA5B5] py-4">Nothing to review yet.</p>
+                <p className="text-[15px] text-[#9AA5B5] py-4" data-testid="ended-empty">
+                  Nothing to review yet. Review opens as soon as a show ends, with the plan beside what was recorded.
+                </p>
               )}
             </div>
           </div>
         )}
 
-        <div className="mt-12 rounded-[12px] bg-[#101319] p-6">
-          <h3 className="text-[20px] font-medium text-[#F5F7FC]">Nothing to connect before you begin</h3>
-          <p className="text-[15px] text-[#B7C1CE] mt-2 max-w-[720px]">
-            Start blank, use the 30-minute template, or rehearse a simulated show. REAL shows are kept in the shared room and every desk sees
-            the same record; rehearsals stay in this browser only.
-          </p>
-        </div>
+        <TruthPanel />
       </div>
     </StandardShell>
   );
