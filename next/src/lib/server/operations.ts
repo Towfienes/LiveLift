@@ -7,6 +7,8 @@ import { deployment, migrateV1, openExisting, schemaVersion, verifyDatabase, wri
 import { createBackup, validateArtifact } from "./backup";
 import { assertNotRetired, beginMaintenance, finishMaintenance, markerPath, retire, removeDatabase, backupArtifacts, syncDirectory } from "./lifecycle";
 import { pruneOffHostWorkspace } from "./offhost";
+import { providerStorePath } from "./tiktok/config";
+import { removeProviderStoreFiles } from "./tiktok/store";
 import { log } from "./log";
 
 export function initialize(config: ProductionConfig): void {
@@ -75,6 +77,8 @@ export function deleteWorkspace(config: ProductionConfig, confirmation: string, 
       if (existsSync(config.backupDir)) syncDirectory(config.backupDir);
     }
     removeDatabase(config.dbPath);
+    // Provider credentials belong to the workspace and are never backed up, so deletion must erase them here.
+    removeProviderStoreFiles(providerStorePath(config));
     for (const name of ["exports", "staging", "rollback"]) rmSync(join(dirname(config.dbPath), name), { recursive: true, force: true });
     syncDirectory(dirname(config.dbPath));
     finishMaintenance(config);
