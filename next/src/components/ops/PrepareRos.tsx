@@ -121,13 +121,13 @@ export function PrepareRos({
                     Arrives {row.startMs !== null ? clock(row.startMs) : "late"} — {formatDuration(row.deficitSec)} after its {clock(row.anchorMs)} anchor
                   </li>
                 )}
-                <li className="flex items-center gap-3 py-1.5 px-2" data-testid={`prepare-row-${seg.id}`}>
+                <li className="flex flex-wrap sm:flex-nowrap items-center gap-3 py-1.5 px-2" data-testid={`prepare-row-${seg.id}`}>
                   <div className="w-[76px] shrink-0">
                     <span className="text-[12px] font-mono text-[#AEB7C5]">{String(i + 1).padStart(2, "0")}</span>
                     <p className="text-[14px] tabular-nums text-[#E4E8F0]">{row.startMs !== null ? clock(row.startMs) : "Unknown"}</p>
                   </div>
                   <SegmentTile segment={seg} product={product} size={44} />
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-[100px] sm:min-w-0 flex-1">
                     <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap">
                       <p className="text-[17px] font-medium text-[#F5F7FC] truncate max-w-full">{seg.title || "Untitled segment"}</p>
                       {row.anchorMs !== null && (
@@ -157,7 +157,7 @@ export function PrepareRos({
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center shrink-0">
+                  <div className="flex items-center shrink-0 ml-auto">
                     <button
                       type="button"
                       aria-label={`Move ${seg.title || "segment"} up`}

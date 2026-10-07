@@ -47,7 +47,7 @@ export const CATEGORIES: CategoryGroup[] = [
     title: "Available Today: Core Standalone Operations",
     badge: "Core Operational Loop",
     description:
-      "Core live commerce capabilities that operate completely standalone today with zero third-party platform dependencies.",
+      "Create → Prepare → Operate → Review → Next LIVE needs no external platform integration. REAL shows require a configured shared room; SIMULATED rehearsals stay in this browser.",
     items: [
       {
         id: "manual_desk",
@@ -56,11 +56,11 @@ export const CATEGORIES: CategoryGroup[] = [
         variant: "available",
         category: "available",
         details:
-          "The entire live commerce lifecycle — Prepare, Operate, Review, and Next LIVE — runs with zero external integrations. REAL shows synchronize safely through the shared studio room, while rehearsals run in this browser with zero external network dependencies.",
+          "Create, Prepare, Operate, Review, and Next LIVE work without a TikTok connection. REAL shows use the signed-in operator and shared room clock. SIMULATED rehearsals use browser storage and a virtual clock.",
         epistemicNote:
-          "100% operational autonomy: zero external platform dependency during live broadcasts.",
+          "LiveLift records show operations. TikTok owns video, chat, native actions and platform analytics.",
         cta: {
-          label: "Plan New LIVE",
+          label: "Create LIVE",
           href: "/live/new",
           icon: "ri-add-circle-line",
         },
@@ -93,9 +93,9 @@ export const CATEGORIES: CategoryGroup[] = [
         variant: "available",
         category: "available",
         details:
-          "Real-time synchronized studio room authority with optimistic concurrency, room revision tracking, and durable cryptographically logged commands. Multiple studio operators collaborate simultaneously with guaranteed conflict detection.",
+          "With a configured server and operator accounts, REAL shows share one room record. Commands receive durable receipts, and conflicting changes require reconciliation.",
         epistemicNote:
-          "Append-only event ledger: state changes create durable receipts; history is never silently rewritten.",
+          "Requires the shared room. Server or storage failure pauses REAL changes; rehearsals remain separate.",
         cta: {
           label: "Room Sessions",
           href: "/sessions",
@@ -109,9 +109,9 @@ export const CATEGORIES: CategoryGroup[] = [
         variant: "available",
         category: "available",
         details:
-          "Post-broadcast dual knowledge lens ('As Known Then' vs 'With Later Evidence'). Derives actionable Run of Show timeline adjustments for subsequent shows from executed reality, while cloning clean, uncoupled session drafts.",
+          "Review compares the baseline plan with recorded actuals, reports and corrections. The operator selects proposed adjustments for a new plan; past runtime and reports are never copied.",
         epistemicNote:
-          "Proposals preserve full historical context without polluting fresh session plans.",
+          "One show supports a manual choice. Observation is not causation, and Review makes no sales or conversion claim.",
         cta: {
           label: "Review Past Shows",
           href: "/sessions",
@@ -150,7 +150,7 @@ export const CATEGORIES: CategoryGroup[] = [
         variant: "manual",
         category: "manual",
         details:
-          "Rapid operator-reported tracking of presenter pins, flash sales, voucher drops, and verbal cues directly from the flight desk while operating TikTok natively. Operates cleanly with zero background scrapers or fragile bots.",
+          "Record attempts and operator reports for pins, flash sales, vouchers and verbal cues. The operator performs platform actions in TikTok, then records what they did in LiveLift.",
         epistemicNote:
           "Operator reported != Provider observed: Human assertion logged with actor and timestamp.",
         cta: {
@@ -179,54 +179,54 @@ export const CATEGORIES: CategoryGroup[] = [
   },
   {
     id: "adapter_ready",
-    title: "Adapter-Ready / Platform-Limited: Bounded Provider Extensions",
+    title: "Platform-Limited: Optional External Capabilities",
     badge: "Intentionally Bounded Extensions",
     description:
-      "Standardized provider connectors engineered for official platform APIs, intentionally bounded by published platform limits and rate quotas.",
+      "No platform provider is connected to this V3 candidate. These capabilities require a sanctioned provider, credentials and verified access before they can be offered.",
     items: [
       {
         id: "tiktok_analytics",
         name: "TikTok Shop Post-Stream Analytics",
-        status: "Adapter-Ready",
+        status: "Platform-limited",
         variant: "adapter_ready",
         category: "adapter_ready",
         details:
-          "Standardized ingestion client engineered for official TikTok Shop Open Platform Seller APIs (shop_lives/*). Intentionally bounded: TikTok Shop only provisions minute-level metrics after broadcast conclusion, requires an authorized Account Manager, and does not provide real-time comment streams.",
+          "Not connected in V3. Post-LIVE analytics stay in TikTok. Any future import would require sanctioned access and source-labelled evidence; it would not make live chat or native actions available.",
         epistemicNote:
-          "Platform boundary: Retrospective reconciliation only; official API does not expose real-time stream.",
+          "Platform-limited, not a working integration. Missing analytics remain unavailable, never zero.",
       },
       {
         id: "shopee_adapter",
         name: "Shopee Live Pin & Comment Adapter",
-        status: "Adapter-Ready",
+        status: "Platform-limited",
         variant: "adapter_ready",
         category: "adapter_ready",
         details:
-          "Standardized connector designed for official Shopee Open Platform API v2 User-level endpoints (update_show_item and get_latest_comment_list). Bounded by 10-second polling windows and platform rate-limits.",
+          "Not connected to the V3 desk. Older Python tooling in this repository does not provide a working Shopee integration here. A sanctioned provider and verified account access would be required.",
         epistemicNote:
-          "Platform boundary: Polling frequency strictly bounded by platform API quota.",
+          "Platform-limited. No pin control or chat ingestion is available in this candidate.",
       },
       {
         id: "youtube_client",
         name: "YouTube Live Streaming Client",
-        status: "Adapter-Ready",
+        status: "Platform-limited",
         variant: "adapter_ready",
         category: "adapter_ready",
         details:
-          "Ingestion client for official YouTube Data API v3 live chat polling (liveChatMessages.list). Complies strictly with platform quota allocations and exponential backoff.",
+          "Not connected to the V3 desk. Older Python tooling is separate from this product. Provider authorization, permissions and quota handling would need validation before any connection.",
         epistemicNote:
-          "Platform boundary: Quota-governed polling rate; graceful degradation on quota exhaustion.",
+          "Platform-limited. No YouTube chat or analytics feed is available in this candidate.",
       },
       {
         id: "facebook_adapter",
         name: "Facebook Live Graph API Adapter",
-        status: "Adapter-Ready",
+        status: "Platform-limited",
         variant: "adapter_ready",
         category: "adapter_ready",
         details:
-          "Connector for official Meta Graph API polling (live video comments on owned Pages) using chronological cursor resumption and strict permission scopes.",
+          "Not connected to the V3 desk. Older Python tooling is separate from this product. A sanctioned provider and verified Page permissions would be required.",
         epistemicNote:
-          "Platform boundary: Limited to owned Page broadcasts with authorized Page access token.",
+          "Platform-limited. No Facebook chat or analytics feed is available in this candidate.",
       },
       {
         id: "workspace_export",
@@ -235,11 +235,11 @@ export const CATEGORIES: CategoryGroup[] = [
         variant: "available",
         category: "adapter_ready",
         details:
-          "Full structured JSON export of session snapshots, Run of Show plans, command receipts, and audit trails via /api/v3/workspace/export for downstream merchant analytics and BI pipelines.",
+          "Signed-in operators can export the configured shared workspace as JSON from Sessions. The export contains REAL show operations and receipts; browser rehearsals and account secrets are excluded.",
         epistemicNote:
-          "Merchant data sovereignty: Complete export anytime without vendor lock-in.",
+          "Requires an operator account and available server storage. This is a data export, not a platform analytics integration.",
         cta: {
-          label: "Export Workspace",
+          label: "Open export controls",
           href: "/sessions",
           icon: "ri-download-2-line",
         },
@@ -251,7 +251,7 @@ export const CATEGORIES: CategoryGroup[] = [
         variant: "unknown",
         category: "adapter_ready",
         details:
-          "Grounded in truth: operator reports are the operator's word. Without an independent, cryptographically verified platform callback channel, platform verification stays Unknown — not failed, not confirmed.",
+          "An operator report is a human assertion. No independent platform verification channel is connected, so verification stays Unknown even when a report or attempt was recorded.",
         epistemicNote:
           "Unknown != Failed: Missing telemetry is neutral; never marked with a false failure badge.",
       },
@@ -262,7 +262,7 @@ export const CATEGORIES: CategoryGroup[] = [
     title: "Not Available / Unsupported: Deliberate Platform Boundaries",
     badge: "Deliberate Platform Guardrails",
     description:
-      "Capabilities deliberately unsupported to protect merchant seller accounts, respect terms of service, and uphold legal privacy standards.",
+      "These platform features are unavailable in this candidate. The operator uses TikTok directly; LiveLift records show operations and truthful evidence.",
     items: [
       {
         id: "direct_action_control",
@@ -271,7 +271,7 @@ export const CATEGORIES: CategoryGroup[] = [
         variant: "unsupported",
         category: "unsupported",
         details:
-          "LiveLift never programmatically pins, unpins, or triggers promotions inside TikTok Shop. Autonomous bot actions violate platform Terms of Service, jeopardize merchant account safety, and remove essential human operator discretion. The operator executes actions in TikTok directly and logs them in LiveLift.",
+          "LiveLift does not pin, unpin or trigger promotions inside TikTok. The operator executes those actions in TikTok and reports them here. A browser or HTTP action is not verified TikTok action.",
         epistemicNote:
           "Safety guardrail: Zero automated platform tampering or unauthorized bot control.",
       },
@@ -282,7 +282,7 @@ export const CATEGORIES: CategoryGroup[] = [
         variant: "unavailable",
         category: "unsupported",
         details:
-          "No reverse-engineered WebSocket or headless stream scraping is connected. Unauthorized scraping violates platform Terms of Service, introduces fragile failure points, and breaches merchant compliance regulations (Law 91/2025/QH15 & Decree 356/2025/NĐ-CP).",
+          "No realtime chat or engagement ingestion is connected. LiveLift does not scrape TikTok. The desk runs on the plan, clock and what the operator records.",
         epistemicNote:
           "Compliance guardrail: Official developer APIs only; zero unauthorized scraping.",
       },

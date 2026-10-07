@@ -100,21 +100,20 @@ export default function IntegrationsPage(): React.ReactElement {
               V3 Capability Center
             </span>
             <span className="text-[13px] text-[#CAD0DA]">
-              Operational Independence & Platform Boundary Matrix
+              Show operations and platform boundaries
             </span>
           </div>
           <h1 className="text-[32px] sm:text-[36px] font-semibold tracking-tight text-[#F5F7FC]">
             Integrations & Capability Center
           </h1>
           <p className="text-[15px] sm:text-[16px] text-[#B7C1CE] leading-relaxed max-w-[900px]">
-            LiveLift is built on intentional architecture: 100% standalone
-            autonomy with zero external integrations required to run live
-            broadcasts. External platform connections are bounded extensions,
-            never brittle prerequisites.
+            LiveLift helps the operator beside a host Create, Prepare, Operate,
+            Review and plan the Next LIVE. No TikTok connection is needed.
+            Video, chat, native actions and platform analytics stay in TikTok.
           </p>
         </div>
 
-        {/* Standalone Autonomy Guarantee Banner */}
+        {/* Standalone show operations Banner */}
         <section
           aria-labelledby="autonomy-guarantee-heading"
           className="rounded-[14px] bg-gradient-to-br from-[#141A1F] via-[#11161D] to-[#161B22] border border-[#263529] p-6 sm:p-7 shadow-lg space-y-6"
@@ -130,36 +129,35 @@ export default function IntegrationsPage(): React.ReactElement {
                   id="autonomy-guarantee-heading"
                   className="text-[20px] sm:text-[22px] font-semibold text-[#F5F7FC]"
                 >
-                  Standalone Autonomy Guarantee
+                  Standalone show operations
                 </h2>
               </div>
               <p className="text-[15px] text-[#CAD0DA] leading-relaxed">
-                LiveLift is production-ready standalone today with zero
-                third-party integrations. Preparation, live pacing, cue
-                reporting, replay review, and session cloning operate natively.
-                Third-party connections are optional, intentionally bounded
-                extensions — their absence or failure cannot stop a show.
+                Plan and record show operations without external platform integrations.
+                REAL shows require a configured shared room and sign-in; server or
+                storage failure pauses changes. SIMULATED rehearsals run in this
+                browser. Neither mode starts or controls a TikTok broadcast.
               </p>
             </div>
 
             {/* Quick KPI stats */}
-            <div className="grid grid-cols-3 gap-3 shrink-0">
-              <div className="rounded-[10px] bg-[#1A2218] border border-[#3E5224] p-3 text-center min-w-[96px]">
-                <div className="text-[22px] font-bold text-[#DFFF00]">100%</div>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 min-w-0">
+              <div className="rounded-[10px] bg-[#1A2218] border border-[#3E5224] p-3 text-center min-w-0">
+                <div className="text-[22px] font-bold text-[#DFFF00]">5 steps</div>
                 <div className="text-[12px] text-[#CAD0DA] font-medium leading-tight mt-0.5">
-                  Standalone Autonomy
+                  Standalone loop
                 </div>
               </div>
-              <div className="rounded-[10px] bg-[#161B22] border border-[#2D3748] p-3 text-center min-w-[96px]">
+              <div className="rounded-[10px] bg-[#161B22] border border-[#2D3748] p-3 text-center min-w-0">
                 <div className="text-[22px] font-bold text-[#F5F7FC]">0</div>
                 <div className="text-[12px] text-[#CAD0DA] font-medium leading-tight mt-0.5">
-                  API Dependencies
+                  Platform API Dependencies
                 </div>
               </div>
-              <div className="rounded-[10px] bg-[#1C1F2B] border border-[#3B385E] p-3 text-center min-w-[96px]">
-                <div className="text-[22px] font-bold text-[#C8B2FF]">100%</div>
+              <div className="rounded-[10px] bg-[#1C1F2B] border border-[#3B385E] p-3 text-center min-w-0">
+                <div className="text-[22px] font-bold text-[#C8B2FF]">0</div>
                 <div className="text-[12px] text-[#CAD0DA] font-medium leading-tight mt-0.5">
-                  Native Workflows
+                  Connected Platforms
                 </div>
               </div>
             </div>
@@ -172,8 +170,8 @@ export default function IntegrationsPage(): React.ReactElement {
                 aria-hidden="true"
               />
               <span>
-                Manual flight desk and catalog spreadsheet import are 100%
-                complete today.
+                Use the operating desk and paste CSV/TSV products today.
+                Platform connections are optional and currently unavailable.
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -182,14 +180,14 @@ export default function IntegrationsPage(): React.ReactElement {
                 className="min-h-[44px] px-4 py-2 rounded-[8px] bg-[#DFFF00] text-[#111407] font-semibold hover:bg-[#CBEA00] transition-colors inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-[#DFFF00] focus-visible:outline-offset-2"
               >
                 <i className="ri-play-circle-line" aria-hidden="true" />
-                <span>Start Live Session</span>
+                <span>Create LIVE</span>
               </Link>
               <Link
                 href="/simulator"
                 className="min-h-[44px] px-4 py-2 rounded-[8px] bg-[#292D35] text-[#F5F7FC] font-medium hover:bg-[#343944] transition-colors inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-[#DFFF00] focus-visible:outline-offset-2"
               >
                 <i className="ri-flask-line" aria-hidden="true" />
-                <span>Test Simulator</span>
+                <span>Try Simulator</span>
               </Link>
             </div>
           </div>
@@ -207,18 +205,17 @@ export default function IntegrationsPage(): React.ReactElement {
                 id="epistemic-ledger-heading"
                 className="text-[18px] sm:text-[20px] font-semibold text-[#F5F7FC]"
               >
-                Epistemic Truth Ledger & Evidence Hierarchy
+                What the evidence means
               </h2>
             </div>
             <span className="text-[13px] text-[#8A95A5] font-mono">
-              Integrity Mandate: Truth in Evidence
+              Truthful reports and unknown outcomes
             </span>
           </div>
 
           <p className="text-[14px] text-[#CAD0DA] leading-relaxed">
-            In livestream commerce, misrepresenting unverified operator actions
-            as platform-confirmed events introduces severe operational drift.
-            LiveLift strictly enforces three foundational epistemic rules:
+            Recommendations, accepted decisions, attempts and performed actions
+            are separate records. These rules apply in every part of the loop:
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
@@ -231,9 +228,9 @@ export default function IntegrationsPage(): React.ReactElement {
                 Operator reported != Provider observed != Platform confirmed
               </div>
               <p className="text-[13px] text-[#9AA5B5] leading-relaxed">
-                An operator report is a human claim. Adapter telemetry is an
-                observation. Platform confirmation requires authoritative
-                callback proof.
+                An operator report is a human claim. Provider telemetry would be an
+                observation. Platform confirmation needs independent evidence;
+                no such channel is connected here.
               </p>
             </div>
 
@@ -277,8 +274,7 @@ export default function IntegrationsPage(): React.ReactElement {
                 Capability Matrix
               </h2>
               <p className="text-[14px] text-[#9AA5B5]">
-                {totalCapabilitiesCount} documented capabilities across 4
-                rigorous architectural tiers
+                {totalCapabilitiesCount} capabilities and limits across 4 categories
               </p>
             </div>
 
@@ -318,7 +314,7 @@ export default function IntegrationsPage(): React.ReactElement {
                     : cat.id === "manual"
                     ? "Manual / Built-In"
                     : cat.id === "adapter_ready"
-                    ? "Adapter-Ready"
+                    ? "Platform-Limited"
                     : "Unsupported"}{" "}
                   ({cat.items.length})
                 </button>
@@ -375,7 +371,7 @@ export default function IntegrationsPage(): React.ReactElement {
                         >
                           <div className="space-y-3">
                             {/* Card Header */}
-                            <div className="flex items-start justify-between gap-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
                               <h4 className="text-[17px] font-semibold text-[#F5F7FC] leading-snug">
                                 {item.name}
                               </h4>

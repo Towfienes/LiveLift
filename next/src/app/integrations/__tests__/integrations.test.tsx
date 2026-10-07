@@ -42,7 +42,7 @@ describe("Capability Center & Integrations Page", () => {
     expect(document.body).not.toHaveTextContent("Configure");
   });
 
-  it("renders page header and Standalone Autonomy Guarantee banner with key KPIs", async () => {
+  it("renders the standalone loop with its room requirement and zero connected platforms", async () => {
     await renderComponent();
 
     // Main header
@@ -50,21 +50,22 @@ describe("Capability Center & Integrations Page", () => {
       "Integrations & Capability Center"
     );
 
-    // Standalone Autonomy Guarantee section
+    // Standalone show operations section
     const guaranteeHeading = screen.getByRole("heading", {
-      name: "Standalone Autonomy Guarantee",
+      name: "Standalone show operations",
     });
     expect(guaranteeHeading).toBeInTheDocument();
 
     // Check KPI statistics
-    expect(screen.getByText("Standalone Autonomy")).toBeInTheDocument();
-    expect(screen.getByText("API Dependencies")).toBeInTheDocument();
-    expect(screen.getByText("Native Workflows")).toBeInTheDocument();
-    expect(screen.getAllByText("100%").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Standalone loop")).toBeInTheDocument();
+    expect(screen.getByText("Platform API Dependencies")).toBeInTheDocument();
+    expect(screen.getByText("Connected Platforms")).toBeInTheDocument();
+    expect(screen.getByText("5 steps")).toBeInTheDocument();
+    expect(screen.getAllByText("0")).toHaveLength(2);
 
     // Check guarantee message
     expect(
-      screen.getByText(/LiveLift is production-ready standalone today with zero third-party integrations/i)
+      screen.getByText(/REAL shows require a configured shared room and sign-in/i)
     ).toBeInTheDocument();
   });
 
@@ -73,7 +74,7 @@ describe("Capability Center & Integrations Page", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Epistemic Truth Ledger & Evidence Hierarchy",
+        name: "What the evidence means",
       })
     ).toBeInTheDocument();
 
@@ -113,7 +114,7 @@ describe("Capability Center & Integrations Page", () => {
     // Category 3: Adapter-Ready / Platform-Limited
     expect(
       screen.getByRole("heading", {
-        name: "Adapter-Ready / Platform-Limited: Bounded Provider Extensions",
+        name: "Platform-Limited: Optional External Capabilities",
       })
     ).toBeInTheDocument();
     expect(
@@ -173,6 +174,18 @@ describe("Capability Center & Integrations Page", () => {
       screen.getByText("Independent Platform Action Verification")
     ).toBeInTheDocument();
 
+    const platforms = CATEGORIES.flatMap((c) => c.items).filter((item) =>
+      ["tiktok_analytics", "shopee_adapter", "youtube_client", "facebook_adapter"].includes(item.id)
+    );
+    expect(platforms).toHaveLength(4);
+    for (const item of platforms) {
+      expect(item.status).toBe("Platform-limited");
+      expect(item.details).toMatch(/Not connected/);
+      expect(item.cta).toBeUndefined();
+      expect(item.secondaryCta).toBeUndefined();
+    }
+    expect(document.body).not.toHaveTextContent("dual knowledge lens");
+
     // Unsupported cards
     expect(
       screen.getByText("Direct Platform Pin / Action Control")
@@ -195,7 +208,7 @@ describe("Capability Center & Integrations Page", () => {
     const manualBadges = screen.getAllByText("Manual");
     expect(manualBadges.length).toBeGreaterThanOrEqual(3);
 
-    const adapterReadyBadges = screen.getAllByText("Adapter-Ready");
+    const adapterReadyBadges = screen.getAllByText("Platform-limited");
     expect(adapterReadyBadges.length).toBeGreaterThanOrEqual(4);
 
     expect(screen.getByText("Unsupported")).toBeInTheDocument();
@@ -208,14 +221,14 @@ describe("Capability Center & Integrations Page", () => {
     await renderComponent();
 
     // Check banner CTAs
-    const startLiveBtn = screen.getByRole("link", { name: /Start Live Session/i });
+    const startLiveBtn = screen.getAllByRole("link", { name: /^Create LIVE$/i })[0];
     expect(startLiveBtn).toHaveAttribute("href", "/live/new");
 
-    const testSimBtn = screen.getByRole("link", { name: /Test Simulator/i });
+    const testSimBtn = screen.getByRole("link", { name: /Try Simulator/i });
     expect(testSimBtn).toHaveAttribute("href", "/simulator");
 
     // Check card CTAs
-    const planNewLive = screen.getByRole("link", { name: /Plan New LIVE/i });
+    const planNewLive = screen.getAllByRole("link", { name: /^Create LIVE$/i })[1];
     expect(planNewLive).toHaveAttribute("href", "/live/new");
 
     const launchSim = screen.getByRole("link", { name: /Launch Simulator/i });
@@ -224,7 +237,7 @@ describe("Capability Center & Integrations Page", () => {
     const productLib = screen.getByRole("link", { name: /Product Library/i });
     expect(productLib).toHaveAttribute("href", "/products");
 
-    const exportWs = screen.getByRole("link", { name: /Export Workspace/i });
+    const exportWs = screen.getByRole("link", { name: /Open export controls/i });
     expect(exportWs).toHaveAttribute("href", "/sessions");
 
     // All links should be accessible with >= 44px minimum height

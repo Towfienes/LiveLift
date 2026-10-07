@@ -205,7 +205,7 @@ export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateCo
       </section>
 
       <section className="rounded-[12px] bg-[#1B1F27] p-5" aria-label="Resulting plan">
-        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-[20px] font-medium text-[#F5F7FC]">Resulting next plan</h2>
           <Signal tone={session.environment === "SIMULATED" ? "violet" : "neutral"} icon={session.environment === "SIMULATED" ? "ri-flask-line" : "ri-broadcast-line"}>
             created as {session.environment}

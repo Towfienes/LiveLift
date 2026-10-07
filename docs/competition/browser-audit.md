@@ -1,12 +1,14 @@
+> Historical RC.2 lane audit. Current integrated results and corrections are in [integration-acceptance.md](integration-acceptance.md). Platform client descriptions below refer to older repository tooling, not connected V3 capabilities.
+
 # Comprehensive Product Browser Audit Report — LiveLift V3
 
-**Audit Date:** 2026-10-07  
-**Base Commit SHA:** `feb3a930c80c86401e5c40df961356c7334ca0c5`  
-**Git Branch:** `orca/v3-competition-capabilities`  
-**Integrity Mode:** `demo` (Release tag: `v3.0.0-rc.2`)  
-**Audit Harness:** Headless Chromium 153.0.8010.52 (Arch Linux x86_64), automated via Playwright (`NODE_PATH=/home/towfienes/.local/lib/node_modules/@playwright/cli/node_modules`)  
-**Target Environment:** Local Next.js dev server on `http://127.0.0.1:3130` (Next.js 16.3.8 Turbopack, React 19.3.0)  
-**Lead Auditor:** `worker_m2` (teamwork_preview_worker / QA & Forensic Auditor)  
+**Audit Date:** 2026-10-07
+**Base Commit SHA:** `feb3a930c80c86401e5c40df961356c7334ca0c5`
+**Git Branch:** `orca/v3-competition-capabilities`
+**Integrity Mode:** `demo` (Release tag: `v3.0.0-rc.2`)
+**Audit Harness:** Headless Chromium 153.0.8010.52 (Arch Linux x86_64), automated via Playwright (`NODE_PATH=/home/towfienes/.local/lib/node_modules/@playwright/cli/node_modules`)
+**Target Environment:** Local Next.js dev server on `http://127.0.0.1:3130` (Next.js 16.3.8 Turbopack, React 19.3.0)
+**Lead Auditor:** `worker_m2` (teamwork_preview_worker / QA & Forensic Auditor)
 **Deliverable Scope:** Requirement R2 (Comprehensive Product Browser Audit across all 10 core application surfaces)
 
 ---
@@ -496,10 +498,8 @@ In accordance with Section 3 of the dispatch instructions (*Strict Code Ownershi
 - **Network Log Evidence:**
   - `GET http://127.0.0.1:3130/api/v3/auth/session` → `503 Service Unavailable` (`{"resultCode":"storage_unavailable"}`).
 - **Root Cause:**
-  LiveLift uses a secure fail-closed authentication subsystem. When running standalone demo mode without a configured PostgreSQL backing store, the session endpoint returns 503 instead of pretending to have an authenticated user. `StandardShell` catches this and displays the informational "Sign-in is unavailable" pill without halting execution.
-- **Suggested Post-Competition Remediation:**
-  When `LIVELIFT_MODE=demo` or when backing storage is intentionally absent, the session endpoint can return HTTP 200 with `{ authenticated: false, mode: "demo_standalone" }` to maintain clean zero-error network logs during demonstrations.
-- **Strict Boundary Action:** Kept strictly unedited in code per ownership rules.
+  LiveLift uses a secure fail-closed authentication subsystem. When running standalone demo mode without configured managed SQLite storage, the session endpoint returns 503 instead of pretending to have an authenticated user. `StandardShell` catches this and displays the informational "Sign-in is unavailable" pill without halting execution.
+- **Integration disposition:** Preserve the fail-closed contract. The intentionally unconfigured demo returns 503 and explains that sign-in is unavailable; SIMULATED rehearsals continue. A configured local production runtime is checked separately. Do not replace an outage with a fabricated HTTP 200 or empty account.
 
 ---
 
@@ -621,7 +621,7 @@ const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true });
   const page = await browser.newPage();
-  
+
   // Test Capability Center
   await page.goto('http://127.0.0.1:3130/integrations');
   const h1 = await page.textContent('h1');
@@ -650,5 +650,5 @@ const { chromium } = require('playwright');
 
 ---
 
-**Report Certification:**  
+**Report Certification:**
 This document represents an unfabricated, genuine, forensic browser audit conducted on Arch Linux with Headless Chromium. All observations and measurements derive directly from recorded execution metrics.

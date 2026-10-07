@@ -18,8 +18,8 @@ export const SessionContextBar: React.FC<SessionContextBarProps> = ({
   rightAction,
 }) => {
   return (
-    <div className="flex items-center justify-between gap-4 px-6 lg:px-8 py-4 shrink-0 border-b border-[#1E232B] bg-[#090B0F]">
-      <div className="min-w-0 flex-1">
+    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 px-6 lg:px-8 py-4 shrink-0 border-b border-[#1E232B] bg-[#090B0F]">
+      <div className="min-w-0 flex-1 basis-full sm:basis-auto">
         <div className="space-y-1">
           <p className="text-[14px] leading-5 font-medium tracking-[1.5px] uppercase text-[#AEB7C5]">
             {eyebrow}
@@ -38,7 +38,7 @@ export const SessionContextBar: React.FC<SessionContextBarProps> = ({
       </div>
 
       {rightAction && (
-        <div className="shrink-0 flex items-center gap-3">{rightAction}</div>
+        <div className="w-full sm:w-auto min-w-0 flex flex-wrap items-center gap-3">{rightAction}</div>
       )}
     </div>
   );

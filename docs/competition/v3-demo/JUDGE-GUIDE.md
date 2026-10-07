@@ -40,7 +40,7 @@ Short on time? Home → **Finish the review** opens a completed rehearsal.
 Review puts the plan beside what was recorded, and keeps three things apart:
 
 - **reported**: the operator's word, not platform confirmation;
-- **unknown**: nothing was recorded, which is not a failure;
+- **unknown**: the outcome lacks confirmation; a report or attempt may still exist, and this is not a failure;
 - **observed in this show**: from recorded commands only.
 
 It then lets the operator choose which changes carry into the next plan. It makes no claim

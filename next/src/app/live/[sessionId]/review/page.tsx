@@ -114,7 +114,7 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
           environment={session.environment}
           metaText={`${formatDay(review.summary.startedAtMs, tz)} · ${formatClock(review.summary.startedAtMs, tz)}–${formatClock(review.summary.endedAtMs, tz)} · ${formatDuration(review.summary.trackedSec)} tracked`}
           rightAction={
-            <div className="flex items-center gap-2" role="tablist" aria-label="Review view">
+              <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Review view">
               <Button
                 variant={view === "plan" ? "secondary" : "ghost"}
                 size="sm"
