@@ -35,8 +35,8 @@ const PHASE_TONE: Record<CopilotPhase, Tone> = {
   status_unavailable: "warn",
   not_configured: "muted",
   ready: "neutral",
-  generating: "lime",
-  available: "lime",
+  generating: "ai",
+  available: "ai",
   unavailable: "warn",
   rate_limited: "warn",
   invalid_response: "warn",
@@ -70,8 +70,8 @@ export type LayerKind = "observed" | "interpretation" | "recommendation" | "prod
 const LAYER: Record<LayerKind, { icon: string; title: string; hint: string; tone: string }> = {
   observed: { icon: "ri-eye-line", title: "Observed fact", hint: "from LiveLift records", tone: "text-[#CAD0DA]" },
   product: { icon: "ri-calculator-line", title: "Product logic", hint: "not AI", tone: "text-[#CAD0DA]" },
-  interpretation: { icon: "ri-sparkling-2-line", title: "AI interpretation", hint: "can be wrong", tone: "text-[#C8B2FF]" },
-  recommendation: { icon: "ri-lightbulb-flash-line", title: "AI recommendation", hint: "advice, not applied", tone: "text-[#DFFF00]" },
+  interpretation: { icon: "ri-sparkling-2-line", title: "AI interpretation", hint: "can be wrong", tone: "text-[#7DD8EA]" },
+  recommendation: { icon: "ri-lightbulb-flash-line", title: "AI recommendation", hint: "advice, not applied", tone: "text-[#7DD8EA]" },
 };
 
 /** The small uppercase label that tells the reader which layer a block belongs to. */
@@ -97,14 +97,14 @@ const FACT_SIGNAL: Record<AiFactKind, { tone: Tone; icon: string; label: string 
 };
 
 /** Numbered so an AI statement can say which facts it rests on. */
-export function FactList({ facts, empty }: { facts: AiFact[]; empty?: string }): React.ReactElement {
+export function FactList({ facts, empty, columns = false }: { facts: AiFact[]; empty?: string; columns?: boolean }): React.ReactElement {
   if (facts.length === 0) return <p className="text-[16px] text-[#9AA5B5]">{empty ?? "Nothing to report yet."}</p>;
   return (
-    <ol className="space-y-1.5" data-testid="fact-list">
+    <ol className={columns ? "md:columns-2 md:gap-x-10" : "space-y-1.5"} data-testid="fact-list">
       {facts.map((f, i) => {
         const s = FACT_SIGNAL[f.kind];
         return (
-          <li key={f.id} className="flex gap-2.5 items-start" data-testid={`fact-${f.topic}`} data-fact-kind={f.kind}>
+          <li key={f.id} className={`flex gap-2.5 items-start ${columns ? "mb-1.5 break-inside-avoid" : ""}`} data-testid={`fact-${f.topic}`} data-fact-kind={f.kind}>
             <span className="mt-0.5 w-6 shrink-0 text-right text-[16px] leading-5 tabular-nums font-mono text-[#9AA5B5]" aria-hidden="true">
               {i + 1}
             </span>

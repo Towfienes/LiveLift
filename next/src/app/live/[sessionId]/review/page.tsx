@@ -179,7 +179,11 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
           <div className="px-4 lg:px-6 py-4 max-w-[1760px] w-full mx-auto space-y-4">
             <ReviewSummary review={review} tz={tz} />
 
-            <ReviewCopilot copilot={copilot} session={session} source={isRemote ? "remote" : "local"} archive={ctx.archive} facts={productFacts} opened={copilotOpened} onOpen={() => setCopilotOpened(true)} onOpenNextLive={() => setView("next")} />
+            <a href="#ai-review-copilot" className="inline-flex min-h-[44px] items-center gap-2 text-[15px] text-[#7DD8EA] hover:underline underline-offset-4" data-testid="jump-to-copilot">
+              <i className="ri-sparkling-2-line" aria-hidden="true" />
+              AI Review Copilot: a second reading of this evidence
+              <i className="ri-arrow-down-line" aria-hidden="true" />
+            </a>
 
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4 items-start">
               <div className="space-y-4 min-w-0">
@@ -196,6 +200,11 @@ function ReviewDesk({ session, ctx }: { session: Session; ctx: GateContext }): R
                   </p>
                   <PlanActualRows rows={review.rows} products={session.products} tz={tz} />
                 </section>
+
+                <div id="ai-review-copilot" className="scroll-mt-4">
+                  <ReviewCopilot copilot={copilot} session={session} source={isRemote ? "remote" : "local"} archive={ctx.archive} facts={productFacts} opened={copilotOpened} onOpen={() => setCopilotOpened(true)} onOpenNextLive={() => setView("next")} />
+
+                </div>
 
                 <section className="rounded-[12px] bg-[#13161C] p-3" aria-label="Cues">
                   <h2 className="text-[18px] font-medium text-[#F5F7FC] px-2 mb-1">Cues</h2>

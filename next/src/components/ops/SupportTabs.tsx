@@ -80,14 +80,14 @@ export function SupportTabs({
             }}
             data-testid={`support-tab-${t.id}`}
             className={`min-h-[44px] px-3 rounded-[8px] text-[16px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
-              tab === t.id ? "bg-[#252A34] text-[#DFFF00]" : "text-[#AFB8C7] hover:text-white"
+              tab === t.id ? (t.id === "copilot" ? "bg-[#12222A] text-[#7DD8EA]" : "bg-[#252A34] text-[#DFFF00]") : "text-[#AFB8C7] hover:text-white"
             }`}
           >
             <i className={t.icon} aria-hidden="true" />
             <span>{t.label}</span>
             {t.id === "copilot" && copilotAvailable && (
               <>
-                <span className="w-2 h-2 rounded-full bg-[#DFFF00]" aria-hidden="true" data-testid="copilot-tab-dot" />
+                <span className="w-2 h-2 rounded-full bg-[#7DD8EA]" aria-hidden="true" data-testid="copilot-tab-dot" />
                 <span className="sr-only">analysis ready</span>
               </>
             )}

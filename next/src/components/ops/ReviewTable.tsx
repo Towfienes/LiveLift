@@ -405,7 +405,7 @@ export function HistoryList({
                       setTarget(h);
                       setCorrection("");
                     }}
-                    className="text-[13px] text-[#CAD0DA] hover:text-[#DFFF00] underline decoration-[#4B5665] cursor-pointer"
+                    className="min-h-[44px] inline-flex items-center text-[14px] text-[#CAD0DA] hover:text-[#DFFF00] underline decoration-[#4B5665] underline-offset-4 cursor-pointer"
                     data-testid={`correct-${h.id}`}
                   >
                     Record correction

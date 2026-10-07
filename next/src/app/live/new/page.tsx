@@ -263,13 +263,13 @@ function CreateLiveForm(): React.ReactElement {
 
           <div className="flex flex-wrap gap-4">
             {!showObjective && !inheritsDetails && (
-              <button type="button" onClick={() => setShowObjective(true)} className="text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1.5 cursor-pointer">
+              <button type="button" onClick={() => setShowObjective(true)} className="min-h-[44px] text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1.5 cursor-pointer">
                 <i className="ri-add-line" aria-hidden="true" />
                 <span>Add an objective</span>
               </button>
             )}
             {!showAccount && !inheritsDetails && (
-              <button type="button" onClick={() => setShowAccount(true)} className="text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1.5 cursor-pointer">
+              <button type="button" onClick={() => setShowAccount(true)} className="min-h-[44px] text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1.5 cursor-pointer">
                 <i className="ri-add-line" aria-hidden="true" />
                 <span>Add an account label (optional)</span>
               </button>
@@ -307,7 +307,7 @@ function CreateLiveForm(): React.ReactElement {
           )}
 
           <div className="pt-2 border-t border-[#232935]">
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
               <input
                 type="checkbox"
                 checked={simulated}

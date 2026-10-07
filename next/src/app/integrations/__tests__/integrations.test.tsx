@@ -62,6 +62,8 @@ describe("Capability Center & Integrations Page", () => {
     expect(screen.getByText("Connected Platforms")).toBeInTheDocument();
     expect(screen.getByText("5 steps")).toBeInTheDocument();
     expect(screen.getAllByText("0")).toHaveLength(2);
+    // With nothing connected there is no identity note to show.
+    expect(screen.queryByTestId("connected-identity-only")).toBeNull();
 
     // Check guarantee message
     expect(

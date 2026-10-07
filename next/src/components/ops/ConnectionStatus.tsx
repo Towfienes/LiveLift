@@ -84,10 +84,11 @@ export function ConnectionChip({ size = "md" }: { size?: "md" | "desk" }): React
   const age = useAgeSeconds(notCurrent);
   if (!remote.active) return null;
 
-  // The page header is tight below 1280px: there the chip is an icon (state, with the words kept for screen readers)
-  // plus the role. The banner under the header says it all in full. The operating desk has the room and always spells it out.
+  // The page header row is tight between 1024px and 1440px: there the chip is an icon (state, with the words kept for
+  // screen readers) plus the role. The banner under the header says it all in full. The stacked mobile menu and the
+  // operating desk have the room and spell it out.
   const text = size === "desk" ? "text-[16px]" : "text-[15px]";
-  const words = size === "desk" ? "" : "sr-only xl:not-sr-only";
+  const words = size === "desk" ? "" : "lg:max-[1439px]:sr-only";
   const viewer = remote.access?.role === "viewer";
   const { tone, icon, label } = chipLook(remote, age);
 

@@ -164,7 +164,7 @@ export function NextLivePanel({
         </p>
 
         {aiCopilot && proposals.length > 0 && (
-          <div className="mt-4 rounded-[8px] bg-[#14171E] border border-dashed border-[#4A5566] px-3 py-2 space-y-1.5" data-testid="next-live-ai">
+          <div className="mt-4 rounded-[8px] bg-[#14171E] border border-dashed border-[#25505F] px-3 py-2 space-y-1.5" data-testid="next-live-ai">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <LayerLabel kind="recommendation" extra="AI suggestions · you choose" />
               <StateChip phase={aiCopilot.phase} testId="next-live-ai-state" />
@@ -175,14 +175,14 @@ export function NextLivePanel({
                 <p className="text-[14px] text-[#CAD0DA]" data-testid="next-live-ai-count">
                   The AI Copilot suggests {aiById.size} of these {aiById.size === 1 ? "adjustment" : "adjustments"}. Nothing is selected until you select it, and the AI cannot create the next show.
                 </p>
-                <Button variant="secondary" size="md" icon="ri-checkbox-multiple-line" onClick={selectSuggested} data-testid="select-ai-suggested-btn">
+                <Button variant="assist" size="md" icon="ri-checkbox-multiple-line" onClick={selectSuggested} data-testid="select-ai-suggested-btn">
                   Select the {aiById.size} suggested
                 </Button>
               </>
             ) : (
               aiCopilot.canAsk &&
               onAskAi && (
-                <Button variant="secondary" size="md" icon="ri-sparkling-2-line" onClick={onAskAi} data-testid="next-live-ask-ai-btn">
+                <Button variant="assist" size="md" icon="ri-sparkling-2-line" onClick={onAskAi} data-testid="next-live-ask-ai-btn">
                   {aiCopilot.phase === "generating" ? "Asking the AI Copilot…" : "Ask the AI Copilot"}
                 </Button>
               )
@@ -241,8 +241,8 @@ export function NextLivePanel({
                         <span className="block text-[13px] text-[#B7C1CE] mt-0.5">{p.detail}</span>
                         {aiById.has(p.id) && (
                           <span className="block text-[14px] text-[#E4E8F0] mt-1" data-testid={`ai-suggests-${p.id}`}>
-                            <i className="ri-sparkling-2-line mr-1 text-[#DFFF00]" aria-hidden="true" />
-                            <span className="font-semibold text-[#DFFF00]">AI suggests</span> · Why (AI): {aiById.get(p.id)!.why}
+                            <i className="ri-sparkling-2-line mr-1 text-[#7DD8EA]" aria-hidden="true" />
+                            <span className="font-semibold text-[#7DD8EA]">AI suggests</span> · Why (AI): {aiById.get(p.id)!.why}
                           </span>
                         )}
                         {coverageNote(p.segmentId) && (

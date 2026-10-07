@@ -101,17 +101,12 @@ export default function IntegrationsPage(): React.ReactElement {
       <div className="flex-1 overflow-y-auto w-full max-w-[1140px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Page Header */}
         <div className="space-y-2">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-[13px] font-semibold uppercase tracking-wider text-[#DFFF00] bg-[#1E2718] border border-[#3E5224] px-2.5 py-0.5 rounded-[4px]">
-              V3 Capability Center
-            </span>
-            <span className="text-[13px] text-[#CAD0DA]">
-              Show operations and platform boundaries
-            </span>
-          </div>
-          <h1 className="text-[32px] sm:text-[36px] font-semibold tracking-tight text-[#F5F7FC]">
+          <h1 className="text-[32px] sm:text-[36px] leading-[1.15] font-semibold tracking-[-0.8px] text-[#F5F7FC]">
             Integrations & Capability Center
           </h1>
+          <p className="text-[16px] font-medium text-[#CAD0DA]">
+            Show operations and platform boundaries
+          </p>
           <p className="text-[15px] sm:text-[16px] text-[#B7C1CE] leading-relaxed max-w-[900px]">
             LiveLift helps the operator beside a host Create, Prepare, Operate,
             Review and plan the Next LIVE. No TikTok connection is needed.
@@ -122,7 +117,7 @@ export default function IntegrationsPage(): React.ReactElement {
         {/* Standalone show operations Banner */}
         <section
           aria-labelledby="autonomy-guarantee-heading"
-          className="rounded-[14px] bg-gradient-to-br from-[#141A1F] via-[#11161D] to-[#161B22] border border-[#263529] p-6 sm:p-7 shadow-lg space-y-6"
+          className="rounded-[14px] bg-[#12171D] border border-[#263529] p-6 sm:p-7 space-y-6"
         >
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2.5 max-w-[720px]">
@@ -160,11 +155,16 @@ export default function IntegrationsPage(): React.ReactElement {
                   Platform API Dependencies
                 </div>
               </div>
-              <div className="rounded-[10px] bg-[#1C1F2B] border border-[#3B385E] p-3 text-center min-w-0">
-                <div className="text-[22px] font-bold text-[#C8B2FF]">{connectedPlatforms}</div>
+              <div className="rounded-[10px] bg-[#161B22] border border-[#2D3748] p-3 text-center min-w-0">
+                <div className="text-[22px] font-bold text-[#F5F7FC]">{connectedPlatforms}</div>
                 <div className="text-[12px] text-[#CAD0DA] font-medium leading-tight mt-0.5">
                   Connected Platforms
                 </div>
+                {connectedPlatforms > 0 && (
+                  <div className="text-[12px] leading-tight mt-1 text-[#9AA5B5]" data-testid="connected-identity-only">
+                    TikTok sign-in identity only
+                  </div>
+                )}
               </div>
             </div>
           </div>

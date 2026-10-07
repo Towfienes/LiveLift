@@ -57,14 +57,17 @@ export default function HomePage(): React.ReactElement {
   return (
     <StandardShell activeSessionId={lead?.id ?? null} activeSessionTitle={lead?.title ?? null}>
       <div className="flex-1 overflow-y-auto w-full max-w-[1160px] mx-auto px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between gap-4">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0 max-w-[720px]">
             <h1 className="text-[34px] leading-[1.2] font-medium tracking-[-0.6px] text-[#F5F7FC]">Your LIVE desk</h1>
             <p className="text-[16px] leading-6 text-[#B7C1CE] mt-1.5">The operating desk for a TikTok Shop LIVE: plan it, run it, review it, and carry what you learn into the next.</p>
           </div>
-          <Link href="/live/new">
-            <Button variant="ghost" icon="ri-add-line">Create LIVE</Button>
-          </Link>
+          {/* The idle and first-run cards below carry their own Create LIVE; a second one beside the title is noise. */}
+          {!(hydrated && !lead && !roomProblem) && (
+            <Link href="/live/new" className="shrink-0">
+              <Button variant="secondary" icon="ri-add-line">Create LIVE</Button>
+            </Link>
+          )}
         </div>
 
         {!hydrated ? (
@@ -160,7 +163,7 @@ export default function HomePage(): React.ReactElement {
             <div>
               <div className="flex items-center justify-between gap-4 mb-2">
                 <h2 className="text-[22px] font-medium tracking-[-0.5px] text-[#F5F7FC]">Finish the review</h2>
-                <Link href="/sessions" className="text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1 transition-colors">
+                <Link href="/sessions" className="min-h-[44px] text-[15px] text-[#CAD0DA] hover:text-[#DFFF00] inline-flex items-center gap-1 transition-colors">
                   <span>All sessions</span>
                   <i className="ri-arrow-right-line" aria-hidden="true" />
                 </Link>

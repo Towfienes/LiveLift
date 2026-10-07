@@ -4,10 +4,10 @@ import { formatAnchorLate, formatClock, formatDuration, formatSigned, isAnchorDu
 
 /**
  * Status signals: text + icon + colour (colour is secondary). No pill ladder.
- * Amber warns, red is controlled, violet marks SIMULATED/evidence, lime marks the one live action.
+ * Amber warns, red is controlled, violet marks SIMULATED/evidence, lime marks the one live action, cyan marks AI assistance.
  */
 
-export type Tone = "neutral" | "lime" | "warn" | "danger" | "violet" | "muted";
+export type Tone = "neutral" | "lime" | "warn" | "danger" | "violet" | "muted" | "ai";
 
 /**
  * `desk` is the operating-desk reading size: operational status and metadata are 16px there, on a
@@ -28,6 +28,7 @@ const TONE: Record<Tone, string> = {
   danger: "text-[#F4A4A4]",
   violet: "text-[#C8B2FF]",
   muted: "text-[#9AA5B5]",
+  ai: "text-[#7DD8EA]",
 };
 
 export function Signal({

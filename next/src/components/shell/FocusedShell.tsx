@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import type { EnvironmentIdentity, OperatorContext } from "@/contracts";
-import { EnvironmentBadge, Button } from "@/components/ui";
+import { EnvironmentBadge, Button, BrandMark } from "@/components/ui";
 import { AccountControl } from "@/components/auth/AccountControl";
 import { ConnectionChip, RemoteBanners } from "@/components/ops/ConnectionStatus";
 
@@ -47,13 +47,11 @@ export const FocusedShell: React.FC<FocusedShellProps> = ({
         <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/"
-            className="text-[#DFFF00] hover:opacity-80 shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] -ml-2"
+            className="hover:opacity-80 shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] -ml-2"
             title="Leave the desk (tracking continues)"
             aria-label="Leave the desk (tracking continues)"
           >
-            <span className="text-[24px]">
-              <i className="ri-bar-chart-grouped-line" aria-hidden="true" />
-            </span>
+            <BrandMark size={30} />
           </Link>
           <h1 className="text-[20px] font-medium tracking-[-0.4px] text-[#F5F7FC] truncate max-w-[45vw] lg:max-w-[34vw]">
             {sessionTitle}
