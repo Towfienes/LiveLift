@@ -6,6 +6,7 @@ import type { EnvironmentIdentity, SessionLifecycle } from "@/contracts";
 import { StandardShell } from "@/components/shell";
 import { EnvironmentBadge } from "@/components/ui";
 import { RoomStatusPanel } from "@/components/ops/ConnectionStatus";
+import { PlatformEvidencePanel } from "@/components/intelligence/PlatformEvidencePanel";
 import { useSessions, useStoreState } from "@/lib/store/hooks";
 import { deriveIntelligence, type SessionAnalytics } from "@/lib/domain/analytics";
 import { formatDuration } from "@/lib/domain/time";
@@ -126,6 +127,7 @@ export default function InsightsPage(): React.ReactElement {
       <div className="flex items-end col-span-2 sm:col-span-1"><button type="button" className={`${linkButton} text-[#CAD0DA] hover:bg-[#1E232B] hover:text-white`} onClick={clear}><i className="ri-filter-off-line" aria-hidden="true" />Clear filters</button></div>
     </div>
     {fromDate && toDate && fromDate > toDate && <p role="alert" className="text-[#F6C875]">From date must be on or before To date.</p>}
+    <div className="min-w-0" data-testid="band-operations"><h2 className="text-[22px] font-medium tracking-[-0.3px]">LiveLift operations</h2><p className="mt-1 max-w-[760px] text-[15px] leading-relaxed text-[#B7C1CE]">Provider-independent analytics from LiveLift&apos;s own tracking records: what was planned, what was recorded and what the operator reported.</p></div>
     {!hydrated || loading ? <div aria-busy="true"><p role="status" className="text-[#CAD0DA]">Loading history…</p><div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-hidden="true">{[0, 1, 2].map((i) => <div key={i} className="h-44 rounded-[12px] bg-[#13161C] border border-[#232935] motion-safe:animate-pulse" />)}</div></div> : <>
       {intelligence.sessions.length === 0 ? <section className={`${panel} flex gap-4 items-start`} data-testid="insights-empty">
         <span className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-[#1B1F27] text-[22px] text-[#CAD0DA]"><i className={unavailable ? "ri-cloud-off-line" : "ri-inbox-line"} aria-hidden="true" /></span>
@@ -164,7 +166,6 @@ export default function InsightsPage(): React.ReactElement {
         <section className={`${panel} space-y-4`} data-testid="next-live-history" aria-labelledby="history-title"><h2 id="history-title" className="text-[22px] font-medium tracking-[-0.3px]">Next LIVE change history</h2><p className={note}>Selected adjustments saved on the destination plan. Date filters use when that plan was created; show state applies to session summaries above. A selected change is not proof of an improved outcome.</p>{intelligence.nextLive.length > 0 ? <ul className="space-y-4">{intelligence.nextLive.map((n) => <li key={n.destinationId} className="border-t border-[#2A303A] pt-3 break-words"><EnvironmentBadge environment={n.environment} size="sm" /><p className="mt-2">From {n.sessionTitle} → <Link className="text-[#DFFF00] underline underline-offset-4" href={`/live/${n.destinationId}/${n.lifecycle === "ended" ? "review" : n.lifecycle === "active" ? "operate" : "prepare"}`}>{n.destinationTitle}</Link></p><p className="text-[14px] text-[#B7C1CE]">{date(n.createdAtMs)} · {n.lifecycle} · source baseline {n.planVersionId}</p>{n.appliedChanges.length > 0 ? <ul className="list-disc pl-5 mt-2">{n.appliedChanges.map((c) => <li key={c.id}>{c.summary}</li>)}</ul> : <p>No adjustments selected; copied baseline.</p>}{n.changeNote && <p className="mt-2">Operator change note: {n.changeNote}</p>}</li>)}</ul> : <p className="text-[#B7C1CE]">No saved Next LIVE plans in this selection. Unselected suggestions are not counted as changes.</p>}</section>
       </div>
     </>}
-    <section className={`${panel} space-y-3`} aria-labelledby="provider-title"><h2 id="provider-title" className="text-[22px] font-medium tracking-[-0.3px]">Provider analytics</h2><p className="text-[#B7C1CE] leading-relaxed">Unavailable: no provider-observed TikTok Shop / LIVE metrics are supplied to Insights. Account connection does not supply show performance analytics. Views, GMV, CTR, conversion, engagement, and sales remain unavailable.</p>
-      <ul className="flex flex-wrap gap-2" aria-label="Provider metrics, all unavailable">{["Views", "GMV", "CTR", "Conversion", "Engagement", "Sales"].map((m) => <li key={m} className="inline-flex items-center gap-2 rounded-[8px] border border-dashed border-[#39414D] bg-[#101319] px-3 py-1.5 text-[14px] text-[#9AA5B5]"><span className="text-[#CAD0DA]">{m}</span><span aria-hidden="true">—</span><span>Unavailable</span></li>)}</ul></section>
+    <PlatformEvidencePanel session={sessions.find((s) => s.id === detail?.id) ?? null} sameEnvironmentSessions={sessions.filter((s) => s.environment === environment)} />
   </div></StandardShell>;
 }

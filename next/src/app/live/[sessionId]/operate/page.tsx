@@ -12,6 +12,7 @@ import { NextPanel } from "@/components/ops/NextPanel";
 import { CueBar, type ReportTarget } from "@/components/ops/CueBar";
 import { RunOfShowLive, scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
 import { SupportTabs } from "@/components/ops/SupportTabs";
+import { QuickReports } from "@/components/ops/QuickReports";
 import { OperateCopilot } from "@/components/ai/OperateCopilot";
 import { useOperateCopilot } from "@/components/ai/useAiCopilot";
 import { SimulatorStrip } from "@/components/ops/SimulatorStrip";
@@ -642,6 +643,8 @@ function Desk({
             <Button variant="ghost" size="desk" icon="ri-edit-line" onClick={() => setDialog("note")} data-testid="quick-add-note-btn">
               Note
             </Button>
+            {/* One-tap OPERATOR REPORTS, recorded through the ordinary note command (no new authority state). */}
+            <QuickReports onReport={(text) => void run({ type: "add_note", text })} />
           </div>
         </fieldset>
 
