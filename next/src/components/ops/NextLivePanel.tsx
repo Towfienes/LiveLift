@@ -24,6 +24,9 @@ import { Signal } from "./StatusChips";
 import type { GateContext } from "./SessionGate";
 import { sessionStore } from "@/lib/store/sessionStore";
 import { useRemoteCommands } from "@/lib/store/hooks";
+import type { ReviewAvailable } from "@/contracts/ai";
+import { LayerLabel, StateChip, phaseMessage } from "@/components/ai/CopilotParts";
+import type { AiCopilot } from "@/components/ai/useAiCopilot";
 
 const INPUT = "w-full h-11 bg-[#13161C] border border-[#39414D] rounded-[8px] px-3 text-[16px] text-[#F5F7FC]";
 
@@ -31,7 +34,18 @@ const INPUT = "w-full h-11 bg-[#13161C] border border-[#39414D] rounded-[8px] px
  * Next LIVE. Selected adjustments become a NEW plan with new ids and an empty actual history.
  * The source show is never edited. Infeasible selections are shown, not hidden.
  */
-export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateContext }): React.ReactElement {
+export function NextLivePanel({
+  session,
+  ctx,
+  aiCopilot,
+  onAskAi,
+}: {
+  session: Session;
+  ctx?: GateContext;
+  /** The Review Copilot, when this show can have one. It only ANNOTATES proposals: it never selects, applies or creates anything. */
+  aiCopilot?: AiCopilot<ReviewAvailable>;
+  onAskAi?: () => void;
+}): React.ReactElement {
   const router = useRouter();
   const commands = useRemoteCommands();
   const isRemote = ctx?.source === "remote";
@@ -64,6 +78,16 @@ export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateCo
   const [note, setNote] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // AI suggestions: recommendations only. A suggestion for something that is no longer proposed, or an answer about an
+  // older record of this show, is ignored. Selecting is the operator's own act (the button below, or the checkboxes).
+  const aiResult = aiCopilot?.result && aiCopilot.result.basis.revision === session.revision ? aiCopilot.result : null;
+  const aiById = new Map((aiResult?.output.nextLive ?? []).filter((s) => proposals.some((p) => p.id === s.change.id)).map((s) => [s.change.id, s]));
+  const aiMessage = aiCopilot ? phaseMessage(aiCopilot.phase, aiCopilot.failure) : null;
+  const selectSuggested = (): void => {
+    setAcknowledged(false);
+    setSelected((prev) => new Set([...prev, ...aiById.keys()]));
+  };
 
   const chosen: ProposedChange[] = proposals.filter((p) => selected.has(p.id));
   const plannedStartMs = zonedTimeToMs(date, time, tz);
@@ -139,6 +163,33 @@ export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateCo
           Only the boxes you tick change the next plan. Everything else stays as in the original baseline.
         </p>
 
+        {aiCopilot && proposals.length > 0 && (
+          <div className="mt-4 rounded-[8px] bg-[#14171E] border border-dashed border-[#4A5566] px-3 py-2 space-y-1.5" data-testid="next-live-ai">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <LayerLabel kind="recommendation" extra="AI suggestions · you choose" />
+              <StateChip phase={aiCopilot.phase} testId="next-live-ai-state" />
+            </div>
+            {aiMessage && aiCopilot.phase !== "available" && <p className="text-[14px] text-[#CAD0DA]" data-testid="next-live-ai-message">{aiMessage}</p>}
+            {aiById.size > 0 ? (
+              <>
+                <p className="text-[14px] text-[#CAD0DA]" data-testid="next-live-ai-count">
+                  The AI Copilot suggests {aiById.size} of these {aiById.size === 1 ? "adjustment" : "adjustments"}. Nothing is selected until you select it, and the AI cannot create the next show.
+                </p>
+                <Button variant="secondary" size="md" icon="ri-checkbox-multiple-line" onClick={selectSuggested} data-testid="select-ai-suggested-btn">
+                  Select the {aiById.size} suggested
+                </Button>
+              </>
+            ) : (
+              aiCopilot.canAsk &&
+              onAskAi && (
+                <Button variant="secondary" size="md" icon="ri-sparkling-2-line" onClick={onAskAi} data-testid="next-live-ask-ai-btn">
+                  {aiCopilot.phase === "generating" ? "Asking the AI Copilot…" : "Ask the AI Copilot"}
+                </Button>
+              )
+            )}
+          </div>
+        )}
+
         {proposals.length === 0 && (
           <p className="mt-4 text-[15px] text-[#CAD0DA]" data-testid="no-proposals">
             Nothing in this show justifies a change. You can still carry the plan forward unchanged.
@@ -188,6 +239,12 @@ export function NextLivePanel({ session, ctx }: { session: Session; ctx?: GateCo
                       <span className="min-w-0">
                         <span className="block text-[16px] font-medium text-[#F5F7FC]">{p.title}</span>
                         <span className="block text-[13px] text-[#B7C1CE] mt-0.5">{p.detail}</span>
+                        {aiById.has(p.id) && (
+                          <span className="block text-[14px] text-[#E4E8F0] mt-1" data-testid={`ai-suggests-${p.id}`}>
+                            <i className="ri-sparkling-2-line mr-1 text-[#DFFF00]" aria-hidden="true" />
+                            <span className="font-semibold text-[#DFFF00]">AI suggests</span> · Why (AI): {aiById.get(p.id)!.why}
+                          </span>
+                        )}
                         {coverageNote(p.segmentId) && (
                           <span className="block text-[13px] text-[#9AA5B5] mt-0.5" data-testid={`proposal-context-${p.id}`}>
                             <i className="ri-information-line mr-1" aria-hidden="true" />

@@ -14,7 +14,7 @@ export async function boundary(request: Request, operation: (requestId: string) 
   const started = performance.now();
   // Never log attacker-controlled paths, queries, errors or request headers.
   const path = new URL(request.url).pathname;
-  const route = path.startsWith("/api/v3/room/commands/") ? "/api/v3/room/commands/:id" : ["/api/v3/room", "/api/v3/room/commands", "/api/v3/auth/login", "/api/v3/auth/session", "/api/v3/auth/logout", "/api/v3/workspace/export", "/api/v3/integrations/tiktok", "/api/v3/integrations/tiktok/connect", "/api/v3/integrations/tiktok/callback", "/api/v3/integrations/tiktok/refresh", "/api/v3/integrations/tiktok/disconnect", "/api/v3/integrations/tiktok/avatar", "/api/healthz", "/api/readyz"].includes(path) ? path : "/api/unknown";
+  const route = path.startsWith("/api/v3/room/commands/") ? "/api/v3/room/commands/:id" : ["/api/v3/room", "/api/v3/room/commands", "/api/v3/auth/login", "/api/v3/auth/session", "/api/v3/auth/logout", "/api/v3/workspace/export", "/api/v3/integrations/tiktok", "/api/v3/integrations/tiktok/connect", "/api/v3/integrations/tiktok/callback", "/api/v3/integrations/tiktok/refresh", "/api/v3/integrations/tiktok/disconnect", "/api/v3/integrations/tiktok/avatar", "/api/v3/ai/status", "/api/v3/ai/operate", "/api/v3/ai/review", "/api/healthz", "/api/readyz"].includes(path) ? path : "/api/unknown";
   let response: Response;
   try { response = await operation(requestId); }
   catch (error) {

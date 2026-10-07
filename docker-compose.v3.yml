@@ -41,6 +41,13 @@ services:
       LIVELIFT_TIKTOK_REDIRECT_URI: ${LIVELIFT_TIKTOK_REDIRECT_URI:-}
       LIVELIFT_PROVIDER_ENCRYPTION_KEY: ${LIVELIFT_PROVIDER_ENCRYPTION_KEY:-}
       LIVELIFT_TIKTOK_SCOPES: ${LIVELIFT_TIKTOK_SCOPES:-}
+      # Optional AI Copilot (docs/ai/COPILOT.md). Empty keeps the Copilot "Not configured". Server-side only.
+      LIVELIFT_AI_BASE_URL: ${LIVELIFT_AI_BASE_URL:-}
+      LIVELIFT_AI_API_KEY: ${LIVELIFT_AI_API_KEY:-}
+      LIVELIFT_AI_MODEL: ${LIVELIFT_AI_MODEL:-}
+      LIVELIFT_AI_TIMEOUT_MS: ${LIVELIFT_AI_TIMEOUT_MS:-}
+      LIVELIFT_AI_MAX_OUTPUT_TOKENS: ${LIVELIFT_AI_MAX_OUTPUT_TOKENS:-}
+      LIVELIFT_AI_JSON_MODE: ${LIVELIFT_AI_JSON_MODE:-}
     volumes:
       - authority:/var/lib/livelift
       - backups:/var/backups/livelift
