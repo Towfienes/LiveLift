@@ -60,7 +60,6 @@ export const HostApp: React.FC<HostAppProps> = ({
     <div
       data-testid="host-app"
       data-mode={mode}
-      aria-label="Simulated Shopee Live Host Screen"
       className={`relative mx-auto w-full min-w-[200px] max-w-[480px] h-[844px] max-h-[100dvh] bg-[#090B0F] sm:border-[8px] sm:border-[#1C2028] sm:rounded-[44px] rounded-2xl border-2 border-[#1C2028] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden select-none font-sans ${className}`}
     >
       {/* Permanent, Legible SIMULATED Tag Status Ribbon (Always Visible on the Phone) */}
@@ -199,7 +198,7 @@ export const HostApp: React.FC<HostAppProps> = ({
           <div className="relative z-20 pt-2 px-2.5 sm:px-3 flex flex-col gap-1.5">
             {/* Row 1: Room Title Pill & End Live Button */}
             <div className="flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-1.5 min-w-0 bg-[#13161C]/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-[#2A303A] flex-1">
+              <div className="flex items-center gap-1.5 min-w-0 bg-[#13161C] px-2.5 py-1 rounded-full border border-[#2A303A] flex-1">
                 <div className="w-5 h-5 rounded-full bg-[#DFFF00] text-[#111407] flex items-center justify-center font-bold text-[10px] shrink-0">
                   <i className="ri-user-star-fill" aria-hidden="true" />
                 </div>
@@ -216,7 +215,7 @@ export const HostApp: React.FC<HostAppProps> = ({
                 onClick={actions.onEndLive}
                 aria-label="End live broadcast"
                 data-testid="host-app-end"
-                className="min-h-[44px] min-w-[44px] px-3.5 py-1 rounded-full bg-[#302025]/90 hover:bg-[#FF5C5C] text-[#FF8585] hover:text-[#111407] border border-[#6B2A35] text-[12px] font-semibold transition-colors flex items-center justify-center shrink-0 focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+                className="min-h-[44px] min-w-[44px] px-3.5 py-1 rounded-full bg-[#302025] hover:bg-[#FF5C5C] text-[#FFA8A8] hover:text-[#111407] border border-[#6B2A35] text-[12px] font-semibold transition-colors flex items-center justify-center shrink-0 focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
               >
                 End
               </button>
@@ -231,7 +230,7 @@ export const HostApp: React.FC<HostAppProps> = ({
               {elapsedLabel && (
                 <span
                   data-testid="elapsed-label"
-                  className="px-2 py-1 rounded-full bg-[#13161C]/80 border border-[#2A303A] text-[11px] font-mono text-[#CAD0DA] tabular-nums"
+                  className="px-2 py-1 rounded-full bg-[#13161C] border border-[#2A303A] text-[11px] font-mono text-[#CAD0DA] tabular-nums"
                 >
                   {elapsedLabel}
                 </span>
@@ -271,7 +270,7 @@ export const HostApp: React.FC<HostAppProps> = ({
                   onClick={() => setBagOpen(true)}
                   aria-label={`Open shop bag (${bag.length} items)`}
                   data-testid="host-app-bag-button"
-                  className="relative min-h-[44px] min-w-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#13161C]/90 hover:bg-[#1B1F27] border border-[#39414D] text-[#F5F7FC] shadow-lg backdrop-blur-md transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+                  className="relative min-h-[44px] min-w-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#13161C] hover:bg-[#1B1F27] border border-[#39414D] text-[#F5F7FC] shadow-lg transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
                 >
                   <i className="ri-shopping-bag-3-fill text-[#DFFF00] text-[17px]" />
                   <span className="text-[12px] font-semibold">Bag</span>
@@ -282,7 +281,7 @@ export const HostApp: React.FC<HostAppProps> = ({
               </div>
 
               {/* Host Quick Status Indicator */}
-              <div className="flex items-center gap-1 bg-[#13161C]/80 border border-[#2A303A] px-2.5 py-1.5 rounded-xl text-[11px] font-mono text-[#8A95A5]">
+              <div className="flex items-center gap-1 bg-[#13161C] border border-[#2A303A] px-2.5 py-1.5 rounded-xl text-[11px] font-mono text-[#CAD0DA]">
                 <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse motion-reduce:animate-none" />
                 <span>ON AIR</span>
               </div>

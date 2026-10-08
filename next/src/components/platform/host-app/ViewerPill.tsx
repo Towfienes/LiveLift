@@ -11,6 +11,7 @@ export const ViewerPill: React.FC<ViewerPillProps> = ({ viewers, className = "" 
 
   return (
     <div
+      role="status"
       data-testid="viewer-pill"
       aria-label={
         isSimulated

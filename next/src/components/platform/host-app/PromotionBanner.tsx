@@ -22,12 +22,12 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
       role="region"
       aria-label="Flash sale promotion"
       data-testid="promotion-banner"
-      className={`relative mx-2 sm:mx-3.5 my-1.5 p-2 rounded-xl border backdrop-blur-md shadow-md transition-all duration-300 animate-[host-app-banner-in_250ms_ease-out] motion-reduce:animate-none select-none ${
+      className={`relative mx-2 sm:mx-3.5 my-1.5 p-2 rounded-xl border shadow-md transition-all duration-300 animate-[host-app-banner-in_250ms_ease-out] motion-reduce:animate-none select-none ${
         isActive
-          ? "bg-[#281816]/95 border-[#E24A24]/70 text-[#FFA07A]"
+          ? "bg-[#281816] border-[#E24A24]/70 text-[#FFA07A]"
           : isScheduled
-            ? "bg-[#252218]/95 border-[#967526]/70 text-[#F6C875]"
-            : "bg-[#181B22]/90 border-[#2F3746] text-[#8A95A5]"
+            ? "bg-[#252218] border-[#967526]/70 text-[#F6C875]"
+            : "bg-[#181B22] border-[#2F3746] text-[#CAD0DA]"
       } ${className}`}
     >
       <div className="flex flex-col gap-1.5">
@@ -37,15 +37,15 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
             <span
               className={`text-[9px] font-mono font-bold tracking-wider uppercase px-1 py-0.5 rounded ${
                 isActive
-                  ? "bg-[#FF5C5C]/20 text-[#FF8585] border border-[#FF5C5C]/40"
+                  ? "bg-[#3D1A17] text-[#FFB3B3] border border-[#FF5C5C]/50"
                   : isScheduled
-                    ? "bg-[#F6C875]/20 text-[#F6C875] border border-[#F6C875]/40"
-                    : "bg-[#8A95A5]/20 text-[#8A95A5] border border-[#8A95A5]/40"
+                    ? "bg-[#3A321E] text-[#F6C875] border border-[#967526]/60"
+                    : "bg-[#252A34] text-[#CAD0DA] border border-[#39414D]"
               }`}
             >
               {status}
             </span>
-            <span className="text-[9px] font-mono uppercase text-[#8A95A5]">
+            <span className="text-[9px] font-mono uppercase text-[#CAD0DA]">
               PROMO
             </span>
           </div>
@@ -54,8 +54,8 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
             <div
               className={`shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[10px] font-semibold tracking-tight border ${
                 isActive
-                  ? "bg-[#FF4500]/20 text-[#FFD700] border-[#FF4500]/50"
-                  : "bg-[#2A303A] text-[#CAD0DA] border-[#39414D]"
+                  ? "bg-[#251512] text-[#FFD700] border-[#FF4500]/60"
+                  : "bg-[#101319] text-[#F5F7FC] border-[#39414D]"
               }`}
             >
               <i className="ri-timer-line text-[11px]" aria-hidden="true" />
@@ -71,8 +71,8 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
               isActive
                 ? "bg-[#E24A24] text-[#FFFFFF] shadow-sm animate-[host-app-countdown-pulse_2s_ease-in-out_infinite] motion-reduce:animate-none"
                 : isScheduled
-                  ? "bg-[#967526]/40 text-[#F6C875]"
-                  : "bg-[#252A34] text-[#8A95A5]"
+                  ? "bg-[#483B1B] text-[#F6C875]"
+                  : "bg-[#252A34] text-[#CAD0DA]"
             }`}
           >
             <i

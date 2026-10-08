@@ -92,12 +92,16 @@ describe("ViewerPill Component", () => {
     const pill = screen.getByTestId("viewer-pill");
     expect(pill).toHaveTextContent("1,420");
     expect(pill).toHaveTextContent("SIM");
+    expect(pill).toHaveAttribute("role", "status");
+    expect(pill).toHaveAttribute("aria-label", "Simulated live viewers: 1,420");
   });
 
   it("renders 'Not simulated' when viewers is null", () => {
     render(<ViewerPill viewers={null} />);
     const pill = screen.getByTestId("viewer-pill");
     expect(pill).toHaveTextContent("Not simulated");
+    expect(pill).toHaveAttribute("role", "status");
+    expect(pill).toHaveAttribute("aria-label", "Viewer count not simulated");
   });
 });
 
@@ -115,6 +119,11 @@ describe("PinnedCard Component", () => {
     render(<PinnedCard item={samplePinnedItem} onUnpin={onUnpin} />);
 
     expect(screen.getByTestId("pinned-card")).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Pinned product: Sản phẩm thử nghiệm" })
+    ).toBeInTheDocument();
+    // Rule: heading order violation fix - item name must be a paragraph, not h4
+    expect(screen.queryByRole("heading")).toBeNull();
     expect(screen.getByText("Sản phẩm thử nghiệm")).toBeInTheDocument();
     expect(screen.getByText("150.000 ₫")).toBeInTheDocument();
 
@@ -255,6 +264,8 @@ describe("CommentStream Component", () => {
 
     const log = screen.getByRole("log");
     expect(log).toHaveAttribute("aria-live", "polite");
+    expect(log).toHaveAttribute("tabindex", "0");
+    expect(log).toHaveAttribute("aria-label", "Synthetic live stream comments");
     expect(screen.getByText("Xin chào shop")).toBeInTheDocument();
     expect(screen.getByText("Có freeship không?")).toBeInTheDocument();
   });
