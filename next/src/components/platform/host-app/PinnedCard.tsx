@@ -23,18 +23,18 @@ export const PinnedCard: React.FC<PinnedCardProps> = ({
       role="region"
       data-testid="pinned-card"
       aria-label={`Pinned product: ${item.name}`}
-      className={`relative rounded-2xl bg-[#13161C] border border-[#39414D] p-2.5 sm:p-3 shadow-2xl backdrop-blur-md transition-all duration-300 animate-[host-app-slide-up_250ms_ease-out] motion-reduce:animate-none motion-reduce:transition-none select-none ${className}`}
+      className={`relative w-full rounded-xl bg-[#13161C] border border-[#39414D] p-1.5 sm:p-2 shadow-2xl backdrop-blur-md transition-all duration-300 animate-[host-app-slide-up_250ms_ease-out] motion-reduce:animate-none motion-reduce:transition-none select-none ${className}`}
     >
-      <div className="flex items-start gap-2 sm:gap-2.5">
+      <div className="flex items-start gap-2">
         {/* Product initials avatar */}
         <div
-          className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#1B1F27] border border-[#2A303A] flex flex-col items-center justify-center shrink-0 shadow-inner"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#1B1F27] border border-[#2A303A] flex flex-col items-center justify-center shrink-0 shadow-inner"
           aria-hidden="true"
         >
-          <span className="text-[15px] sm:text-[17px] font-semibold text-[#DFFF00]">
+          <span className="text-[14px] sm:text-[15px] font-semibold text-[#DFFF00]">
             {item.initials}
           </span>
-          <span className="text-[8px] sm:text-[9px] font-mono text-[#CAD0DA] leading-none">
+          <span className="text-[8px] font-mono text-[#CAD0DA] leading-none">
             #{item.itemId}
           </span>
         </div>
@@ -42,28 +42,28 @@ export const PinnedCard: React.FC<PinnedCardProps> = ({
         {/* Product details */}
         <div data-testid="host-app-pinned" className="flex-1 min-w-0 pr-0.5">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide bg-[#DFFF00]/15 text-[#DFFF00] border border-[#DFFF00]/30">
-              <i className="ri-pushpin-2-fill text-[11px]" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-semibold tracking-wide bg-[#DFFF00]/15 text-[#DFFF00] border border-[#DFFF00]/30">
+              <i className="ri-pushpin-2-fill text-[10px]" aria-hidden="true" />
               <span>PINNED</span>
             </span>
-            <span className="text-[10px] font-mono text-[#CAD0DA] hidden xs:inline">
+            <span className="text-[9px] font-mono text-[#CAD0DA] hidden xs:inline">
               LIVE HIGHLIGHT
             </span>
           </div>
 
           <p
-            className="text-[12px] sm:text-[13px] font-medium leading-snug text-[#F5F7FC] line-clamp-2 break-words"
+            className="text-[11px] sm:text-[12px] font-medium leading-snug text-[#F5F7FC] line-clamp-2 break-words"
             title={item.name}
           >
             {item.name}
           </p>
 
-          <div className="mt-1 flex items-baseline gap-1.5">
+          <div className="mt-0.5 flex items-baseline gap-1.5">
             <span
               data-testid="pinned-card-price"
-              className={`text-[13px] sm:text-[14px] font-bold tabular-nums ${
+              className={`text-[12px] sm:text-[13px] font-bold tabular-nums ${
                 isPriceUnknown
-                  ? "text-[#CAD0DA] italic text-[12px] font-normal"
+                  ? "text-[#CAD0DA] italic text-[11px] font-normal"
                   : "text-[#DFFF00]"
               }`}
             >

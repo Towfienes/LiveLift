@@ -189,102 +189,105 @@ export const HostApp: React.FC<HostAppProps> = ({
       {mode === "live" && (
         <div
           data-testid="host-app-mode-live"
-          className="relative flex-1 flex flex-col justify-between overflow-hidden"
+          className="relative flex-1 min-h-0 flex flex-col justify-between overflow-hidden"
         >
           {/* Animated Background Video Placeholder */}
           <VideoPlaceholder />
 
-          {/* TOP OVERLAY BAR */}
-          <div className="relative z-20 pt-2 px-2.5 sm:px-3 flex flex-col gap-1.5">
-            {/* Row 1: Room Title Pill & End Live Button */}
-            <div className="flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-1.5 min-w-0 bg-[#13161C] px-2.5 py-1 rounded-full border border-[#2A303A] flex-1">
-                <div className="w-5 h-5 rounded-full bg-[#DFFF00] text-[#111407] flex items-center justify-center font-bold text-[10px] shrink-0">
-                  <i className="ri-user-star-fill" aria-hidden="true" />
+          {/* MAIN COLUMN (Above Footer Row) */}
+          <div className="relative z-20 flex-1 min-h-0 flex flex-col justify-between overflow-hidden px-2 sm:px-2.5 pt-1.5 pb-0.5 gap-1">
+            {/* TOP OVERLAY BAR */}
+            <div className="shrink-0 flex flex-col gap-1">
+              {/* Row 1: Room Title Pill & End Live Button */}
+              <div className="flex items-center justify-between gap-1.5">
+                <div className="flex items-center gap-1.5 min-w-0 bg-[#13161C] px-2.5 py-1 rounded-full border border-[#2A303A] flex-1 h-[44px]">
+                  <div className="w-5 h-5 rounded-full bg-[#DFFF00] text-[#111407] flex items-center justify-center font-bold text-[10px] shrink-0">
+                    <i className="ri-user-star-fill" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 pr-1 flex-1">
+                    <span className="text-[11px] font-semibold text-[#F5F7FC] truncate block">
+                      {title}
+                    </span>
+                  </div>
                 </div>
-                <div className="min-w-0 pr-1 flex-1">
-                  <span className="text-[11px] font-semibold text-[#F5F7FC] truncate block">
-                    {title}
-                  </span>
-                </div>
-              </div>
 
-              {/* End Live Action (at least 44x44px touch target) */}
-              <button
-                type="button"
-                onClick={actions.onEndLive}
-                aria-label="End live broadcast"
-                data-testid="host-app-end"
-                className="min-h-[44px] min-w-[44px] px-3.5 py-1 rounded-full bg-[#302025] hover:bg-[#FF5C5C] text-[#FFA8A8] hover:text-[#111407] border border-[#6B2A35] text-[12px] font-semibold transition-colors flex items-center justify-center shrink-0 focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
-              >
-                End
-              </button>
-            </div>
-
-            {/* Row 2: Viewers & Elapsed Time */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <div data-testid="host-app-viewers" className="inline-flex">
-                <ViewerPill viewers={viewers} />
-              </div>
-
-              {elapsedLabel && (
-                <span
-                  data-testid="elapsed-label"
-                  className="px-2 py-1 rounded-full bg-[#13161C] border border-[#2A303A] text-[11px] font-mono text-[#CAD0DA] tabular-nums"
-                >
-                  {elapsedLabel}
-                </span>
-              )}
-            </div>
-
-            {/* Condition Banner */}
-            {banner && (
-              <div data-testid="host-app-banner">
-                <ConditionBanner banner={banner} />
-              </div>
-            )}
-
-            {/* Promotion Banner */}
-            {promotion && (
-              <div data-testid="host-app-promotion">
-                <PromotionBanner promotion={promotion} />
-              </div>
-            )}
-          </div>
-
-          {/* BOTTOM INTERACTIVE ZONE */}
-          <div className="relative z-20 p-2.5 sm:p-3 pb-5 flex flex-col justify-end gap-2 sm:gap-2.5">
-            {/* Pinned Card (if an item is pinned) */}
-            <PinnedCard item={pinnedItem} onUnpin={handleUnpinFromCard} />
-
-            {/* Synthetic Comments Stream */}
-            <CommentStream comments={comments} />
-
-            {/* Host Bottom Controls Toolbar */}
-            <div className="flex items-center justify-between gap-2 pt-1">
-              {/* Bag Trigger Button (min 44x44px touch target) */}
-              <div data-testid="host-app-bag" className="inline-flex">
+                {/* End Live Action (at least 44x44px touch target) */}
                 <button
                   type="button"
-                  ref={bagButtonRef}
-                  onClick={() => setBagOpen(true)}
-                  aria-label={`Open shop bag (${bag.length} items)`}
-                  data-testid="host-app-bag-button"
-                  className="relative min-h-[44px] min-w-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#13161C] hover:bg-[#1B1F27] border border-[#39414D] text-[#F5F7FC] shadow-lg transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+                  onClick={actions.onEndLive}
+                  aria-label="End live broadcast"
+                  data-testid="host-app-end"
+                  className="min-h-[44px] min-w-[44px] h-[44px] px-3.5 rounded-full bg-[#302025] hover:bg-[#FF5C5C] text-[#FFA8A8] hover:text-[#111407] border border-[#6B2A35] text-[12px] font-semibold transition-colors flex items-center justify-center shrink-0 focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
                 >
-                  <i className="ri-shopping-bag-3-fill text-[#DFFF00] text-[17px]" />
-                  <span className="text-[12px] font-semibold">Bag</span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-[#DFFF00] text-[#111407]">
-                    {bag.length}
-                  </span>
+                  End
                 </button>
               </div>
 
-              {/* Host Quick Status Indicator */}
-              <div className="flex items-center gap-1 bg-[#13161C] border border-[#2A303A] px-2.5 py-1.5 rounded-xl text-[11px] font-mono text-[#CAD0DA]">
-                <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse motion-reduce:animate-none" />
-                <span>ON AIR</span>
+              {/* Row 2: Viewers & Elapsed Time */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <div data-testid="host-app-viewers" className="inline-flex">
+                  <ViewerPill viewers={viewers} />
+                </div>
+
+                {elapsedLabel && (
+                  <span
+                    data-testid="elapsed-label"
+                    className="px-2 py-1 rounded-full bg-[#13161C] border border-[#2A303A] text-[11px] font-mono text-[#CAD0DA] tabular-nums"
+                  >
+                    {elapsedLabel}
+                  </span>
+                )}
               </div>
+
+              {/* Condition Banner */}
+              {banner && (
+                <div data-testid="host-app-banner">
+                  <ConditionBanner banner={banner} />
+                </div>
+              )}
+
+              {/* Promotion Banner */}
+              {promotion && (
+                <div data-testid="host-app-promotion">
+                  <PromotionBanner promotion={promotion} />
+                </div>
+              )}
+            </div>
+
+            {/* MIDDLE/BOTTOM INTERACTIVE AREA (Shrinkable) */}
+            <div className="flex-1 min-h-0 flex flex-col justify-end gap-1 overflow-hidden">
+              {/* Pinned Card (if an item is pinned) */}
+              <PinnedCard item={pinnedItem} onUnpin={handleUnpinFromCard} className="shrink-0" />
+
+              {/* Synthetic Comments Stream (shrinks with internal scroll) */}
+              <CommentStream comments={comments} className="flex-1 min-h-0" />
+            </div>
+          </div>
+
+          {/* FOOTER ROW (ALWAYS ANCHORED INSIDE FRAME) */}
+          <div className="relative z-20 shrink-0 px-2 sm:px-2.5 pt-1 pb-1 flex items-center justify-between gap-2">
+            {/* Bag Trigger Button (min 44x44px touch target) */}
+            <div data-testid="host-app-bag" className="inline-flex">
+              <button
+                type="button"
+                ref={bagButtonRef}
+                onClick={() => setBagOpen(true)}
+                aria-label={`Open shop bag (${bag.length} items)`}
+                data-testid="host-app-bag-button"
+                className="relative min-h-[44px] min-w-[44px] h-[44px] flex items-center gap-1.5 px-3 rounded-xl bg-[#13161C] hover:bg-[#1B1F27] border border-[#39414D] text-[#F5F7FC] shadow-lg transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+              >
+                <i className="ri-shopping-bag-3-fill text-[#DFFF00] text-[17px]" />
+                <span className="text-[12px] font-semibold">Bag</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-[#DFFF00] text-[#111407]">
+                  {bag.length}
+                </span>
+              </button>
+            </div>
+
+            {/* Host Quick Status Indicator */}
+            <div className="flex items-center gap-1 bg-[#13161C] border border-[#2A303A] px-2.5 py-1.5 rounded-xl text-[11px] font-mono text-[#CAD0DA]">
+              <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse motion-reduce:animate-none" />
+              <span>ON AIR</span>
             </div>
           </div>
 
