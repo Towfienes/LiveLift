@@ -6,6 +6,7 @@ import { StandardShell } from "@/components/shell";
 import { TikTokConnectionPanel } from "@/components/integrations/TikTokConnectionPanel";
 import { useTikTokConnection } from "@/components/integrations/useTikTokConnection";
 import { CapabilityLedger } from "@/components/intelligence/CapabilityLedger";
+import { CapabilityTable } from "@/components/platform/CapabilityTable";
 import { useProviderCapabilities } from "@/components/intelligence/useLiveIntelligence";
 import { buildLedger } from "@/lib/intelligence/capabilities";
 import {
@@ -211,6 +212,20 @@ export default function IntegrationsPage(): React.ReactElement {
             A feature that is unavailable is a stated limit, not a fault.
           </p>
           <CapabilityLedger rows={ledger} className="mt-2" />
+        </section>
+
+        {/* What each platform lets LiveLift do. The rehearsal desk uses this table to decide what to call and what to leave to the operator. */}
+        <section aria-labelledby="platform-control-heading" className="rounded-[14px] bg-[#13161C] border border-[#252C38] p-5 sm:p-6" data-testid="platform-control">
+          <h2 id="platform-control-heading" className="text-[20px] sm:text-[22px] font-semibold text-[#F5F7FC]">
+            Platform control, by platform
+          </h2>
+          <p className="mt-1 max-w-[760px] text-[14px] sm:text-[15px] leading-relaxed text-[#B7C1CE]">
+            LiveLift asks this table before it acts. Where a platform offers an API LiveLift can call it; where it does not, the operator acts natively and reports it.
+            Shopee Live runs here as a SIMULATION in rehearsals: no Shopee account is connected, and every row says how well it is actually known.
+          </p>
+          <div className="mt-3">
+            <CapabilityTable />
+          </div>
         </section>
 
         {/* Epistemic Truth Ledger Callout */}
