@@ -23,6 +23,12 @@ export function assertStableBoxes(before, after) {
   }
 }
 
+export function assertInsideFrame(frame, trigger) {
+  assert(trigger.width > 0 && trigger.height > 0 && trigger.x >= frame.x && trigger.y >= frame.y &&
+    trigger.x + trigger.width <= frame.x + frame.width && trigger.y + trigger.height <= frame.y + frame.height,
+  'Bag trigger lies outside the phone frame');
+}
+
 export function assertSimulatedSurfaces(texts) {
   const missing = Object.entries(texts).filter(([, text]) => !/\bSIMULATED\b/.test(text)).map(([name]) => name);
   assert.deepEqual(missing, [], 'Surfaces missing their own SIMULATED label');
@@ -33,6 +39,14 @@ function selfTest() {
   assertStableBoxes(box, structuredClone(box));
   assert.throws(() => assertStableBoxes(box, { phone: { ...box.phone, y: 2 } }));
   assert.throws(() => assertStableBoxes(box, {}));
+  for (const dimension of ['x', 'y', 'width', 'height']) {
+    assertStableBoxes(box, { phone: { ...box.phone, [dimension]: box.phone[dimension] + 1 } });
+    assert.throws(() => assertStableBoxes(box, { phone: { ...box.phone, [dimension]: box.phone[dimension] + 2 } }));
+  }
+  assertInsideFrame(box.phone, { x: 10, y: 10, width: 44, height: 44 });
+  for (const trigger of [{ x: -1, y: 10, width: 44, height: 44 }, { x: 10, y: -1, width: 44, height: 44 },
+    { x: 190, y: 10, width: 44, height: 44 }, { x: 10, y: 390, width: 44, height: 44 },
+    { x: 10, y: 10, width: 0, height: 44 }]) assert.throws(() => assertInsideFrame(box.phone, trigger));
   assertSimulatedSurfaces({ desk: 'SIMULATED clock', phone: 'SIMULATED' });
   assert.throws(() => assertSimulatedSurfaces({ phone: 'Shopee' }));
   assert(forbidden.test('connected to Shopee'));
@@ -96,12 +110,25 @@ async function journey(browser, runtime, viewport, run, axePath, report, output)
     const numbers = document.querySelector('[data-testid="director-progress"]')?.textContent?.match(/\d+/g);
     return Number(numbers?.[0]) === n && Number(numbers?.[1]) === 12;
   }, n);
-  const boxes = () => page.evaluate(() => Object.fromEntries(['lab-phone-zone', 'host-app', 'host-app-bag', 'host-app-viewers'].map(name => {
-    const element = document.querySelector(`[data-testid="${name}"]`);
-    if (!element) throw new Error(`Missing region ${name}`);
-    const rect = element.getBoundingClientRect();
-    return [name, { x: rect.x + window.scrollX, y: rect.y + window.scrollY, width: rect.width, height: rect.height }];
-  })));
+  const boxes = () => page.evaluate(() => {
+    const regions = ['lab-phone-zone', 'host-app'].map(name => {
+      const element = document.querySelector(`[data-testid="${name}"]`);
+      if (!element) throw new Error(`Missing region ${name}`);
+      return [name, element];
+    });
+    // The viewer row exists only on air; its pill can grow as the count changes.
+    const viewerRow = document.querySelector('[data-testid="viewer-pill"]')?.closest('[data-testid="host-app-viewers"]')?.parentElement;
+    if (viewerRow) regions.push(['viewer-row', viewerRow]);
+    const bagTrigger = document.querySelector('[data-testid="host-app-bag-button"]');
+    if (document.querySelector('[data-testid="host-app"]')?.getAttribute('data-mode') === 'live' && !bagTrigger) {
+      throw new Error('Missing live bag trigger');
+    }
+    if (bagTrigger) regions.push(['bag-trigger', bagTrigger]);
+    return Object.fromEntries(regions.map(([name, element]) => {
+      const rect = element.getBoundingClientRect();
+      return [name, { x: rect.x + window.scrollX, y: rect.y + window.scrollY, width: rect.width, height: rect.height }];
+    }));
+  });
   const axe = async state => {
     const result = await page.evaluate(() => window.axe.run(document));
     const violations = result.violations.map(({ id, impact, description, helpUrl, nodes }) => ({ id, impact, description, helpUrl,
@@ -161,7 +188,7 @@ async function journey(browser, runtime, viewport, run, axePath, report, output)
     const storedBefore = await page.evaluate(() => localStorage.getItem('livelift.v3.SIMULATED'));
     await page.addScriptTag({ path: axePath });
     await audit('state0');
-    const previousBoxes = await boxes();
+    let previousBoxes, viewerRowBox;
     await page.evaluate(() => { window.__labScrollCalls = []; window.__labLayoutShifts = []; });
     await check('keyboard-play-pause-focus', async () => {
       await tabTo(id('director-play'));
@@ -177,9 +204,16 @@ async function journey(browser, runtime, viewport, run, axePath, report, output)
       if (state < 12) await id('director-pause').click();
       await audit(`state${state}`);
       await check(`state${state}-phone-layout`, async () => {
-        const current = await boxes();
-        report.layout.push({ viewport, run, state, boxes: current });
+        const measured = await boxes();
+        const { ['viewer-row']: viewerRow, ['bag-trigger']: bagTrigger, ...current } = measured;
+        report.layout.push({ viewport, run, state, boxes: measured });
+        previousBoxes ??= current;
         assertStableBoxes(previousBoxes, current);
+        if (viewerRow) {
+          viewerRowBox ??= viewerRow;
+          assertStableBoxes({ 'viewer-row': viewerRowBox }, { 'viewer-row': viewerRow });
+        }
+        if (bagTrigger) assertInsideFrame(current['host-app'], bagTrigger);
       });
       if ([6, 7, 12].includes(state)) await page.screenshot({ path: path.join(output, `${label}-state${state}.png`) });
       if (state < 12) await id('director-play').click();
@@ -220,13 +254,16 @@ async function journey(browser, runtime, viewport, run, axePath, report, output)
       await id('director-step').click();
       await id('director-step').click();
       await progress(2);
+      await tabTo(id('host-app-bag-button'));
+      await page.keyboard.press('Enter');
       const pin = page.locator('[data-testid^="host-app-pin-"]').first();
       await tabTo(pin);
       await page.keyboard.press('Enter');
       const active = await page.evaluate(() => ({ inPhone: !!document.activeElement?.closest('[data-testid="host-app"]'),
-        disabled: document.activeElement?.matches(':disabled'), target: document.activeElement?.getAttribute('data-testid'), tag: document.activeElement?.tagName }));
+        disabled: document.activeElement?.matches(':disabled'), control: document.activeElement?.matches('button, input, select, textarea, a[href], [role="button"]'),
+        target: document.activeElement?.getAttribute('data-testid'), tag: document.activeElement?.tagName }));
       report.focus.push({ viewport, run, active });
-      assert(active.inPhone && !active.disabled, `Phone update lost usable focus: ${JSON.stringify(active)}`);
+      assert(active.inPhone && active.control && !active.disabled, `Phone update lost usable focus: ${JSON.stringify(active)}`);
       return active;
     });
   } catch (error) {
