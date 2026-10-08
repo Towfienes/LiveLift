@@ -426,6 +426,7 @@ function Desk({
     nowMs,
     nextAnchorMs: forecast.anchorGuard?.committedMs ?? null,
     run: (body) => void run(body),
+    autoRun: true,
     script: {
       apply: (say) => {
         const r = sessionStore.applyNextScriptStep(session.id);
