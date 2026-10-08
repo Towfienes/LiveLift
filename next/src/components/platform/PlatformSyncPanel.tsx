@@ -113,16 +113,10 @@ export function PlatformSyncPanel({
 
   const pin = (productId: string): void => {
     const w = latest();
-    const r = pinFromLiveLift(w.sim, w.sync, productId, nowMs);
+    const r = pinAndRecord(w.sim, w.sync, session, productId, nowMs);
     update((x) => ({ ...x, sim: r.sim, sync: r.sync }));
-    if (r.outcome.ok) {
-      recordRef.current(reportCommand(session, "pin_product", productId, "performed", acceptedReason(r.outcome.requestId)));
-    } else if (r.outcome.reason === "api_error") {
-      recordRef.current(reportCommand(session, "pin_product", productId, "attempted", refusedReason(r.outcome.message, r.outcome.requestId)));
-      notice("pin_refused", `Shopee refused the pin: ${r.outcome.message}`);
-    } else {
-      notice("pin_not_sent", r.outcome.message);
-    }
+    if (r.command) recordRef.current(r.command);
+    if (r.notice) notice(r.notice.code, r.notice.summary);
   };
 
   const link = (): void => {
