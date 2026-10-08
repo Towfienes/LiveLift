@@ -152,10 +152,13 @@ export function pollPlatform(sim: ShopeeLiveSim, sync: SyncState, nowMs: number)
   return { sim: cur, snapshot: { takenAtMs: nowMs, providerSessionId: sync.providerSessionId, status, itemIds, showing, promotions, problem } };
 }
 
-/** Re-read the platform and make that the baseline, so LiveLift's own changes are not echoed back as "observed". */
+/**
+ * Re-read the platform and make that the baseline, so LiveLift's own changes are not echoed back as "observed".
+ * A read that fails is unknown, not empty: the last good baseline stays, and the next good read is compared with it.
+ */
 function rebase(sim: ShopeeLiveSim, sync: SyncState, nowMs: number): { sim: ShopeeLiveSim; sync: SyncState } {
   const polled = pollPlatform(sim, sync, nowMs);
-  return { sim: polled.sim, sync: { ...sync, last: polled.snapshot } };
+  return { sim: polled.sim, sync: polled.snapshot.problem ? sync : { ...sync, last: polled.snapshot } };
 }
 
 // ---- Outbound --------------------------------------------------------------------------------------------------------

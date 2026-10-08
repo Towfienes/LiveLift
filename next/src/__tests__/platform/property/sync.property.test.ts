@@ -136,7 +136,7 @@ describe("seeded SIMULATED bridge properties", () => {
     expect(changed).toBe(0);
   });
 
-  it.fails("P02: a refused pin erases the good baseline and recovery echoes LiveLift's own bag and promotion", () => {
+  it("P02: a refused pin erases the good baseline and recovery echoes LiveLift's own bag and promotion", () => {
     const w = linked();
     const refused = pinFromLiveLift(withFault(w.sim, "token_expired"), w.sync, w.sync.links[0].productId, T);
     expect(refused.outcome.ok).toBe(false);
@@ -145,7 +145,7 @@ describe("seeded SIMULATED bridge properties", () => {
     expect(healed.notices.filter((notice) => ["item_added_known", "promotion_scheduled", "observed"].includes(notice.code))).toEqual([]);
   });
 
-  it.fails("P02: recovery echoes own changes across 2,048 seeded refused-pin/fault sequences", { timeout: 60000 }, () => {
+  it("P02: recovery echoes own changes across 2,048 seeded refused-pin/fault sequences", { timeout: 60000 }, () => {
     const initial = linked();
     let echoes = 0;
     for (let seed = 1; seed <= SEQUENCES; seed++) {
@@ -160,7 +160,7 @@ describe("seeded SIMULATED bridge properties", () => {
     expect(echoes).toBe(0);
   });
 
-  it.fails("P02: a host pin during an outage is lost when a refused LiveLift pin overwrites the baseline", () => {
+  it("P02: a host pin during an outage is lost when a refused LiveLift pin overwrites the baseline", () => {
     const w = linked();
     const itemId = w.sync.last!.itemIds[0];
     const hosted = hostAct(withFault(w.sim, "token_expired"), T, { type: "pin_item", itemId });
