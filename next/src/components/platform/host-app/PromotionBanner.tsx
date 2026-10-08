@@ -22,7 +22,7 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
       role="region"
       aria-label="Flash sale promotion"
       data-testid="promotion-banner"
-      className={`relative mx-2 sm:mx-3.5 my-1.5 p-2 rounded-xl border shadow-md transition-all duration-300 animate-[host-app-banner-in_250ms_ease-out] motion-reduce:animate-none select-none ${
+      className={`relative w-full my-1 p-1.5 sm:p-2 rounded-xl border shadow-md transition-all duration-300 animate-[host-app-banner-in_250ms_ease-out] motion-reduce:animate-none select-none ${
         isActive
           ? "bg-[#281816] border-[#E24A24]/70 text-[#FFA07A]"
           : isScheduled
@@ -30,12 +30,12 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
             : "bg-[#181B22] border-[#2F3746] text-[#CAD0DA]"
       } ${className}`}
     >
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1">
         {/* Top line: status badge and countdown timer */}
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-1.5">
             <span
-              className={`text-[9px] font-mono font-bold tracking-wider uppercase px-1 py-0.5 rounded ${
+              className={`text-[9px] font-mono font-bold tracking-wider uppercase px-1 py-0.2 rounded ${
                 isActive
                   ? "bg-[#3D1A17] text-[#FFB3B3] border border-[#FF5C5C]/50"
                   : isScheduled
@@ -65,9 +65,9 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
         </div>
 
         {/* Bottom line: icon & promo title */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
           <div
-            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+            className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
               isActive
                 ? "bg-[#E24A24] text-[#FFFFFF] shadow-sm animate-[host-app-countdown-pulse_2s_ease-in-out_infinite] motion-reduce:animate-none"
                 : isScheduled
@@ -78,15 +78,15 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
             <i
               className={
                 isActive
-                  ? "ri-flashlight-fill text-[14px]"
+                  ? "ri-flashlight-fill text-[12px]"
                   : isScheduled
-                    ? "ri-time-line text-[13px]"
-                    : "ri-checkbox-circle-line text-[13px]"
+                    ? "ri-time-line text-[11px]"
+                    : "ri-checkbox-circle-line text-[11px]"
               }
               aria-hidden="true"
             />
           </div>
-          <p className="text-[12px] font-medium leading-tight truncate text-[#F5F7FC] flex-1">
+          <p className="text-[11px] sm:text-[12px] font-medium leading-tight truncate text-[#F5F7FC] flex-1">
             {name}
           </p>
         </div>

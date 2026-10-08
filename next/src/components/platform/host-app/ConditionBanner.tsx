@@ -39,17 +39,17 @@ export const ConditionBanner: React.FC<ConditionBannerProps> = ({
     <div
       role="alert"
       data-testid="condition-banner"
-      className={`relative mx-2 sm:mx-3.5 my-1.5 p-2 sm:p-2.5 rounded-xl border backdrop-blur-md shadow-lg transition-all duration-300 animate-[host-app-banner-in_250ms_ease-out] motion-reduce:animate-none select-none ${toneConfig.bgClass} ${className}`}
+      className={`relative w-full my-1 p-1.5 sm:p-2 rounded-xl border backdrop-blur-md shadow-lg transition-all duration-300 animate-[host-app-banner-in_250ms_ease-out] motion-reduce:animate-none select-none ${toneConfig.bgClass} ${className}`}
     >
-      <div className="flex items-start gap-2 sm:gap-2.5">
+      <div className="flex items-start gap-1.5 sm:gap-2">
         <i
-          className={`${toneConfig.icon} text-[15px] shrink-0 mt-0.5`}
+          className={`${toneConfig.icon} text-[14px] shrink-0 mt-0.5`}
           aria-hidden="true"
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             <span
-              className={`text-[9px] font-mono font-bold tracking-wider uppercase px-1.5 py-0.5 rounded border ${toneConfig.badgeClass}`}
+              className={`text-[9px] font-mono font-bold tracking-wider uppercase px-1 py-0.2 rounded border ${toneConfig.badgeClass}`}
             >
               {toneConfig.badge}
             </span>
@@ -57,7 +57,7 @@ export const ConditionBanner: React.FC<ConditionBannerProps> = ({
               CONDITION
             </span>
           </div>
-          <p className="text-[12px] font-medium leading-snug break-words text-[#F5F7FC]">
+          <p className="text-[11px] sm:text-[12px] font-medium leading-snug break-words text-[#F5F7FC]">
             {banner.text}
           </p>
         </div>
