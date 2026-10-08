@@ -4,7 +4,7 @@ import type { Session } from "@/contracts";
 import {
   acceptedReason, catalogFromProducts, createShopeeLiveSim, diffSnapshots, hostAct, importableItems, inboundActions, initialSyncState,
   ongoingSession, pinFromLiveLift, pollPlatform, productFromItem, reconcileOutbound, reportCommand, schedulePromotions,
-  unpinFromLiveLift, withAssumptions, withFault, type ShopeeLiveSim, type SyncState,
+  syncCycle, unpinFromLiveLift, withAssumptions, withFault, type ShopeeLiveSim, type SyncState,
 } from "@/lib/platform";
 
 const T = SCENARIO_START_MS;
@@ -216,5 +216,50 @@ describe("promotions: an anchor becomes a scheduled promotion", () => {
     const out = schedulePromotions(w.sim, session, w.sync, T + 3 * 3600_000);
     expect(out.blocked).toMatchObject({ endpoint: "create_promotion", ok: false });
     expect(out.sim.promotions).toHaveLength(0);
+    // Remembered, so the next sync does not retry it behind the operator's back.
+    expect(Object.values(out.sync.promotionRefused)).toHaveLength(1);
+    expect(schedulePromotions(out.sim, session, out.sync, T + 3 * 3600_000).calls).toEqual([]);
+  });
+});
+
+describe("syncCycle: read first, then write, and never echo", () => {
+  it("opens the live, picks up a host pin once, and then goes quiet", () => {
+    const session = started();
+    const w = world(session);
+    const first = syncCycle(session, w.sim, w.sync, T);
+    expect(first.calls.map((c) => c.endpoint)).toEqual(["create_session", "add_item_list", "start_session", "create_promotion"]);
+    expect(first.commands).toEqual([]);
+
+    const productId = pinnedProduct(session);
+    const itemId = first.sync.links.find((l) => l.productId === productId)!.itemId;
+    const hosted = hostAct(first.sim, T + 1000, { type: "pin_item", itemId });
+    const second = syncCycle(session, hosted.sim, first.sync, T + 2000);
+    expect(second.commands).toHaveLength(1);
+    expect(second.notices.map((n) => n.code)).toEqual(["observed"]);
+
+    const third = syncCycle(session, second.sim, second.sync, T + 3000);
+    expect(third.commands).toEqual([]);
+    expect(third.notices).toEqual([]);
+    expect(third.calls).toEqual([]);
+  });
+
+  it("tells the operator about a platform problem once, and again only when it clears", () => {
+    const session = started();
+    const w = world(session);
+    const broken = syncCycle(session, withFault(w.sim, "token_expired"), w.sync, T);
+    expect(broken.notices.map((n) => n.code)).toContain("platform_problem");
+    const again = syncCycle(session, broken.sim, broken.sync, T + 1000);
+    expect(again.notices.map((n) => n.code)).not.toContain("platform_problem");
+    const healed = syncCycle(session, withFault(again.sim, null), again.sync, T + 2000);
+    expect(healed.sync.providerSessionId).not.toBeNull();
+    expect(healed.notices.map((n) => n.code)).toContain("platform_recovered");
+  });
+
+  it("does nothing for a show that has not started", () => {
+    const planned = createScenarioSession("buffered");
+    const w = world(planned);
+    const out = syncCycle(planned, w.sim, w.sync, T);
+    expect(out.calls).toEqual([]);
+    expect(out.sim.ledger).toEqual([]);
   });
 });

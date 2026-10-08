@@ -12,6 +12,7 @@ import { NextPanel } from "@/components/ops/NextPanel";
 import { CueBar, type ReportTarget } from "@/components/ops/CueBar";
 import { RunOfShowLive, scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
 import { SupportTabs } from "@/components/ops/SupportTabs";
+import { PlatformSyncPanel } from "@/components/platform/PlatformSyncPanel";
 import { QuickReports } from "@/components/ops/QuickReports";
 import { OperateCopilot } from "@/components/ai/OperateCopilot";
 import { useOperateCopilot } from "@/components/ai/useAiCopilot";
@@ -687,6 +688,17 @@ function Desk({
             tz={tz}
             copilotAvailable={copilot.phase === "available"}
             onCopilotOpen={() => setCopilotOpened(true)}
+            platform={
+              simulated ? (
+                <PlatformSyncPanel
+                  session={session}
+                  nowMs={nowMs}
+                  onRecord={(command) => {
+                    void run(command as DispatchInput);
+                  }}
+                />
+              ) : undefined
+            }
             copilot={
               <OperateCopilot
                 copilot={copilot}

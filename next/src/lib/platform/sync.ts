@@ -39,6 +39,10 @@ export interface SyncState {
   last: PlatformSnapshot | null;
   /** LiveLift segment id -> platform promotion id, so a promotion is scheduled once. */
   promotions: Record<string, number>;
+  /** LiveLift segment id -> the platform's refusal. A refused promotion is not retried silently. */
+  promotionRefused: Record<string, string>;
+  /** The platform's latest refusal or read failure, so a repeated one is told to the operator once, not every cycle. */
+  problem: string | null;
 }
 
 const FIRST_ITEM_ID = 100001;
@@ -56,7 +60,7 @@ export function catalogFromProducts(products: readonly ProductSnapshot[], links:
 }
 
 export function initialSyncState(session: Pick<Session, "products">): SyncState {
-  return { providerSessionId: null, links: linkProducts(session.products), last: null, promotions: {} };
+  return { providerSessionId: null, links: linkProducts(session.products), last: null, promotions: {}, promotionRefused: {}, problem: null };
 }
 
 /** A platform item that LiveLift has no product for: shown as an offer to import, never imported silently. */
@@ -221,6 +225,8 @@ export function reconcileOutbound(sim: ShopeeLiveSim, session: Session, syncIn: 
     step("end_session", { session_id: sync.providerSessionId }, "The show ended: end the live on Shopee");
   }
 
+  // Nothing was changed, so there is nothing to re-read: the baseline stays as the last poll left it.
+  if (calls.length === 0) return { sim: cur, sync, calls, blocked };
   const based = rebase(cur, sync, nowMs);
   return { sim: based.sim, sync: based.sync, calls, blocked };
 }
@@ -237,7 +243,8 @@ export function schedulePromotions(sim: ShopeeLiveSim, session: Session, syncIn:
   if (!canCallApi("shopee_live", "promotion")) return { sim, sync, calls, blocked };
   const plan = currentPlan(session);
   for (const seg of plan.segments) {
-    if (blocked || seg.kind !== "promotion" || seg.anchorOffsetSec === null || sync.promotions[seg.id] !== undefined) continue;
+    if (blocked || seg.kind !== "promotion" || seg.anchorOffsetSec === null) continue;
+    if (sync.promotions[seg.id] !== undefined || sync.promotionRefused[seg.id] !== undefined) continue;
     const link = (seg.productId ? linkOfProduct(sync, seg.productId) : undefined) ?? sync.links[0];
     if (!link) continue;
     const startMs = plan.plannedStartMs + seg.anchorOffsetSec * 1000;
@@ -250,9 +257,14 @@ export function schedulePromotions(sim: ShopeeLiveSim, session: Session, syncIn:
     cur = r.sim;
     const call: SyncCall = { endpoint: "create_promotion", ok: r.ok, message: r.envelope.message, requestId: r.envelope.request_id, why: `Anchor "${seg.title}"` };
     calls.push(call);
-    if (!r.ok) blocked = call;
-    else if (typeof r.envelope.response.promotion_id === "number") sync = { ...sync, promotions: { ...sync.promotions, [seg.id]: r.envelope.response.promotion_id } };
+    if (!r.ok) {
+      blocked = call;
+      sync = { ...sync, promotionRefused: { ...sync.promotionRefused, [seg.id]: r.envelope.message } };
+    } else if (typeof r.envelope.response.promotion_id === "number") {
+      sync = { ...sync, promotions: { ...sync.promotions, [seg.id]: r.envelope.response.promotion_id } };
+    }
   }
+  if (calls.length === 0) return { sim: cur, sync, calls, blocked };
   const based = rebase(cur, sync, nowMs);
   return { sim: based.sim, sync: based.sync, calls, blocked };
 }
@@ -398,3 +410,63 @@ export function inboundActions(session: Session, sync: SyncState, observations: 
 /** Describe a scheduled promotion's timing for the audience. */
 export const promotionWords = (sim: ShopeeLiveSim, nowMs: number): Array<{ id: number; name: string; status: ReturnType<typeof promotionStatus>; createdBy: "api" | "host_app" }> =>
   sim.promotions.map((p) => ({ id: p.id, name: p.name, status: promotionStatus(p, nowMs), createdBy: p.createdBy }));
+
+// ---- One full cycle --------------------------------------------------------------------------------------------------
+
+export interface CycleResult {
+  sim: ShopeeLiveSim;
+  sync: SyncState;
+  /** Records for the show: what the host did on the platform. The caller dispatches them like any operator command. */
+  commands: CommandBody[];
+  /** Things the operator should know, each worded once. */
+  notices: Array<{ code: string; summary: string }>;
+  calls: SyncCall[];
+}
+
+/**
+ * Read first, then write. Reading first means a change the host made is seen before LiveLift's own calls re-baseline the
+ * platform; writing second brings the platform in line with the show. Calling it again with nothing new changes nothing.
+ */
+export function syncCycle(session: Session, simIn: ShopeeLiveSim, syncIn: SyncState, nowMs: number): CycleResult {
+  let sim = simIn;
+  let sync = syncIn;
+  const commands: CommandBody[] = [];
+  const notices: Array<{ code: string; summary: string }> = [];
+  const calls: SyncCall[] = [];
+  let problem: string | null = null;
+
+  if (sync.providerSessionId !== null) {
+    const polled = pollPlatform(sim, sync, nowMs);
+    sim = polled.sim;
+    if (polled.snapshot.problem) {
+      problem = `Could not read the platform: ${polled.snapshot.problem.message}`;
+    } else {
+      for (const a of inboundActions(session, sync, diffSnapshots(sync.last, polled.snapshot))) {
+        if (a.kind === "command") {
+          commands.push(a.command);
+          notices.push({ code: "observed", summary: a.summary });
+        } else notices.push({ code: a.code, summary: a.summary });
+      }
+      sync = { ...sync, last: polled.snapshot };
+    }
+  }
+
+  if (session.lifecycle !== "planned") {
+    const out = reconcileOutbound(sim, session, sync, nowMs);
+    sim = out.sim;
+    sync = out.sync;
+    calls.push(...out.calls);
+    if (out.blocked) problem = `Shopee refused ${out.blocked.endpoint}: ${out.blocked.message}`;
+  }
+  if (session.lifecycle === "active") {
+    const out = schedulePromotions(sim, session, sync, nowMs);
+    sim = out.sim;
+    sync = out.sync;
+    calls.push(...out.calls);
+    if (out.blocked) notices.push({ code: "promotion_refused", summary: `Shopee refused the promotion: ${out.blocked.message}. It will not be retried until you ask.` });
+  }
+
+  if (problem !== null && problem !== sync.problem) notices.push({ code: "platform_problem", summary: problem });
+  if (problem === null && sync.problem !== null) notices.push({ code: "platform_recovered", summary: "The platform is answering again." });
+  return { sim, sync: { ...sync, problem }, commands, notices, calls };
+}
