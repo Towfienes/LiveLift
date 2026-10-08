@@ -103,7 +103,7 @@ async function journey(browser, runtime, viewport, run, axePath, report, output)
     return [name, { x: rect.x + window.scrollX, y: rect.y + window.scrollY, width: rect.width, height: rect.height }];
   })));
   const axe = async state => {
-    const result = await page.evaluate(() => window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] } }));
+    const result = await page.evaluate(() => window.axe.run(document));
     const violations = result.violations.map(({ id, impact, description, helpUrl, nodes }) => ({ id, impact, description, helpUrl,
       nodes: nodes.map(({ target, html, failureSummary }) => ({ target, html, failureSummary })) }));
     report.axe.push({ viewport, run, state, violations, incomplete: result.incomplete.map(({ id, nodes }) => ({ id, targets: nodes.map(node => node.target) })) });

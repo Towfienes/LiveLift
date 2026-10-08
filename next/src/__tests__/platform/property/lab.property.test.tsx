@@ -76,6 +76,14 @@ describe("Lab reducer and preference properties", () => {
     expect(screen.getByTestId(surface).textContent).toMatch(/\bSIMULATED\b/);
   });
 
+  it.fails("L06: Vietnamese mode leaves LiveLift's generated host-pin notice in English", () => {
+    window.localStorage.setItem("livelift.lab.lang", "vi");
+    render(<PlatformLab show={createScenarioSession("buffered")} />);
+    expect(screen.getByTestId("platform-lab").getAttribute("lang")).toBe("vi");
+    for (let step = 0; step < 6; step++) fireEvent.click(screen.getByTestId("director-step"));
+    expect(screen.getByTestId("lab-notices").textContent).not.toContain("Host pinned Cargo Pants on the platform");
+  });
+
   it("restores valid preferences and ignores damaged values", () => {
     for (const [language, presenter, expectedLanguage, expectedPresenter] of [
       ["vi", "1", "vi", true], ["en", "0", "en", false], ["broken", "true", "en", false],
