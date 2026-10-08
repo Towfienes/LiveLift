@@ -126,6 +126,13 @@ export function PlatformSyncPanel({
     if (latest().auto) runCycle(nowMs);
   };
 
+  // A reset world has no live. With auto-sync on, bring the platform in line straight away instead of waiting for the
+  // clock or the show to move.
+  const resetWorld = (): void => {
+    reset();
+    if (latest().auto) runCycle(nowMs);
+  };
+
   const { sim, sync } = world;
   const live = ongoingSession(sim);
   const linked = sync.providerSessionId !== null ? (sim.sessions[sync.providerSessionId] ?? null) : null;
@@ -176,7 +183,7 @@ export function PlatformSyncPanel({
             Auto-sync
           </label>
           <Button variant="secondary" size="desk" icon="ri-refresh-line" onClick={() => runCycle(nowMs)} data-testid="platform-sync-now">Sync now</Button>
-          <Button variant="ghost" size="desk" icon="ri-restart-line" onClick={reset} data-testid="platform-reset">Reset</Button>
+          <Button variant="ghost" size="desk" icon="ri-restart-line" onClick={resetWorld} data-testid="platform-reset">Reset</Button>
         </div>
       </div>
 

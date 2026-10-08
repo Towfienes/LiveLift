@@ -2,23 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@/contracts";
-import { freshWorld, type PlatformWorld } from "@/lib/platform";
+import { freshWorld, parseWorld, type PlatformWorld } from "@/lib/platform";
 
 export { addNotices, freshWorld, type PlatformNotice, type PlatformWorld } from "@/lib/platform";
 
 const KEY = (sessionId: string): string => `livelift.platformSim.v1.${sessionId}`;
 
-function isWorld(value: unknown): value is PlatformWorld {
-  const w = value as Partial<PlatformWorld> | null;
-  return !!w && typeof w === "object" && !!w.sim && Array.isArray(w.sim.ledger) && Array.isArray(w.sim.catalog) && !!w.sync && Array.isArray(w.sync.links)
-    && typeof w.sync.promotionRefused === "object" && Array.isArray(w.notices) && typeof w.auto === "boolean";
-}
-
+/** The show's stored world, checked field by field (`parseWorld`). Anything damaged or unreadable is null. */
 function load(sessionId: string): PlatformWorld | null {
   try {
     const raw = window.localStorage.getItem(KEY(sessionId));
-    const parsed: unknown = raw ? JSON.parse(raw) : null;
-    return isWorld(parsed) ? parsed : null;
+    return raw ? parseWorld(JSON.parse(raw)) : null;
   } catch {
     return null;
   }
@@ -44,12 +38,12 @@ export function usePlatformWorld(session: Pick<Session, "id" | "products">): {
   const sessionId = session.id;
 
   useEffect(() => {
-    const stored = load(sessionId);
-    if (stored) {
-      ref.current = stored;
-      setWorld(stored);
-    }
+    // This show's own world: its stored copy, or a fresh one. Never the previous show's.
+    const next = load(sessionId) ?? freshWorld(session);
+    ref.current = next;
+    setWorld(next);
     // Only when the show changes: a re-render must never replace the live state with an older stored copy.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   const update = useCallback(

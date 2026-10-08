@@ -95,20 +95,20 @@ describe("SIMULATED platform persistence and caller properties", () => {
     }
   });
 
-  it.fails.each(damaged)("P06: stored $reason passes shallow validation instead of recovering a fresh world", ({ corrupt }) => {
+  it.each(damaged)("P06: stored $reason passes shallow validation instead of recovering a fresh world", ({ corrupt }) => {
     const session = createScenarioSession("buffered");
     window.localStorage.setItem(key(session.id), JSON.stringify(corrupt(freshWorld(session))));
     const mounted = renderHook(() => usePlatformWorld(session));
     expect(mounted.result.current.world).toEqual(freshWorld(session));
   });
 
-  it.fails("P06: reloading a blob without sim.assumptions crashes the platform panel", () => {
+  it("P06: reloading a blob without sim.assumptions crashes the platform panel", () => {
     const w = world();
     window.localStorage.setItem(key(w.session.id), JSON.stringify(damaged[0].corrupt(freshWorld(w.session))));
     expect(() => render(<PlatformSyncPanel session={w.session} nowMs={T} onRecord={() => undefined} />)).not.toThrow();
   });
 
-  it.fails("P07: changing to a show with no stored world carries the previous show's platform and notices", () => {
+  it("P07: changing to a show with no stored world carries the previous show's platform and notices", () => {
     const first = createScenarioSession("buffered", { id: "synthetic-show-a" });
     const second = createScenarioSession("buffered", { id: "synthetic-show-b" });
     const mounted = renderHook(({ session }) => usePlatformWorld(session), { initialProps: { session: first } });
@@ -119,7 +119,7 @@ describe("SIMULATED platform persistence and caller properties", () => {
     expect(mounted.result.current.world).toEqual(freshWorld(second));
   });
 
-  it.fails("P08: resetting an active panel with auto-sync enabled does not open the live again", () => {
+  it("P08: resetting an active panel with auto-sync enabled does not open the live again", () => {
     const w = world();
     render(<PlatformSyncPanel session={w.session} nowMs={T} onRecord={() => undefined} />);
     expect(screen.getByTestId("platform-linked").textContent).toContain("ongoing");
