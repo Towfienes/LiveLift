@@ -119,7 +119,7 @@ export function PlatformLab({ show }: { show: Session }): React.ReactElement {
       <main id="main-content" tabIndex={-1} className="flex-1 min-h-0 flex flex-col gap-2 p-2 xl:p-3 outline-none">
         <DirectorBar player={player} cursor={ui.cursor} fit={fit} tz={session.timezone} words={words} presenter={presenter} />
         <AssumptionsStrip assumptions={world.sim.assumptions} words={words} act={act} />
-        <div className="flex-1 min-h-0 grid gap-2 xl:gap-3 grid-cols-1 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)_clamp(230px,calc((100dvh-230px)*0.462),420px)]">
+        <div className="flex-1 min-h-0 grid gap-2 xl:gap-3 grid-cols-1 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)_clamp(280px,calc((100dvh-230px)*0.462),420px)]">
           <div className="order-2 xl:order-1 min-h-0">
             <LabDesk lab={lab} forecast={forecast} strip={simulator.strip} words={words} lang={lang} presenter={presenter} act={act} />
           </div>
@@ -132,8 +132,9 @@ export function PlatformLab({ show }: { show: Session }): React.ReactElement {
             className="order-1 xl:order-3 h-[min(78dvh,760px)] xl:h-auto min-h-0 [container-type:size] flex items-start justify-center"
             data-testid="lab-phone-zone"
           >
-            <div className="w-[min(100cqw,calc(100cqh*390/844))] aspect-[390/844]">
-              {/* The phone is drawn for 390 × 844; here it takes the zone's size instead, so its text stays readable. */}
+            {/* The phone is drawn for 390 × 844. Here it takes the zone's width and at most its height, so on a short
+                screen it is a little stubbier rather than so narrow that its overlays collide. Text keeps its size. */}
+            <div className="w-full h-[min(100cqh,calc(100cqw*844/390))]">
               <HostApp viewModel={model} actions={actions} className="!h-full !max-h-full" />
             </div>
           </section>
