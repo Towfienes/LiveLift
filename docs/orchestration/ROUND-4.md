@@ -31,12 +31,12 @@ Branch `agent/antigravity/wp2d-axe`. Files: `next/src/components/platform/host-a
 
 Check at 1920×1080, 1280×720 and 390×844, in English and Vietnamese. Run typecheck, lint, tests, build.
 
-## WP3d, Codex (balanced tier, medium effort). Start only when the operator says WP2d is merged.
+## WP3d, Codex. Start now, in parallel with WP2d (quota is not a constraint; speed is).
 
 Branch `agent/codex/wp3d-acceptance`. Files: `next/acceptance/lab-browser.mjs` and `docs/orchestration/reviews/**`.
 
 1. Change the geometry checks and the focus journey as decided above. Keep every honesty check as it is.
-2. Run against a fresh production build; attach the output. The target is `LAB BROWSER HARNESS: PASS`. Anything still failing goes back to its owner with the exact check name.
+2. Run against a fresh production build and attach the output. Expect the geometry and focus failures to be gone; the axe failures belong to WP2d and may remain until it merges. Commit and push, then stop and wait: the operator will tell you when WP2d is merged, and you then re-run **once** against the new build. The target is `LAB BROWSER HARNESS: PASS`. Anything still failing goes back to its owner with the exact check name.
 3. If it passes, say so plainly and list the retained frames.
 
 ## Then
