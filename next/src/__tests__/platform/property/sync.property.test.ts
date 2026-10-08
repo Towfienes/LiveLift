@@ -78,7 +78,8 @@ describe("seeded SIMULATED bridge properties", () => {
       expect(result.notices).toEqual([]);
       w = { ...w, sim: result.sim, sync: result.sync };
     }
-    expect(w.sim.ledger.some((entry) => entry.kind === "api" && entry.envelope.request_id === requestId)).toBe(false);
+    // Restated for the P01 decision (ROUND-2.md): reads live in a separate ring, so idle polling never evicts the write.
+    expect(w.sim.ledger.some((entry) => entry.kind === "api" && entry.envelope.request_id === requestId)).toBe(true);
   });
 
   it("repeated healthy sync makes no writes or duplicate observations over 2,048 host/pin sequences", { timeout: 60000 }, () => {
@@ -114,13 +115,14 @@ describe("seeded SIMULATED bridge properties", () => {
       const result = syncCycle(ended.session, sim, w.sync, T);
       expect(ongoingSession(result.sim), `seed=${seed}`).toBeNull();
       const newEntries = result.sim.ledger.filter((entry) => entry.seq > sim.seq);
-      expect(newEntries.slice(0, 3).map((entry) => entry.kind === "api" && entry.endpoint)).toEqual(["get_promotion_list", "get_session_detail", "get_item_list"]);
-      expect(newEntries[3]).toMatchObject({ kind: "api", endpoint: "end_session", envelope: { error: "" } });
+      // Restated for the P01 decision (ROUND-2.md): the reads are in the read ring, made before any new call.
+      expect(result.reads.slice(0, 3).map((read) => [read.endpoint, read.afterSeq])).toEqual([["get_promotion_list", sim.seq], ["get_session_detail", sim.seq], ["get_item_list", sim.seq]]);
+      expect(newEntries[0]).toMatchObject({ kind: "api", endpoint: "end_session", envelope: { error: "" } });
       expect(result.notices.some((notice) => notice.code === "observed")).toBe(true);
     }
   });
 
-  it.fails("P01: idle syncCycle changes state and makes hidden read calls in all 2,048 seeded idempotence checks", { timeout: 60000 }, () => {
+  it("P01: idle syncCycle changes state and makes hidden read calls in all 2,048 seeded idempotence checks", { timeout: 60000 }, () => {
     const initial = linked();
     let changed = 0;
     for (let seed = 1; seed <= SEQUENCES; seed++) {

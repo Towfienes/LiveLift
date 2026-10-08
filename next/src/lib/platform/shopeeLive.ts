@@ -382,6 +382,65 @@ export function callShopee(sim: ShopeeLiveSim, nowMs: number, endpoint: ShopeeEn
   return { sim: next, envelope, ok: envelope.error === "" };
 }
 
+// ---- Reads -----------------------------------------------------------------------------------------------------------
+
+/**
+ * A read LiveLift made, as the platform answered it. Reads are traffic, not changes: they leave the platform, its call
+ * counter and its call log untouched, so polling can never push a write out of the log. The caller keeps them in a
+ * separate, bounded read log (see `logReads` in world.ts).
+ */
+export interface ShopeeRead {
+  /** The platform's call counter when the read was made: it sits after that call in the log. */
+  afterSeq: number;
+  atMs: number;
+  endpoint: ShopeeEndpoint;
+  params: Record<string, unknown>;
+  error: "" | ShopeeErrorType;
+  message: string;
+  response: Record<string, unknown>;
+}
+
+/** A read as the read log keeps it: the same shape as a logged call, numbered in its own sequence. */
+export interface ReadEntry {
+  kind: "read";
+  n: number;
+  afterSeq: number;
+  atMs: number;
+  endpoint: ShopeeEndpoint;
+  path: string;
+  basis: EndpointBasis;
+  readOnly: true;
+  params: Record<string, unknown>;
+  envelope: ShopeeEnvelope;
+}
+
+/** A read's request id: its own namespace, so it can never repeat a call's id. */
+export function readRequestIdFor(n: number): string {
+  return [0, 1, 2, 3].map((salt) => fnv1a(`livelift-sim-read:${n}:${salt}`).toString(16).padStart(8, "0")).join("");
+}
+
+/** Answer a read-only endpoint without changing anything. Conditions apply to reads exactly as to calls. */
+export function readShopee(sim: ShopeeLiveSim, nowMs: number, endpoint: ShopeeEndpoint, params: Record<string, unknown>): { read: ShopeeRead; ok: boolean } {
+  if (!READ_ONLY_ENDPOINTS.includes(endpoint)) throw new Error(`${endpoint} changes the platform: use callShopee`);
+  // Handlers work on a draft; a read's draft is thrown away, so nothing the read touches can leak into the platform.
+  const draft = structuredClone({ ...sim, ledger: [] }) as Draft;
+  const outcome = draft.fault ? faultReply(draft.fault) : handle(draft, nowMs, endpoint, params);
+  const read: ShopeeRead =
+    "error" in outcome
+      ? { afterSeq: sim.seq, atMs: nowMs, endpoint, params: structuredClone(params), error: outcome.error, message: outcome.message, response: {} }
+      : { afterSeq: sim.seq, atMs: nowMs, endpoint, params: structuredClone(params), error: "", message: "", response: outcome.response };
+  return { read, ok: read.error === "" };
+}
+
+/** Number a read for the read log. */
+export function readEntry(read: ShopeeRead, n: number): ReadEntry {
+  return {
+    kind: "read", n, afterSeq: read.afterSeq, atMs: read.atMs, endpoint: read.endpoint, path: ENDPOINT_PATH[read.endpoint],
+    basis: ENDPOINT_BASIS[read.endpoint], readOnly: true, params: structuredClone(read.params),
+    envelope: { error: read.error, message: read.message, request_id: readRequestIdFor(n), response: structuredClone(read.response) },
+  };
+}
+
 // ---- The host acting in the Shopee app (no API, no signature) --------------------------------------------------------
 
 function describeHost(action: HostAction, sim: ShopeeLiveSim): string {

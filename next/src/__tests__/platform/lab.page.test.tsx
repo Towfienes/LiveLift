@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { applyCommand, createScenarioSession, createSession, SCENARIO_START_MS } from "@/lib/domain";
 import type { Session } from "@/contracts";
-import { DIRECTOR_STEPS, initialLabState, ledgerDigest, runDirector } from "@/lib/platform";
+import { DIRECTOR_STEPS, callLogDigest, initialLabState, readsOf, runDirector } from "@/lib/platform";
 import { PlatformLab } from "@/components/platform/lab/PlatformLab";
 import { PlatformSyncPanel } from "@/components/platform/PlatformSyncPanel";
 
@@ -15,7 +15,8 @@ vi.mock("@/components/ops/SessionGate", () => ({
 }));
 
 const FORBIDDEN = [/synced with Shopee/i, /connected to Shopee/i, /confirmed by Shopee/i, /real-time from Shopee/i];
-const STORY_DIGEST = ledgerDigest(runDirector(initialLabState(createScenarioSession("buffered"))).world.sim.ledger);
+const STORY = runDirector(initialLabState(createScenarioSession("buffered")));
+const STORY_DIGEST = callLogDigest(STORY.world.sim.ledger, readsOf(STORY.world));
 
 beforeEach(() => window.localStorage.clear());
 afterEach(() => {

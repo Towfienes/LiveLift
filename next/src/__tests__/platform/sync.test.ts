@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SCENARIO_START_MS, applyCommand, createScenarioSession, currentPlan } from "@/lib/domain";
 import type { Session } from "@/contracts";
 import {
-  acceptedReason, catalogFromProducts, createShopeeLiveSim, diffSnapshots, hostAct, importableItems, inboundActions, initialSyncState,
+  READ_LOG_LIMIT, acceptedReason, callShopee, catalogFromProducts, createShopeeLiveSim, freshWorld, logReads, readShopee, readsOf, diffSnapshots, hostAct, importableItems, inboundActions, initialSyncState,
   linkSession, ongoingSession, pinFromLiveLift, pollPlatform, productFromItem, reconcileOutbound, reportCommand, schedulePromotions,
   syncCycle, unpinFromLiveLift, withAssumptions, withFault, type ShopeeLiveSim, type SyncState,
 } from "@/lib/platform";
@@ -284,5 +284,51 @@ describe("resuming a live LiveLift opened", () => {
     expect(linked).toMatchObject({ openedByLiveLift: false, last: null });
     const retry = syncCycle(session, { ...opened.sim, catalog: w.sim.catalog }, linked, T + 1000);
     expect(retry.calls.map((c) => c.endpoint)).not.toContain("start_session");
+  });
+});
+
+describe("reads are traffic, kept in their own bounded log", () => {
+  it("400 idle syncs change nothing on the platform, keep every write, and keep the read log at its bound", () => {
+    const session = started();
+    let w = { ...freshWorld(session), sim: world(session).sim };
+    const first = syncCycle(session, w.sim, w.sync, T);
+    w = logReads({ ...w, sim: first.sim, sync: first.sync }, first.reads);
+    const writes = JSON.stringify(w.sim);
+    for (let i = 1; i <= 400; i++) {
+      const r = syncCycle(session, w.sim, w.sync, T + i * 1000);
+      expect(r.calls).toEqual([]);
+      expect(r.commands).toEqual([]);
+      expect(r.notices).toEqual([]);
+      w = logReads({ ...w, sim: r.sim, sync: r.sync }, r.reads);
+    }
+    expect(JSON.stringify(w.sim)).toBe(writes);
+    const reads = readsOf(w);
+    expect(reads).toHaveLength(READ_LOG_LIMIT);
+    expect(reads.every((e, i) => i === 0 || e.n === reads[i - 1].n + 1)).toBe(true);
+    expect(w.readLog?.next).toBe(reads.at(-1)!.n + 1);
+  });
+
+  it("a read's request id never repeats a call's, and the log keeps its own copy of what was asked", () => {
+    const session = started();
+    const w = world(session);
+    const r = syncCycle(session, w.sim, w.sync, T);
+    const logged = logReads(freshWorld(session), r.reads);
+    const ids = [...r.sim.ledger.flatMap((e) => (e.kind === "api" ? [e.envelope.request_id] : [])), ...readsOf(logged).map((e) => e.envelope.request_id)];
+    expect(new Set(ids).size).toBe(ids.length);
+    const params = r.reads[0].params as { session_id?: number };
+    params.session_id = -1;
+    expect(readsOf(logged).some((e) => e.params.session_id === -1)).toBe(false);
+  });
+
+  it("the call log keeps its own copy of the reply, too", () => {
+    const sim = createShopeeLiveSim();
+    const r = callShopee(sim, T, "create_session", { title: "Synthetic" });
+    const id = r.envelope.response.session_id;
+    r.envelope.response.session_id = -1;
+    expect(r.sim.ledger.at(-1)).toMatchObject({ kind: "api", envelope: { response: { session_id: id } } });
+  });
+
+  it("a read-only helper refuses an endpoint that changes the platform", () => {
+    expect(() => readShopee(createShopeeLiveSim(), T, "start_session", {})).toThrow(/callShopee/);
   });
 });

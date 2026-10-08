@@ -7,12 +7,12 @@
  */
 import type { ManualActionRun, Session } from "@/contracts";
 import { MANUAL_ACTION_LABEL, applyCommand, baselinePlan, createSession, currentPlan, effectiveNowMs, type CommandBody } from "@/lib/domain";
-import { hostAct, withAssumptions, withFault, type HostAction, type ShopeeFault, type ShopeeLiveSim, type SimAssumptions } from "./shopeeLive";
+import { hostAct, withAssumptions, withFault, type HostAction, type ShopeeFault, type ShopeeLiveSim, type ShopeeRead, type SimAssumptions } from "./shopeeLive";
 import {
   acceptedReason, pinFromLiveLift, recordSource, refusedReason, reportCommand, syncCycle, unpinFromLiveLift,
   type RecordSource, type SyncState,
 } from "./sync";
-import { addNotices, freshWorld, type PlatformWorld } from "./world";
+import { addNotices, freshWorld, logReads, type PlatformWorld } from "./world";
 
 export type LabCommand =
   /** A desk command on the lab show. It runs on the show's virtual clock. */
@@ -30,8 +30,10 @@ export type LabCommand =
 
 /** A LiveLift record that platform activity produced, tied to the call behind it, so the wire can draw the return. */
 export interface LabTrace {
-  /** Ledger seq of the pin's `update_show_item`, or of the read that noticed what the host did. */
+  /** Call-log seq of the pin's `update_show_item`; for a read, the call it came after. */
   seq: number;
+  /** Read-log number of the read that noticed what the host did. null when a call caused the record. */
+  read: number | null;
   atMs: number;
   source: RecordSource;
   summary: string;
@@ -75,12 +77,14 @@ export interface PinRecord {
   command: CommandBody | null;
   notice: { code: string; summary: string } | null;
   requestId: string | null;
+  /** The re-read after the pin, for the read log. */
+  reads: ShopeeRead[];
 }
 
 /** Pin through the API and say what to record. Shared by the Operate panel and the Lab. */
 export function pinAndRecord(sim: ShopeeLiveSim, sync: SyncState, session: Session, productId: string, nowMs: number): PinRecord {
   const r = pinFromLiveLift(sim, sync, productId, nowMs);
-  const base = { sim: r.sim, sync: r.sync };
+  const base = { sim: r.sim, sync: r.sync, reads: r.reads };
   if (r.outcome.ok) {
     return { ...base, command: reportCommand(session, "pin_product", productId, "performed", acceptedReason(r.outcome.requestId)), notice: null, requestId: r.outcome.requestId };
   }
@@ -96,7 +100,7 @@ export function pinAndRecord(sim: ShopeeLiveSim, sync: SyncState, session: Sessi
 }
 
 /** Record in the lab show and remember which call caused it. A refusal is shown, never dropped. */
-function recordInShow(state: LabState, command: CommandBody, nowMs: number, key: string, seq: number): LabState {
+function recordInShow(state: LabState, command: CommandBody, nowMs: number, key: string, cause: Pick<LabTrace, "seq" | "read">): LabState {
   const r = applyCommand(state.session, { ...command, nowMs, key });
   if (r.receipt.outcome !== "committed") {
     return { ...state, world: addNotices(state.world, nowMs, [{ code: "record_refused", summary: `LiveLift could not record it: ${r.receipt.message ?? "not accepted"}` }]) };
@@ -106,7 +110,7 @@ function recordInShow(state: LabState, command: CommandBody, nowMs: number, key:
   return {
     ...state,
     session: r.session,
-    trace: [...state.trace, { seq, atMs: nowMs, source: recordSource(reason), summary: event?.summary ?? "" }],
+    trace: [...state.trace, { ...cause, atMs: nowMs, source: recordSource(reason), summary: event?.summary ?? "" }],
   };
 }
 
@@ -123,10 +127,10 @@ export function applyLabCommand(state: LabState, cmd: LabCommand): LabState {
     }
     case "pin": {
       const p = pinAndRecord(world.sim, world.sync, state.session, cmd.productId, now);
-      let s: LabState = { ...next, world: addNotices({ ...world, sim: p.sim, sync: p.sync }, now, p.notice ? [p.notice] : []) };
+      let s: LabState = { ...next, world: addNotices(logReads({ ...world, sim: p.sim, sync: p.sync }, p.reads), now, p.notice ? [p.notice] : []) };
       if (p.command) {
         const call = p.sim.ledger.find((e) => e.kind === "api" && e.envelope.request_id === p.requestId);
-        s = recordInShow(s, p.command, now, key, call?.seq ?? p.sim.seq);
+        s = recordInShow(s, p.command, now, key, { seq: call?.seq ?? p.sim.seq, read: null });
       }
       return s;
     }
@@ -143,13 +147,13 @@ export function applyLabCommand(state: LabState, cmd: LabCommand): LabState {
     case "auto":
       return { ...next, world: { ...world, auto: cmd.on } };
     case "sync": {
-      const before = world.sim.seq;
       const r = syncCycle(state.session, world.sim, world.sync, now);
-      let s: LabState = { ...next, world: addNotices({ ...world, sim: r.sim, sync: r.sync }, now, r.notices) };
+      let s: LabState = { ...next, world: addNotices(logReads({ ...world, sim: r.sim, sync: r.sync }, r.reads), now, r.notices) };
       // Records from a sync come from a change in what is showing, which only the session read reveals.
-      const read = r.sim.ledger.find((e) => e.kind === "api" && e.seq > before && e.endpoint === "get_session_detail");
-      r.commands.forEach((c, i) => {
-        s = recordInShow(s, c, now, `${key}:${i}`, read?.seq ?? r.sim.seq);
+      const i = r.reads.findIndex((x) => x.endpoint === "get_session_detail");
+      const cause = i >= 0 ? { seq: r.reads[i].afterSeq, read: (world.readLog?.next ?? 1) + i } : { seq: r.sim.seq, read: null };
+      r.commands.forEach((c, j) => {
+        s = recordInShow(s, c, now, `${key}:${j}`, cause);
       });
       return s;
     }

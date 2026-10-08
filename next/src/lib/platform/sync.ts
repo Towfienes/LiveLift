@@ -13,14 +13,16 @@
  * - A refused call is recorded as "attempted" with the platform's own message, never as performed.
  * - What LiveLift changes itself is never reported back to it as "observed": every outbound step re-reads the platform
  *   and stores that as the new baseline.
+ * - Reads are traffic, not changes. They never touch the platform's call log; every function returns its reads so the
+ *   caller can keep them in a separate, bounded read log.
  * - Pure functions only. State in, state out; the caller persists it and dispatches the commands.
  */
 import type { ProductSnapshot, Session } from "@/contracts";
 import { currentPlan, type CommandBody } from "@/lib/domain";
 import { canCallApi } from "./capabilities";
 import {
-  SIM_SHOP_ID, callShopee, promotionStatus,
-  type ShopeeEndpoint, type ShopeeLiveSim, type SimItem, type SimSessionStatus,
+  SIM_SHOP_ID, callShopee, promotionStatus, readShopee,
+  type ShopeeEndpoint, type ShopeeLiveSim, type ShopeeRead, type SimItem, type SimSessionStatus,
 } from "./shopeeLive";
 
 // ---- Product links ---------------------------------------------------------------------------------------------------
@@ -115,17 +117,18 @@ export interface PlatformSnapshot {
   problem: { error: string; message: string } | null;
 }
 
-export function pollPlatform(sim: ShopeeLiveSim, sync: SyncState, nowMs: number): { sim: ShopeeLiveSim; snapshot: PlatformSnapshot } {
-  let cur = sim;
+/** Read what the platform shows now. Reads change nothing, so `sim` comes back as it went in; the reads are returned for the read log. */
+export function pollPlatform(sim: ShopeeLiveSim, sync: SyncState, nowMs: number): { sim: ShopeeLiveSim; snapshot: PlatformSnapshot; reads: ShopeeRead[] } {
+  const reads: ShopeeRead[] = [];
   let problem: PlatformSnapshot["problem"] = null;
   const read = (endpoint: ShopeeEndpoint, params: Record<string, unknown>): Record<string, unknown> | null => {
-    const r = callShopee(cur, nowMs, endpoint, params);
-    cur = r.sim;
+    const r = readShopee(sim, nowMs, endpoint, params);
+    reads.push(r.read);
     if (!r.ok) {
-      problem ??= { error: r.envelope.error, message: r.envelope.message };
+      problem ??= { error: r.read.error, message: r.read.message };
       return null;
     }
-    return r.envelope.response;
+    return r.read.response;
   };
 
   const promo = read("get_promotion_list", {});
@@ -151,16 +154,16 @@ export function pollPlatform(sim: ShopeeLiveSim, sync: SyncState, nowMs: number)
     }
     if (items && Array.isArray(items.item_list)) itemIds = (items.item_list as Array<Record<string, unknown>>).map((i) => Number(i.item_id));
   }
-  return { sim: cur, snapshot: { takenAtMs: nowMs, providerSessionId: sync.providerSessionId, status, itemIds, showing, promotions, problem } };
+  return { sim, snapshot: { takenAtMs: nowMs, providerSessionId: sync.providerSessionId, status, itemIds, showing, promotions, problem }, reads };
 }
 
 /**
  * Re-read the platform and make that the baseline, so LiveLift's own changes are not echoed back as "observed".
  * A read that fails is unknown, not empty: the last good baseline stays, and the next good read is compared with it.
  */
-function rebase(sim: ShopeeLiveSim, sync: SyncState, nowMs: number): { sim: ShopeeLiveSim; sync: SyncState } {
+function rebase(sim: ShopeeLiveSim, sync: SyncState, nowMs: number): { sim: ShopeeLiveSim; sync: SyncState; reads: ShopeeRead[] } {
   const polled = pollPlatform(sim, sync, nowMs);
-  return { sim: polled.sim, sync: polled.snapshot.problem ? sync : { ...sync, last: polled.snapshot } };
+  return { sim: polled.sim, sync: polled.snapshot.problem ? sync : { ...sync, last: polled.snapshot }, reads: polled.reads };
 }
 
 // ---- Outbound --------------------------------------------------------------------------------------------------------
@@ -179,6 +182,8 @@ export interface OutboundResult {
   calls: SyncCall[];
   /** The call that stopped the sequence, if any. Later steps are not attempted after a refusal. */
   blocked: SyncCall | null;
+  /** The re-read after the calls, for the read log. */
+  reads: ShopeeRead[];
 }
 
 /**
@@ -210,7 +215,7 @@ export function reconcileOutbound(sim: ShopeeLiveSim, session: Session, syncIn: 
   });
 
   if (session.lifecycle === "active") {
-    if (!canCallApi("shopee_live", "start_live")) return { sim: cur, sync, calls, blocked };
+    if (!canCallApi("shopee_live", "start_live")) return { sim: cur, sync, calls, blocked, reads: [] };
     let createdNow = false;
     if (sync.providerSessionId === null) {
       const created = step("create_session", { title: session.title }, "The show started: open a live on Shopee");
@@ -234,9 +239,9 @@ export function reconcileOutbound(sim: ShopeeLiveSim, session: Session, syncIn: 
   }
 
   // Nothing was changed, so there is nothing to re-read: the baseline stays as the last poll left it.
-  if (calls.length === 0) return { sim: cur, sync, calls, blocked };
+  if (calls.length === 0) return { sim: cur, sync, calls, blocked, reads: [] };
   const based = rebase(cur, sync, nowMs);
-  return { sim: based.sim, sync: based.sync, calls, blocked };
+  return { sim: based.sim, sync: based.sync, calls, blocked, reads: based.reads };
 }
 
 /**
@@ -248,7 +253,7 @@ export function schedulePromotions(sim: ShopeeLiveSim, session: Session, syncIn:
   let sync = syncIn;
   const calls: SyncCall[] = [];
   let blocked: SyncCall | null = null;
-  if (!canCallApi("shopee_live", "promotion")) return { sim, sync, calls, blocked };
+  if (!canCallApi("shopee_live", "promotion")) return { sim, sync, calls, blocked, reads: [] };
   const plan = currentPlan(session);
   for (const seg of plan.segments) {
     if (blocked || seg.kind !== "promotion" || seg.anchorOffsetSec === null) continue;
@@ -272,9 +277,9 @@ export function schedulePromotions(sim: ShopeeLiveSim, session: Session, syncIn:
       sync = { ...sync, promotions: { ...sync.promotions, [seg.id]: r.envelope.response.promotion_id } };
     }
   }
-  if (calls.length === 0) return { sim: cur, sync, calls, blocked };
+  if (calls.length === 0) return { sim: cur, sync, calls, blocked, reads: [] };
   const based = rebase(cur, sync, nowMs);
-  return { sim: based.sim, sync: based.sync, calls, blocked };
+  return { sim: based.sim, sync: based.sync, calls, blocked, reads: based.reads };
 }
 
 export type PinOutcome =
@@ -282,9 +287,9 @@ export type PinOutcome =
   | { ok: false; reason: "unsupported" | "not_linked" | "no_live" | "api_error"; message: string; requestId?: string };
 
 /** Pin a product on the platform. Adds it to the live first when the live does not have it yet. */
-export function pinFromLiveLift(sim: ShopeeLiveSim, syncIn: SyncState, productId: string, nowMs: number): { sim: ShopeeLiveSim; sync: SyncState; outcome: PinOutcome } {
-  const fail = (cur: ShopeeLiveSim, sync: SyncState, reason: Extract<PinOutcome, { ok: false }>["reason"], message: string, requestId?: string) =>
-    ({ sim: cur, sync, outcome: { ok: false, reason, message, ...(requestId ? { requestId } : {}) } as PinOutcome });
+export function pinFromLiveLift(sim: ShopeeLiveSim, syncIn: SyncState, productId: string, nowMs: number): { sim: ShopeeLiveSim; sync: SyncState; outcome: PinOutcome; reads: ShopeeRead[] } {
+  const fail = (cur: ShopeeLiveSim, sync: SyncState, reason: Extract<PinOutcome, { ok: false }>["reason"], message: string, requestId?: string, reads: ShopeeRead[] = []) =>
+    ({ sim: cur, sync, outcome: { ok: false, reason, message, ...(requestId ? { requestId } : {}) } as PinOutcome, reads });
   if (!canCallApi("shopee_live", "pin")) return fail(sim, syncIn, "unsupported", "This platform has no pin API. Pin it in the app and report it.");
   const link = linkOfProduct(syncIn, productId);
   if (!link) return fail(sim, syncIn, "not_linked", "This product is not in the platform catalog.");
@@ -296,14 +301,14 @@ export function pinFromLiveLift(sim: ShopeeLiveSim, syncIn: SyncState, productId
     cur = add.sim;
     if (!add.ok) {
       const based = rebase(cur, syncIn, nowMs);
-      return fail(based.sim, based.sync, "api_error", add.envelope.message, add.envelope.request_id);
+      return fail(based.sim, based.sync, "api_error", add.envelope.message, add.envelope.request_id, based.reads);
     }
   }
   const pin = callShopee(cur, nowMs, "update_show_item", { session_id: sid, item_id: link.itemId, shop_id: link.shopId });
   const based = rebase(pin.sim, syncIn, nowMs);
   return pin.ok
-    ? { sim: based.sim, sync: based.sync, outcome: { ok: true, requestId: pin.envelope.request_id } }
-    : fail(based.sim, based.sync, "api_error", pin.envelope.message, pin.envelope.request_id);
+    ? { sim: based.sim, sync: based.sync, outcome: { ok: true, requestId: pin.envelope.request_id }, reads: based.reads }
+    : fail(based.sim, based.sync, "api_error", pin.envelope.message, pin.envelope.request_id, based.reads);
 }
 
 /** Tie the show to a live the host started in the app, by the session ID the host reads out. It is the host's live. */
@@ -446,12 +451,16 @@ export interface CycleResult {
   commands: CommandBody[];
   /** Things the operator should know, each worded once. */
   notices: Array<{ code: string; summary: string }>;
+  /** Writes only: what LiveLift asked the platform to change. */
   calls: SyncCall[];
+  /** Every read this cycle made, in order, for the read log. A cycle with nothing new has reads and nothing else. */
+  reads: ShopeeRead[];
 }
 
 /**
  * Read first, then write. Reading first means a change the host made is seen before LiveLift's own calls re-baseline the
- * platform; writing second brings the platform in line with the show. Calling it again with nothing new changes nothing.
+ * platform; writing second brings the platform in line with the show. Calling it again with nothing new changes nothing:
+ * no write, no record, no notice, and the platform state comes back byte for byte. Only its reads are returned.
  */
 export function syncCycle(session: Session, simIn: ShopeeLiveSim, syncIn: SyncState, nowMs: number): CycleResult {
   let sim = simIn;
@@ -459,11 +468,13 @@ export function syncCycle(session: Session, simIn: ShopeeLiveSim, syncIn: SyncSt
   const commands: CommandBody[] = [];
   const notices: Array<{ code: string; summary: string }> = [];
   const calls: SyncCall[] = [];
+  const reads: ShopeeRead[] = [];
   let problem: string | null = null;
 
   if (sync.providerSessionId !== null) {
     const polled = pollPlatform(sim, sync, nowMs);
     sim = polled.sim;
+    reads.push(...polled.reads);
     if (polled.snapshot.problem) {
       problem = `Could not read the platform: ${polled.snapshot.problem.message}`;
     } else {
@@ -482,6 +493,7 @@ export function syncCycle(session: Session, simIn: ShopeeLiveSim, syncIn: SyncSt
     sim = out.sim;
     sync = out.sync;
     calls.push(...out.calls);
+    reads.push(...out.reads);
     if (out.blocked) problem = `Shopee refused ${out.blocked.endpoint}: ${out.blocked.message}`;
   }
   if (session.lifecycle === "active") {
@@ -489,10 +501,11 @@ export function syncCycle(session: Session, simIn: ShopeeLiveSim, syncIn: SyncSt
     sim = out.sim;
     sync = out.sync;
     calls.push(...out.calls);
+    reads.push(...out.reads);
     if (out.blocked) notices.push({ code: "promotion_refused", summary: `Shopee refused the promotion: ${out.blocked.message}. It will not be retried until you ask.` });
   }
 
   if (problem !== null && problem !== sync.problem) notices.push({ code: "platform_problem", summary: problem });
   if (problem === null && sync.problem !== null) notices.push({ code: "platform_recovered", summary: "The platform is answering again." });
-  return { sim, sync: { ...sync, problem }, commands, notices, calls };
+  return { sim, sync: { ...sync, problem }, commands, notices, calls, reads };
 }

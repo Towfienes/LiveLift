@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Session } from "@/contracts";
 import type { HostAppActions } from "@/components/platform/host-app/types";
 import { forecastSession } from "@/lib/domain";
-import { directorAvailability, labNow, toHostAppViewModel, type LabCommand } from "@/lib/platform";
+import { directorAvailability, labNow, readsOf, toHostAppViewModel, type LabCommand } from "@/lib/platform";
 import { BrandMark, EnvironmentBadge } from "@/components/ui";
 import { AssumptionsStrip } from "./AssumptionsStrip";
 import { DirectorBar } from "./DirectorBar";
@@ -126,7 +126,7 @@ export function PlatformLab({ show }: { show: Session }): React.ReactElement {
               <LabDesk lab={lab} forecast={forecast} strip={simulator.strip} words={words} lang={lang} presenter={presenter} act={act} />
             </div>
             <div className="order-3 xl:order-2 min-h-[460px] xl:min-h-0">
-              <Wire ledger={world.sim.ledger} trace={lab.trace} tz={session.timezone} words={words} lang={lang} presenter={presenter} />
+              <Wire ledger={world.sim.ledger} reads={readsOf(world)} trace={lab.trace} tz={session.timezone} words={words} lang={lang} presenter={presenter} />
             </div>
             {/* A sized container: the phone fits itself to the zone, so nothing around it moves when it changes. */}
             <div className="order-1 xl:order-3 h-[min(78dvh,760px)] xl:h-auto min-h-0 [container-type:size] flex items-start justify-center" data-testid="lab-phone-zone">
