@@ -11,15 +11,17 @@ import { VideoPlaceholder } from "./VideoPlaceholder";
 export interface HostAppProps {
   viewModel: HostAppViewModel;
   actions: HostAppActions;
+  initialBagOpen?: boolean;
   className?: string;
 }
 
 export const HostApp: React.FC<HostAppProps> = ({
   viewModel,
   actions,
+  initialBagOpen = false,
   className = "",
 }) => {
-  const [bagOpen, setBagOpen] = useState(false);
+  const [bagOpen, setBagOpen] = useState(initialBagOpen);
 
   const {
     mode,
@@ -39,27 +41,21 @@ export const HostApp: React.FC<HostAppProps> = ({
     <div
       data-testid="host-app-phone"
       aria-label="Simulated Shopee Live Host Screen"
-      className={`relative mx-auto w-full max-w-[390px] h-[844px] max-h-[100dvh] bg-[#090B0F] border-[8px] border-[#1C2028] rounded-[48px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden select-none font-sans ${className}`}
+      className={`relative mx-auto w-full max-w-[390px] h-[844px] max-h-[100dvh] bg-[#090B0F] sm:border-[8px] sm:border-[#1C2028] sm:rounded-[44px] rounded-2xl border-2 border-[#1C2028] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden select-none font-sans ${className}`}
     >
-      {/* Permanent, Legible SIMULATED Tag (Always Visible on the Phone) */}
-      <div
-        data-testid="host-app-simulated-badge"
-        className="absolute top-2 left-1/2 -translate-x-1/2 z-40 px-2.5 py-0.5 rounded-full bg-[#211F2B] border border-[#44385C] text-[#C8B2FF] shadow-sm flex items-center gap-1.5 pointer-events-none"
-      >
-        <i className="ri-flask-line text-[11px]" aria-hidden="true" />
-        <span className="text-[10px] font-mono font-bold tracking-wider uppercase">
-          SIMULATED SHOPEE LIVE
-        </span>
-      </div>
-
-      {/* Simulated Phone Status Bar (Time, Camera Notch, Battery) */}
-      <div className="relative z-30 pt-3 px-6 pb-1 flex items-center justify-between text-[11px] font-medium text-[#CAD0DA]/80">
-        <span className="font-mono tabular-nums">12:00</span>
-        {/* Dynamic Island / Speaker Notch */}
-        <div className="w-24 h-4 bg-black rounded-full border border-[#2A303A]" />
-        <div className="flex items-center gap-1 text-[12px]">
-          <i className="ri-wifi-line" aria-hidden="true" />
-          <i className="ri-battery-fill" aria-hidden="true" />
+      {/* Permanent, Legible SIMULATED Tag Status Ribbon (Always Visible on the Phone) */}
+      <div className="relative z-40 bg-[#1A1726] border-b border-[#3E3456] px-3.5 py-1.5 flex items-center justify-between text-[11px] text-[#C8B2FF]">
+        <div
+          data-testid="host-app-simulated-badge"
+          className="flex items-center gap-1.5 font-mono font-bold tracking-wider text-[10px] uppercase text-[#C8B2FF]"
+        >
+          <i className="ri-flask-line text-[12px] text-[#C8B2FF]" aria-hidden="true" />
+          <span>SIMULATED SHOPEE LIVE</span>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] font-mono text-[#CAD0DA]/80">
+          <span className="tabular-nums">12:00</span>
+          <i className="ri-wifi-line text-[11px]" aria-hidden="true" />
+          <i className="ri-battery-fill text-[11px]" aria-hidden="true" />
         </div>
       </div>
 

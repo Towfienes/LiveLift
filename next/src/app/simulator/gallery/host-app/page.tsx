@@ -162,6 +162,26 @@ export default function HostAppGalleryPage() {
     }
   };
 
+  const [viewMode, setViewMode] = useState<"gallery" | "phone-only">("gallery");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("view") === "phone") {
+        setViewMode("phone-only");
+      }
+      if (params.get("drawer") === "open") {
+        setDrawerOpen(true);
+      }
+      const presetParam = params.get("preset") as PresetKey | null;
+      if (presetParam && ["standard", "edge", "empty", "heavy", "idle", "ended"].includes(presetParam)) {
+        applyPreset(presetParam);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const viewModel: HostAppViewModel = {
     mode,
     title:
@@ -178,9 +198,9 @@ export default function HostAppGalleryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090B0F] text-[#F5F7FC] p-4 md:p-8 font-sans selection:bg-[#DFFF00] selection:text-[#111407]">
+    <div className="min-h-screen bg-[#090B0F] text-[#F5F7FC] p-2.5 sm:p-6 md:p-8 font-sans selection:bg-[#DFFF00] selection:text-[#111407] overflow-x-hidden">
       {/* Top Header Banner */}
-      <header className="max-w-7xl mx-auto mb-8 border-b border-[#2A303A] pb-6">
+      <header className="max-w-7xl mx-auto mb-6 border-b border-[#2A303A] pb-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
@@ -191,49 +211,114 @@ export default function HostAppGalleryPage() {
                 WP2 · Host App Component
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#F5F7FC]">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-[#F5F7FC]">
               Host App Gallery (SIMULATED Shopee Live)
             </h1>
-            <p className="text-sm text-[#CAD0DA] mt-1 max-w-2xl">
+            <p className="text-xs sm:text-sm text-[#CAD0DA] mt-1 max-w-2xl">
               Isolated fixture review harness for the simulated mobile host
               interface. Demonstrates idle, live, and ended modes, edge cases,
               drawer interactions, and honesty guarantees.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-mono text-[#8A95A5] bg-[#13161C] border border-[#2A303A] px-3 py-1.5 rounded-lg">
-              390 × 844 Mobile Viewport
+          <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex rounded-lg bg-[#13161C] border border-[#2A303A] p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode("gallery")}
+                className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                  viewMode === "gallery"
+                    ? "bg-[#252A34] text-[#DFFF00] font-bold"
+                    : "text-[#CAD0DA] hover:text-[#F5F7FC]"
+                }`}
+              >
+                Gallery & Controls
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("phone-only")}
+                className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                  viewMode === "phone-only"
+                    ? "bg-[#252A34] text-[#DFFF00] font-bold"
+                    : "text-[#CAD0DA] hover:text-[#F5F7FC]"
+                }`}
+              >
+                Phone View Only
+              </button>
+            </div>
+
+            <span className="hidden sm:inline-block text-xs font-mono text-[#8A95A5] bg-[#13161C] border border-[#2A303A] px-3 py-1.5 rounded-lg">
+              390 × 844 Viewport
             </span>
           </div>
         </div>
       </header>
 
-      {/* Main Grid: Interactive Stage + Sandbox Controls */}
-      <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Interactive Phone Display */}
-        <section
-          aria-label="Interactive Phone Preview"
-          className="lg:col-span-5 flex flex-col items-center"
-        >
-          <div className="w-full flex items-center justify-between mb-3 px-2">
-            <span className="text-xs font-mono uppercase tracking-wider text-[#8A95A5]">
-              Live Component Preview
+      {/* When Phone View Only is active: clean centered view with quick toolbar */}
+      {viewMode === "phone-only" ? (
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-140px)] py-2">
+          {/* Quick preset bar above phone */}
+          <div className="w-full max-w-[390px] mb-3 flex items-center justify-between px-2 text-xs">
+            <span className="font-mono text-[#8A95A5] uppercase">
+              Mode: <strong className="text-[#DFFF00]">{mode}</strong>
             </span>
-            <span className="text-xs font-mono text-[#DFFF00] bg-[#DFFF00]/10 border border-[#DFFF00]/20 px-2 py-0.5 rounded">
-              Active Mode: {mode.toUpperCase()}
-            </span>
+            <div className="flex gap-1">
+              {(["idle", "live", "ended"] as HostAppMode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono capitalize border ${
+                    mode === m
+                      ? "bg-[#DFFF00] text-[#111407] font-bold border-[#DFFF00]"
+                      : "bg-[#181B22] text-[#CAD0DA] border-[#2A303A]"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* THE HOST APP PHONE FRAME */}
-          <HostApp viewModel={viewModel} actions={actions} />
-        </section>
+          <HostApp
+            key={`phone-${drawerOpen}-${selectedPreset}`}
+            viewModel={viewModel}
+            actions={actions}
+            initialBagOpen={drawerOpen}
+          />
+        </div>
+      ) : (
+        /* Main Grid: Interactive Stage + Sandbox Controls */
+        <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
+          {/* Left Column: Interactive Phone Display */}
+          <section
+            aria-label="Interactive Phone Preview"
+            className="lg:col-span-5 flex flex-col items-center w-full"
+          >
+            <div className="w-full max-w-[390px] flex items-center justify-between mb-3 px-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-[#8A95A5]">
+                Live Component Preview
+              </span>
+              <span className="text-xs font-mono text-[#DFFF00] bg-[#DFFF00]/10 border border-[#DFFF00]/20 px-2 py-0.5 rounded">
+                Active Mode: {mode.toUpperCase()}
+              </span>
+            </div>
 
-        {/* Right Column: Preset Chooser, Custom Toggles & Action Logs */}
-        <section
-          aria-label="Gallery Controls and Fixtures"
-          className="lg:col-span-7 space-y-6"
-        >
+            {/* THE HOST APP PHONE FRAME */}
+            <HostApp
+              key={`gallery-${drawerOpen}-${selectedPreset}`}
+              viewModel={viewModel}
+              actions={actions}
+              initialBagOpen={drawerOpen}
+            />
+          </section>
+
+          {/* Right Column: Preset Chooser, Custom Toggles & Action Logs */}
+          <section
+            aria-label="Gallery Controls and Fixtures"
+            className="lg:col-span-7 space-y-6 w-full"
+          >
           {/* Preset Buttons */}
           <div className="rounded-2xl bg-[#13161C] border border-[#2A303A] p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
@@ -575,6 +660,37 @@ export default function HostAppGalleryPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Bag Drawer State */}
+              <div className="sm:col-span-2">
+                <label className="block text-[#8A95A5] mb-1.5 font-medium">
+                  Bag Drawer (Slide-up Sheet)
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(false)}
+                    className={`flex-1 py-1.5 px-3 rounded-lg border text-center transition-colors ${
+                      !drawerOpen
+                        ? "bg-[#252A34] border-[#CAD0DA] text-[#F5F7FC] font-semibold"
+                        : "bg-[#181B22] border-[#2A303A] text-[#8A95A5]"
+                    }`}
+                  >
+                    Closed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(true)}
+                    className={`flex-1 py-1.5 px-3 rounded-lg border text-center transition-colors ${
+                      drawerOpen
+                        ? "bg-[#252A34] border-[#DFFF00] text-[#DFFF00] font-bold"
+                        : "bg-[#181B22] border-[#2A303A] text-[#CAD0DA]"
+                    }`}
+                  >
+                    Open Drawer
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -667,6 +783,7 @@ export default function HostAppGalleryPage() {
           </div>
         </section>
       </main>
+      )}
     </div>
   );
 }
