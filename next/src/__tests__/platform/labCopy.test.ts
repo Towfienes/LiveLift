@@ -70,3 +70,17 @@ describe("the Lab copy", () => {
     expect(labCopy.vi.source.provider_observed).toBe("Provider observed (SIMULATED)");
   });
 });
+
+describe("noticeLine (vi)", () => {
+  const line = labCopy.vi.noticeLine;
+  it("words a host pin from typed data and keeps the product name as original text", () => {
+    expect(line("observed", { action: "pinned", product: "Cargo Pants" })).toEqual({ lead: "Host đã ghim", original: "Cargo Pants", tail: "trên nền tảng." });
+  });
+  it("returns null without data, so the original sentence is shown instead", () => {
+    expect(line("observed", undefined)).toBeNull();
+    expect(line("platform_problem", { message: "x" })).toBeNull();
+  });
+  it("English builds nothing: it shows the stored sentence", () => {
+    expect(labCopy.en.noticeLine("observed", { action: "pinned", product: "Cargo Pants" })).toBeNull();
+  });
+});

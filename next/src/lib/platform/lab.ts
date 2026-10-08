@@ -9,8 +9,8 @@ import type { ManualActionRun, Session } from "@/contracts";
 import { MANUAL_ACTION_LABEL, applyCommand, baselinePlan, createSession, currentPlan, effectiveNowMs, type CommandBody } from "@/lib/domain";
 import { hostAct, withAssumptions, withFault, type HostAction, type ShopeeFault, type ShopeeLiveSim, type ShopeeRead, type SimAssumptions } from "./shopeeLive";
 import {
-  acceptedReason, pinFromLiveLift, recordSource, refusedReason, reportCommand, syncCycle, unpinFromLiveLift,
-  type RecordSource, type SyncState,
+  acceptedReason, pinFromLiveLift, refusedReason, reportCommand, syncCycle, unpinFromLiveLift,
+  type NoticeItem, type RecordSource, type SyncState,
 } from "./sync";
 import { addNotices, freshWorld, logReads, type PlatformWorld } from "./world";
 
@@ -34,6 +34,8 @@ export interface LabTrace {
   seq: number;
   /** Read-log number of the read that noticed what the host did. null when a call caused the record. */
   read: number | null;
+  /** The show record (cue or manual action) this entry vouches for. */
+  recordId: string;
   atMs: number;
   source: RecordSource;
   summary: string;
@@ -75,7 +77,7 @@ export interface PinRecord {
   sync: SyncState;
   /** What the show records: performed with the request id, or attempted with the platform's words. */
   command: CommandBody | null;
-  notice: { code: string; summary: string } | null;
+  notice: NoticeItem | null;
   requestId: string | null;
   /** The re-read after the pin, for the read log. */
   reads: ShopeeRead[];
@@ -92,7 +94,7 @@ export function pinAndRecord(sim: ShopeeLiveSim, sync: SyncState, session: Sessi
     return {
       ...base,
       command: reportCommand(session, "pin_product", productId, "attempted", refusedReason(r.outcome.message, r.outcome.requestId)),
-      notice: { code: "pin_refused", summary: `Shopee refused the pin: ${r.outcome.message}` },
+      notice: { code: "pin_refused", summary: `Shopee refused the pin: ${r.outcome.message}`, data: { message: r.outcome.message } },
       requestId: r.outcome.requestId ?? null,
     };
   }
@@ -100,17 +102,19 @@ export function pinAndRecord(sim: ShopeeLiveSim, sync: SyncState, session: Sessi
 }
 
 /** Record in the lab show and remember which call caused it. A refusal is shown, never dropped. */
-function recordInShow(state: LabState, command: CommandBody, nowMs: number, key: string, cause: Pick<LabTrace, "seq" | "read">): LabState {
+function recordInShow(state: LabState, command: CommandBody, nowMs: number, key: string, cause: Pick<LabTrace, "seq" | "read">, source: RecordSource): LabState {
   const r = applyCommand(state.session, { ...command, nowMs, key });
   if (r.receipt.outcome !== "committed") {
-    return { ...state, world: addNotices(state.world, nowMs, [{ code: "record_refused", summary: `LiveLift could not record it: ${r.receipt.message ?? "not accepted"}` }]) };
+    return { ...state, world: addNotices(state.world, nowMs, [{ code: "record_refused", summary: `LiveLift could not record it: ${r.receipt.message ?? "not accepted"}`, data: { message: r.receipt.message ?? "not accepted" } }]) };
   }
   const event = r.session.events[r.session.events.length - 1];
-  const reason = "reason" in command ? (command.reason ?? null) : null;
+  // The source is the bridge's own knowledge of which call or read produced this command, never a reading of the reason text.
+  const before = state.session.runtime.actions ?? {};
+  const recordId = command.type === "report_cue" ? command.cueId : Object.keys(r.session.runtime.actions ?? {}).find((id) => !(id in before)) ?? "";
   return {
     ...state,
     session: r.session,
-    trace: [...state.trace, { ...cause, atMs: nowMs, source: recordSource(reason), summary: event?.summary ?? "" }],
+    trace: [...state.trace, { ...cause, recordId, atMs: nowMs, source, summary: event?.summary ?? "" }],
   };
 }
 
@@ -130,7 +134,7 @@ export function applyLabCommand(state: LabState, cmd: LabCommand): LabState {
       let s: LabState = { ...next, world: addNotices(logReads({ ...world, sim: p.sim, sync: p.sync }, p.reads), now, p.notice ? [p.notice] : []) };
       if (p.command) {
         const call = p.sim.ledger.find((e) => e.kind === "api" && e.envelope.request_id === p.requestId);
-        s = recordInShow(s, p.command, now, key, { seq: call?.seq ?? p.sim.seq, read: null });
+        s = recordInShow(s, p.command, now, key, { seq: call?.seq ?? p.sim.seq, read: null }, "report" in p.command && p.command.report === "performed" ? "request_accepted" : "request_refused");
       }
       return s;
     }
@@ -153,7 +157,7 @@ export function applyLabCommand(state: LabState, cmd: LabCommand): LabState {
       const i = r.reads.findIndex((x) => x.endpoint === "get_session_detail");
       const cause = i >= 0 ? { seq: r.reads[i].afterSeq, read: (world.readLog?.next ?? 1) + i } : { seq: r.sim.seq, read: null };
       r.commands.forEach((c, j) => {
-        s = recordInShow(s, c, now, `${key}:${j}`, cause);
+        s = recordInShow(s, c, now, `${key}:${j}`, cause, "provider_observed");
       });
       return s;
     }
@@ -172,14 +176,19 @@ export interface LabRecord {
   reason: string | null;
 }
 
-export function labRecords(session: Session): LabRecord[] {
+/**
+ * Where a record came from is decided by the bridge's trace, not by what its reason says: only a record the bridge itself
+ * wrote has a trace entry. A report with no entry is the operator's, whatever text it carries.
+ */
+export function labRecords(session: Session, trace: readonly LabTrace[] = []): LabRecord[] {
+  const sourceOf = (id: string): RecordSource => trace.findLast((t) => t.recordId === id)?.source ?? "operator_reported";
   const cues = currentPlan(session).cues.flatMap((c): LabRecord[] => {
     const run = session.runtime.cues[c.id];
     if (!run || run.state === "pending") return [];
-    return [{ id: c.id, title: c.title, state: run.state, atMs: run.reportedAtMs ?? run.occurredAtMs ?? 0, source: recordSource(run.reason), reason: run.reason }];
+    return [{ id: c.id, title: c.title, state: run.state, atMs: run.reportedAtMs ?? run.occurredAtMs ?? 0, source: sourceOf(c.id), reason: run.reason }];
   });
   const actions = Object.values(session.runtime.actions ?? {}).map((a: ManualActionRun): LabRecord => ({
-    id: a.id, title: `${MANUAL_ACTION_LABEL[a.action]} ${a.targetLabel}`, state: a.state, atMs: a.reportedAtMs, source: recordSource(a.reason), reason: a.reason,
+    id: a.id, title: `${MANUAL_ACTION_LABEL[a.action]} ${a.targetLabel}`, state: a.state, atMs: a.reportedAtMs, source: sourceOf(a.id), reason: a.reason,
   }));
   return [...cues, ...actions].sort((a, b) => b.atMs - a.atMs || a.id.localeCompare(b.id));
 }

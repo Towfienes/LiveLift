@@ -39,6 +39,8 @@ export function DirectorBar({
   return (
     <section aria-label={w.region} data-testid="director" className="shrink-0 rounded-[12px] bg-[#13161C] border border-[#2B2640] px-3 py-2 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {/* The honesty mark lives inside the bar, whatever the caption or language says. */}
+        <span data-testid="director-simulated" className="shrink-0 rounded-[6px] border border-[#C8B2FF] bg-[#211F2B] px-1.5 text-[13px] font-medium tracking-wide text-[#C8B2FF]">SIMULATED</span>{" "}
         {/* Wraps on a phone: the Vietnamese labels are wider than a 390 px row. */}
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={w.region}>
           {player.playing ? (

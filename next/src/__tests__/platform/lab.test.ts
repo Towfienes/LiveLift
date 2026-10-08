@@ -54,16 +54,16 @@ describe("a lab run", () => {
     const s = applyLabCommand(live(), { kind: "pin", productId: "prod_m02" });
     const pinCall = s.world.sim.ledger.find((e) => e.kind === "api" && e.endpoint === "update_show_item")!;
     expect(pinCall.kind === "api" && pinCall.envelope.error).toBe("");
-    const [record] = labRecords(s.session);
+    const [record] = labRecords(s.session, s.trace);
     expect(record).toMatchObject({ state: "performed", source: "request_accepted" });
     expect(record.reason).toContain(pinCall.kind === "api" ? pinCall.envelope.request_id : "?");
-    expect(s.trace).toEqual([{ seq: pinCall.seq, read: null, atMs: T, source: "request_accepted", summary: expect.stringContaining("platform verification unknown") }]);
+    expect(s.trace).toEqual([{ seq: pinCall.seq, read: null, recordId: expect.any(String), atMs: T, source: "request_accepted", summary: expect.stringContaining("platform verification unknown") }]);
   });
 
   it("a refused pin is an attempt in the platform's own words, and the platform is left as it was", () => {
     const before = applyLabCommand(live(), { kind: "fault", fault: "token_expired" });
     const s = applyLabCommand(before, { kind: "pin", productId: "prod_m02" });
-    const [record] = labRecords(s.session);
+    const [record] = labRecords(s.session, s.trace);
     expect(record).toMatchObject({ state: "attempted", source: "request_refused" });
     expect(record.reason).toContain("You are not authorized");
     expect(noticeCodes(s)).toContain("pin_refused");
@@ -72,9 +72,9 @@ describe("a lab run", () => {
 
   it("a pin the host makes in the app is recorded only after a read notices it, as Provider observed (SIMULATED)", () => {
     const hosted = applyLabCommand(live(), { kind: "host", action: { type: "pin_item", itemId: 100002 } });
-    expect(labRecords(hosted.session)).toEqual([]);
+    expect(labRecords(hosted.session, hosted.trace)).toEqual([]);
     const s = applyLabCommand(hosted, { kind: "sync" });
-    const [record] = labRecords(s.session);
+    const [record] = labRecords(s.session, s.trace);
     expect(record).toMatchObject({ title: "Pin Cargo Pants", state: "performed", source: "provider_observed" });
     const hostSeq = hosted.world.sim.seq;
     const read = readsOf(s.world).find((e) => e.endpoint === "get_session_detail" && e.afterSeq === hostSeq)!;
@@ -86,7 +86,7 @@ describe("a lab run", () => {
 
   it("LiveLift's own pin is never echoed back as observed", () => {
     const s = applyLabCommands(live(), [{ kind: "pin", productId: "prod_m02" }, { kind: "sync" }, { kind: "sync" }]);
-    expect(labRecords(s.session).map((r) => r.source)).toEqual(["request_accepted"]);
+    expect(labRecords(s.session, s.trace).map((r) => r.source)).toEqual(["request_accepted"]);
   });
 
   it("unpin has no endpoint, so it says so and calls nothing", () => {
@@ -122,6 +122,13 @@ describe("a lab run", () => {
     const b = applyLabCommands(initialLabState(createScenarioSession("buffered")), cmds);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     expect(setItem).not.toHaveBeenCalled();
+  });
+
+  it("a record is attributed by the bridge's trace: the same records without it are operator reported", () => {
+    const s = applyLabCommand(live(), { kind: "pin", productId: "prod_m02" });
+    expect(labRecords(s.session, s.trace).map((r) => r.source)).toEqual(["request_accepted"]);
+    expect(labRecords(s.session).map((r) => r.source)).toEqual(["operator_reported"]);
+    expect(s.trace[0].recordId).toBe(labRecords(s.session)[0].id);
   });
 
   it("labRecords lists unplanned actions too, newest first", () => {

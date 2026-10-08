@@ -60,7 +60,7 @@ export function LabDesk({
   const ended = session.lifecycle === "ended";
   const clockBtn =
     "min-h-[44px] min-w-[44px] px-2.5 rounded-[8px] text-[15px] font-medium bg-[#2A2540] text-[#E4DAFF] hover:bg-[#363052] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-2 focus-visible:outline-[#DFFF00] focus-visible:outline-offset-2";
-  const records = labRecords(session);
+  const records = labRecords(session, lab.trace);
   const notices = presenter ? world.notices.slice(0, 3) : world.notices;
 
   return (
@@ -186,15 +186,26 @@ export function LabDesk({
         <h3 className={`${small} font-medium text-[#CAD0DA]`}>{w.notices}</h3>
         <ul className="mt-1 divide-y divide-[#1F2530]" data-testid="lab-notices" aria-live="polite">
           {notices.length === 0 && <li className={`py-1.5 ${small} text-[#9AA5B5]`}>{w.noNotices}</li>}
-          {notices.map((n) => (
+          {notices.map((n) => {
+            const line = lang === "vi" ? words.noticeLine(n.code, n.data) : null;
+            return (
             <li key={n.id} className="py-1.5 flex gap-3 items-start">
               <span className={`${small} font-mono tabular-nums text-[#9AA5B5] shrink-0`}>{formatClock(n.atMs, tz, true)}</span>
               <p className={`${small} text-[#F5F7FC] min-w-0`}>
                 {lang === "vi" && words.noticeTitles[n.code] && <span className="block font-medium">{words.noticeTitles[n.code]}</span>}
-                <span lang="en" className={lang === "vi" ? "text-[#CAD0DA]" : undefined}>{n.summary}</span>
+                {line ? (
+                  <span className="text-[#CAD0DA]">
+                    {line.lead}
+                    {line.original && <> <span lang="en">{line.original}</span></>}
+                    {line.tail && <> {line.tail}</>}
+                  </span>
+                ) : (
+                  <span lang="en" className={lang === "vi" ? "text-[#CAD0DA]" : undefined}>{n.summary}</span>
+                )}
               </p>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
 

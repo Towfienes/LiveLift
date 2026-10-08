@@ -6,7 +6,7 @@
  * is quoted, never translated. Never claim a connection to Shopee: write "SIMULATED Shopee".
  * Lines marked `vi-check` are ones a native speaker should confirm.
  */
-import type { DirectorStepId, HostAction, HostAppWords, RecordSource, ShopeeFault } from "@/lib/platform";
+import type { DirectorStepId, HostAction, HostAppWords, NoticeData, RecordSource, ShopeeFault } from "@/lib/platform";
 
 export type LabLang = "en" | "vi";
 
@@ -19,6 +19,10 @@ export interface CaptionContext {
 }
 
 type Caption = (c: CaptionContext) => string;
+
+/** A notice worded from typed data. `original` is text that is not LiveLift's (a platform message) and is shown as it came. */
+export interface NoticeLine { lead: string; original?: string; tail?: string }
+
 
 const en = {
   lang: { label: "Language", en: "EN", vi: "VI" },
@@ -119,8 +123,12 @@ const en = {
   } satisfies Record<RecordSource, string>,
   /** Notice headlines. English shows LiveLift's own sentence alone, so this stays empty. */
   noticeTitles: {} as Record<string, string>,
+  /** English shows the sentence stored with the notice, so there is nothing to build. */
+  noticeLine: (_code: string, _data: NoticeData | undefined): NoticeLine | null => null,
   wire: {
     region: "The wire",
+    /** Names the scrollable log inside the wire, so a keyboard user can tell it from the wire itself. */
+    scrollName: "Wire log, scrollable",
     lanes: { livelift: "LiveLift", platform: "SIMULATED Shopee", host: "Host's app (SIMULATED)" },
     basis: { documented: "shape from Shopee's page", inferred: "shape inferred" },
     read: "read",
@@ -298,8 +306,41 @@ const vi: LabWords = {
     show_refused: "LiveLift không thực hiện được",
     record_refused: "LiveLift không ghi nhận được",
   },
+  noticeLine: (code: string, d: NoticeData | undefined): NoticeLine | null => {
+    const item = d?.product ?? (d?.itemId !== undefined ? `mã ${d.itemId}` : undefined);
+    switch (code) {
+      case "observed":
+        return d?.product && d.action === "pinned" ? { lead: "Host đã ghim", original: d.product, tail: "trên nền tảng." }
+          : d?.product && d.action === "unpinned" ? { lead: "Host đã bỏ ghim", original: d.product, tail: "trên nền tảng." } : null;
+      case "item_added_known":
+        return d?.product ? { lead: "Host đã thêm", original: d.product, tail: "vào giỏ live." } : null;
+      case "item_removed":
+        return item ? { lead: "Host đã bỏ", original: item, tail: "khỏi giỏ live." } : null;
+      case "unknown_item":
+        return d?.itemId !== undefined
+          ? { lead: d.action === "pinned" ? "Host đã ghim một sản phẩm mà LiveLift chưa có" : "Host đã thêm một sản phẩm mà LiveLift chưa có", original: `(mã ${d.itemId})`, tail: d.action === "pinned" ? "Hãy nhập từ danh mục để theo dõi." : undefined }
+          : null;
+      case "promotion_scheduled":
+        return d?.name ? { lead: "Đã có lịch khuyến mãi", original: `"${d.name}"`, tail: "trên nền tảng." } : null;
+      case "promotion_refused":
+        return d?.message ? { lead: "Shopee từ chối khuyến mãi:", original: d.message, tail: "Sẽ không thử lại cho đến khi bạn yêu cầu." } : null;
+      case "pin_refused":
+        return d?.message ? { lead: "Shopee từ chối lệnh ghim:", original: d.message } : null;
+      case "record_refused":
+        return d?.message ? { lead: "LiveLift không ghi nhận được:", original: d.message } : null;
+      case "live_ended_on_platform":
+        return { lead: "Phiên live đã kết thúc trên nền tảng. Hãy kết thúc show LiveLift khi bạn sẵn sàng: LiveLift không bao giờ tự kết thúc show." };
+      case "platform_recovered":
+        return { lead: "Nền tảng đã phản hồi lại." };
+      case "showing_unobservable":
+        return { lead: "Nền tảng không cho biết sản phẩm nào đang ghim. Những lần ghim trong ứng dụng phải được báo thủ công." };
+      default:
+        return null;
+    }
+  },
   wire: {
     region: "Đường truyền",
+    scrollName: "Nhật ký đường truyền, cuộn được",
     lanes: { livelift: "LiveLift", platform: "SIMULATED Shopee", host: "Ứng dụng của host (SIMULATED)" },
     basis: { documented: "dạng lấy từ trang của Shopee", inferred: "dạng suy đoán" }, // vi-check
     read: "đọc",

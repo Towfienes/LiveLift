@@ -61,7 +61,7 @@ describe("the Demo Director", () => {
 
   it("LiveLift's pin is performed with a request id and stays unverified", () => {
     const s = upTo("livelift-pins");
-    const [record] = labRecords(s.session);
+    const [record] = labRecords(s.session, s.trace);
     expect(record).toMatchObject({ state: "performed", source: "request_accepted" });
     expect(s.session.events.at(-1)?.summary).toMatch(/platform verification unknown/);
   });
@@ -69,9 +69,9 @@ describe("the Demo Director", () => {
   it("the host's pin is invisible to LiveLift until the next read, which records Provider observed (SIMULATED)", () => {
     const hosted = upTo("host-pins");
     expect(Object.values(hosted.world.sim.sessions)[0].showingItemId).toBe(100002);
-    expect(labRecords(hosted.session).map((r) => r.source)).toEqual(["request_accepted"]);
+    expect(labRecords(hosted.session, hosted.trace).map((r) => r.source)).toEqual(["request_accepted"]);
     const noticed = upTo("livelift-notices");
-    expect(labRecords(noticed.session)[0]).toMatchObject({ title: "Pin Cargo Pants", source: "provider_observed" });
+    expect(labRecords(noticed.session, noticed.trace)[0]).toMatchObject({ title: "Pin Cargo Pants", source: "provider_observed" });
   });
 
   it("authorisation expires: LiveLift says so once, keeps quiet while it lasts, and says when it recovers", () => {
@@ -106,7 +106,7 @@ describe("the Demo Director", () => {
       const s = runDirector(fresh(scenario.id));
       expect(codes(s), scenario.id).not.toContain("show_refused");
       expect(codes(s), scenario.id).not.toContain("record_refused");
-      expect(labRecords(s.session).map((r) => r.source).sort(), scenario.id).toEqual(["provider_observed", "request_accepted"]);
+      expect(labRecords(s.session, s.trace).map((r) => r.source).sort(), scenario.id).toEqual(["provider_observed", "request_accepted"]);
     }
   });
 
