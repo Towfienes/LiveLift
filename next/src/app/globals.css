@@ -84,3 +84,69 @@ textarea::placeholder {
     scroll-behavior: auto !important;
   }
 }
+
+/* host-app */
+:root {
+  --host-phone-bg: #0b0e14;
+  --host-phone-bezel: #1b202a;
+  --host-phone-screen: #000000;
+  --host-simulated-tag-bg: rgba(200, 178, 255, 0.16);
+  --host-simulated-tag-border: rgba(200, 178, 255, 0.4);
+}
+
+@keyframes host-app-ambient-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes host-app-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes host-app-comment-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes host-app-countdown-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 0.92;
+  }
+}
+
+@keyframes host-app-banner-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* end host-app */
