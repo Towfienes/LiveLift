@@ -2,7 +2,7 @@ import React from "react";
 import { act, cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createScenarioSession, type ScenarioId } from "@/lib/domain";
-import { acceptedReason, applyLabCommand, applyLabCommands, initialLabState, labRecords, ledgerDigest, runDirector } from "@/lib/platform";
+import { acceptedReason, applyLabCommand, applyLabCommands, initialLabState, labRecords, callLogDigest, readsOf, runDirector } from "@/lib/platform";
 import { initLabUi, labReducer } from "@/components/platform/lab/labReducer";
 import { useLabPreferences } from "@/components/platform/lab/useLabPreferences";
 import { PlatformLab } from "@/components/platform/lab/PlatformLab";
@@ -29,7 +29,7 @@ describe("Lab reducer and preference properties", () => {
       expect(ui.cursor, `seed ${seed}`).toBe(12);
       const expected = runDirector(initialLabState(show));
       expect(JSON.stringify(ui.lab), `seed ${seed}`).toBe(JSON.stringify(expected));
-      expect(ledgerDigest(ui.lab.world.sim.ledger)).toBe(ledgerDigest(expected.world.sim.ledger));
+      expect(callLogDigest(ui.lab.world.sim.ledger, readsOf(ui.lab.world))).toBe(callLogDigest(expected.world.sim.ledger, readsOf(expected.world)));
     }
   }, 60_000);
 

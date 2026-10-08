@@ -38,7 +38,7 @@ describe("the Platform Lab page", () => {
     mount();
     expect(within(screen.getByTestId("lab-desk")).getByText(/Pin on SIMULATED Shopee/)).toBeTruthy();
     expect(screen.getByTestId("lab-wire").textContent).toContain("SIMULATED Shopee");
-    expect(screen.getByRole("region", { name: "Host's Shopee app (SIMULATED)" })).toContainElement(screen.getByTestId("host-app-phone"));
+    expect(screen.getByRole("region", { name: "Host's Shopee app (SIMULATED)" })).toContainElement(screen.getByTestId("host-app"));
     expect(screen.getByTestId("host-app-simulated-badge").textContent).toMatch(/SIMULATED/);
     expect(screen.getByTestId("environment-badge-simulated")).toBeTruthy();
     expect(screen.getByTestId("lab-run-note").textContent).toMatch(/nothing is saved/);
