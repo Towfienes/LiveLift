@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { SCENARIO_START_MS, applyCommand, createScenarioSession, currentPlan } from "@/lib/domain";
 import type { Session } from "@/contracts";
 import {
-  acceptedReason, catalogFromProducts, createShopeeLiveSim, diffSnapshots, hostAct, importableItems, inboundActions, initialSyncState,
-  ongoingSession, pinFromLiveLift, pollPlatform, productFromItem, reconcileOutbound, reportCommand, schedulePromotions,
+  NEVER_ON_AIR, READ_LOG_LIMIT, acceptedReason, callShopee, catalogFromProducts, createShopeeLiveSim, freshWorld, logReads, readShopee, readsOf, diffSnapshots, hostAct, importableItems, inboundActions, initialSyncState,
+  linkSession, ongoingSession, pinFromLiveLift, pollPlatform, productFromItem, reconcileOutbound, reportCommand, schedulePromotions,
   syncCycle, unpinFromLiveLift, withAssumptions, withFault, type ShopeeLiveSim, type SyncState,
 } from "@/lib/platform";
 
@@ -261,5 +261,106 @@ describe("syncCycle: read first, then write, and never echo", () => {
     const out = syncCycle(planned, w.sim, w.sync, T);
     expect(out.calls).toEqual([]);
     expect(out.sim.ledger).toEqual([]);
+  });
+});
+
+describe("resuming a live LiveLift opened", () => {
+  it("does not retry going live every cycle when another live is already on air", () => {
+    const session = started();
+    const w = world(session);
+    const hosted = hostAct(w.sim, T, { type: "start_live", title: "Host's own live" });
+    const first = syncCycle(session, hosted.sim, w.sync, T);
+    expect(first.calls.map((c) => [c.endpoint, c.ok])).toContainEqual(["start_session", false]);
+    const again = syncCycle(session, first.sim, first.sync, T + 1000);
+    expect(again.calls).toEqual([]);
+  });
+
+  it("a live linked by hand is the host's: LiveLift never resumes starting it", () => {
+    const session = started();
+    const w = world(session);
+    const opened = syncCycle(session, { ...w.sim, catalog: [] }, w.sync, T);
+    expect(opened.sync.openedByLiveLift).toBe(true);
+    const linked = linkSession(opened.sync, opened.sync.providerSessionId!);
+    expect(linked).toMatchObject({ openedByLiveLift: false, last: null });
+    const retry = syncCycle(session, { ...opened.sim, catalog: w.sim.catalog }, linked, T + 1000);
+    expect(retry.calls.map((c) => c.endpoint)).not.toContain("start_session");
+  });
+});
+
+describe("reads are traffic, kept in their own bounded log", () => {
+  it("400 idle syncs change nothing on the platform, keep every write, and keep the read log at its bound", () => {
+    const session = started();
+    let w = { ...freshWorld(session), sim: world(session).sim };
+    const first = syncCycle(session, w.sim, w.sync, T);
+    w = logReads({ ...w, sim: first.sim, sync: first.sync }, first.reads);
+    const writes = JSON.stringify(w.sim);
+    for (let i = 1; i <= 400; i++) {
+      const r = syncCycle(session, w.sim, w.sync, T + i * 1000);
+      expect(r.calls).toEqual([]);
+      expect(r.commands).toEqual([]);
+      expect(r.notices).toEqual([]);
+      w = logReads({ ...w, sim: r.sim, sync: r.sync }, r.reads);
+    }
+    expect(JSON.stringify(w.sim)).toBe(writes);
+    const reads = readsOf(w);
+    expect(reads).toHaveLength(READ_LOG_LIMIT);
+    expect(reads.every((e, i) => i === 0 || e.n === reads[i - 1].n + 1)).toBe(true);
+    expect(w.readLog?.next).toBe(reads.at(-1)!.n + 1);
+  });
+
+  it("a read's request id never repeats a call's, and the log keeps its own copy of what was asked", () => {
+    const session = started();
+    const w = world(session);
+    const r = syncCycle(session, w.sim, w.sync, T);
+    const logged = logReads(freshWorld(session), r.reads);
+    const ids = [...r.sim.ledger.flatMap((e) => (e.kind === "api" ? [e.envelope.request_id] : [])), ...readsOf(logged).map((e) => e.envelope.request_id)];
+    expect(new Set(ids).size).toBe(ids.length);
+    const params = r.reads[0].params as { session_id?: number };
+    params.session_id = -1;
+    expect(readsOf(logged).some((e) => e.params.session_id === -1)).toBe(false);
+  });
+
+  it("the call log keeps its own copy of the reply, too", () => {
+    const sim = createShopeeLiveSim();
+    const r = callShopee(sim, T, "create_session", { title: "Synthetic" });
+    const id = r.envelope.response.session_id;
+    r.envelope.response.session_id = -1;
+    expect(r.sim.ledger.at(-1)).toMatchObject({ kind: "api", envelope: { response: { session_id: id } } });
+  });
+
+  it("a read-only helper refuses an endpoint that changes the platform", () => {
+    expect(() => readShopee(createShopeeLiveSim(), T, "start_session", {})).toThrow(/callShopee/);
+  });
+});
+
+describe("a live the host started first", () => {
+  function blocked() {
+    const session = started();
+    const w = world(session);
+    const hosted = hostAct(w.sim, T, { type: "start_live", title: "Host's own live" });
+    const first = syncCycle(session, hosted.sim, w.sync, T);
+    expect(first.sync.problem).toContain("Another livestream is ongoing");
+    return { session, first, hostLive: ongoingSession(hosted.sim)! };
+  }
+
+  it("at show end LiveLift says once that its live never went on air, and touches nothing it is not linked to", () => {
+    const { session, first, hostLive } = blocked();
+    const ended = applyCommand(session, { type: "end_live", nowMs: T + 1000 }).session;
+    const out = syncCycle(ended, first.sim, first.sync, T + 1000);
+    expect(out.calls).toEqual([]);
+    expect(out.notices).toEqual([{ code: "platform_problem", summary: NEVER_ON_AIR }]);
+    expect(ongoingSession(out.sim)?.sessionId).toBe(hostLive.sessionId);
+    const again = syncCycle(ended, out.sim, out.sync, T + 2000);
+    expect(again.notices).toEqual([]);
+  });
+
+  it("once the operator links the host's live, the show's end ends it", () => {
+    const { session, first, hostLive } = blocked();
+    const linked = syncCycle(session, first.sim, linkSession(first.sync, hostLive.sessionId), T + 500);
+    expect(linked.sync.last?.status).toBe("ongoing");
+    const ended = applyCommand(session, { type: "end_live", nowMs: T + 1000 }).session;
+    const out = syncCycle(ended, linked.sim, linked.sync, T + 1000);
+    expect(out.calls.map((c) => [c.endpoint, c.ok])).toEqual([["end_session", true]]);
+    expect(ongoingSession(out.sim)).toBeNull();
   });
 });

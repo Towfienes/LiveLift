@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { formatClock } from "@/lib/domain";
-import { callJson, ledgerDigest, wireRows, type LabTrace, type LedgerEntry, type WireRow } from "@/lib/platform";
+import { callJson, callKey, callLogDigest, wireRows, type LabTrace, type LedgerEntry, type ReadEntry, type WireRow } from "@/lib/platform";
 import type { LabLang, LabWords } from "./labCopy";
 import { usePrefersReducedMotion } from "./useLabPreferences";
 
@@ -20,6 +20,7 @@ function Arrow({ dir, tone, dashed = false }: { dir: "right" | "left"; tone: str
 
 export function Wire({
   ledger,
+  reads,
   trace,
   tz,
   words,
@@ -27,6 +28,7 @@ export function Wire({
   presenter,
 }: {
   ledger: readonly LedgerEntry[];
+  reads: readonly ReadEntry[];
   trace: readonly LabTrace[];
   tz: string;
   words: LabWords;
@@ -36,8 +38,9 @@ export function Wire({
   const w = words.wire;
   const [showReads, setShowReads] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
-  const rows = useMemo(() => wireRows(ledger, trace, { showReads }), [ledger, trace, showReads]);
-  const calls = ledger.filter((e) => e.kind === "api").length;
+  const rows = useMemo(() => wireRows(ledger, reads, trace, { showReads }), [ledger, reads, trace, showReads]);
+  const calls = ledger.filter((e) => e.kind === "api").length + reads.length;
+  const digest = callLogDigest(ledger, reads);
   const scrollRef = useRef<HTMLDivElement>(null);
   const reduced = usePrefersReducedMotion();
   const text = presenter ? "text-[17px]" : "text-[14px]";
@@ -93,7 +96,7 @@ export function Wire({
       );
     }
     const e = r.entry;
-    const id = `wire-json-${e.seq}`;
+    const id = `wire-json-${callKey(e)}`;
     const isOpen = open === r.key;
     return (
       <li key={r.key} className={base} data-testid="wire-call" data-endpoint={e.endpoint} data-outcome={r.ok ? "ok" : e.envelope.error}>
@@ -165,7 +168,7 @@ export function Wire({
         </div>
       </div>
       <p className={`shrink-0 pt-2 ${small} text-[#9AA5B5] flex flex-wrap gap-x-2`}>
-        <span className="font-mono" data-testid="wire-digest" data-digest={ledgerDigest(ledger)}>{w.digest(ledgerDigest(ledger), calls)}</span>
+        <span className="font-mono" data-testid="wire-digest" data-digest={digest}>{w.digest(digest, calls)}</span>
         {!presenter && <span>{w.digestHint}</span>}
       </p>
     </section>

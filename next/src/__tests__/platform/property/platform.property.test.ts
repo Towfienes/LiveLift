@@ -120,7 +120,7 @@ describe("seeded SIMULATED platform properties", () => {
     expect(SHOPEE_ENDPOINTS.filter((endpoint) => ENDPOINT_BASIS[endpoint] === "documented")).toEqual(["update_show_item"]);
   });
 
-  it.fails("P09: caller mutation rewrites a historical request because ledger params are not cloned", () => {
+  it("P09: caller mutation rewrites a historical request because ledger params are not cloned", () => {
     const params = { title: "Original synthetic title" };
     const result = callShopee(createShopeeLiveSim(), T, "create_session", params);
     expect(result.ok).toBe(true);

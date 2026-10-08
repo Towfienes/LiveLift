@@ -39,7 +39,8 @@ export function DirectorBar({
   return (
     <section aria-label={w.region} data-testid="director" className="shrink-0 rounded-[12px] bg-[#13161C] border border-[#2B2640] px-3 py-2 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="flex items-center gap-1.5" role="group" aria-label={w.region}>
+        {/* Wraps on a phone: the Vietnamese labels are wider than a 390 px row. */}
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={w.region}>
           {player.playing ? (
             <Button variant="primary" size="desk" icon="ri-pause-line" onClick={player.pause} className="min-w-[8.5rem]" data-testid="director-pause">{w.pause}</Button>
           ) : (

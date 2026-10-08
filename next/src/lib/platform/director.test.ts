@@ -4,7 +4,8 @@ import type { Session } from "@/contracts";
 import { DIRECTOR_DURATION_MS, DIRECTOR_STEPS, applyDirectorStep, directorAvailability, runDirector, type DirectorStepId } from "./director";
 import { initialLabState, labNow, labRecords, type LabState } from "./lab";
 import { promotionStatus } from "./shopeeLive";
-import { ledgerDigest } from "./wire";
+import { callLogDigest } from "./wire";
+import { readsOf } from "./world";
 
 const fresh = (scenario: "buffered" | "missed" | "minimum" = "buffered"): LabState => initialLabState(createScenarioSession(scenario));
 
@@ -23,7 +24,8 @@ describe("the Demo Director", () => {
       const a = runDirector(fresh(scenario.id));
       const b = runDirector(fresh(scenario.id));
       expect(JSON.stringify(a.world.sim.ledger), scenario.id).toBe(JSON.stringify(b.world.sim.ledger));
-      expect(ledgerDigest(a.world.sim.ledger)).toBe(ledgerDigest(b.world.sim.ledger));
+      expect(JSON.stringify(readsOf(a.world)), scenario.id).toBe(JSON.stringify(readsOf(b.world)));
+      expect(callLogDigest(a.world.sim.ledger, readsOf(a.world))).toBe(callLogDigest(b.world.sim.ledger, readsOf(b.world)));
       expect(JSON.stringify(a.session.events)).toBe(JSON.stringify(b.session.events));
     }
   });
@@ -96,6 +98,7 @@ describe("the Demo Director", () => {
     expect(Object.values(ended.world.sim.sessions)[0].status).toBe("ended");
     const recap = upTo("recap");
     expect(recap.world.sim.ledger).toEqual(ended.world.sim.ledger);
+    expect(readsOf(recap.world)).toEqual(readsOf(ended.world));
   });
 
   it("plays the same story on all three seeded rehearsals without a refused desk command", () => {

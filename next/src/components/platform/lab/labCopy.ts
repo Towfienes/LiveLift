@@ -147,21 +147,6 @@ const en = {
   },
   phone: {
     region: "Host's Shopee app (SIMULATED)",
-    simulated: "SIMULATED",
-    placeholder: "Stand-in phone. The finished host app replaces it.",
-    goLive: "Go live",
-    endLive: "End live",
-    pin: "Pin",
-    unpin: "Unpin",
-    remove: "Remove",
-    priceNotSet: "Price not set",
-    viewers: (n: number): string => `${n} viewers (simulated)`,
-    comments: "Synthetic comments",
-    ended: "Live ended",
-    idle: "Not live",
-    bag: "Bag",
-    emptyBag: "The bag is empty.",
-    session: (id: number): string => `Session ${id}`,
   },
   hostApp: {
     faults: {
@@ -340,21 +325,6 @@ const vi: LabWords = {
   },
   phone: {
     region: "Ứng dụng Shopee của host (SIMULATED)",
-    simulated: "SIMULATED",
-    placeholder: "Điện thoại tạm. Ứng dụng host hoàn chỉnh sẽ thay thế.",
-    goLive: "Phát live",
-    endLive: "Kết thúc live",
-    pin: "Ghim",
-    unpin: "Bỏ ghim",
-    remove: "Bỏ khỏi giỏ",
-    priceNotSet: "Chưa có giá",
-    viewers: (n) => `${n} người xem (mô phỏng)`,
-    comments: "Bình luận giả lập",
-    ended: "Đã kết thúc live",
-    idle: "Chưa phát live",
-    bag: "Giỏ hàng",
-    emptyBag: "Giỏ hàng đang trống.",
-    session: (id) => `Phiên ${id}`,
   },
   hostApp: {
     faults: {

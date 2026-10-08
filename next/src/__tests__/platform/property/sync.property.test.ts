@@ -78,7 +78,8 @@ describe("seeded SIMULATED bridge properties", () => {
       expect(result.notices).toEqual([]);
       w = { ...w, sim: result.sim, sync: result.sync };
     }
-    expect(w.sim.ledger.some((entry) => entry.kind === "api" && entry.envelope.request_id === requestId)).toBe(false);
+    // Restated for the P01 decision (ROUND-2.md): reads live in a separate ring, so idle polling never evicts the write.
+    expect(w.sim.ledger.some((entry) => entry.kind === "api" && entry.envelope.request_id === requestId)).toBe(true);
   });
 
   it("repeated healthy sync makes no writes or duplicate observations over 2,048 host/pin sequences", { timeout: 60000 }, () => {
@@ -114,13 +115,14 @@ describe("seeded SIMULATED bridge properties", () => {
       const result = syncCycle(ended.session, sim, w.sync, T);
       expect(ongoingSession(result.sim), `seed=${seed}`).toBeNull();
       const newEntries = result.sim.ledger.filter((entry) => entry.seq > sim.seq);
-      expect(newEntries.slice(0, 3).map((entry) => entry.kind === "api" && entry.endpoint)).toEqual(["get_promotion_list", "get_session_detail", "get_item_list"]);
-      expect(newEntries[3]).toMatchObject({ kind: "api", endpoint: "end_session", envelope: { error: "" } });
+      // Restated for the P01 decision (ROUND-2.md): the reads are in the read ring, made before any new call.
+      expect(result.reads.slice(0, 3).map((read) => [read.endpoint, read.afterSeq])).toEqual([["get_promotion_list", sim.seq], ["get_session_detail", sim.seq], ["get_item_list", sim.seq]]);
+      expect(newEntries[0]).toMatchObject({ kind: "api", endpoint: "end_session", envelope: { error: "" } });
       expect(result.notices.some((notice) => notice.code === "observed")).toBe(true);
     }
   });
 
-  it.fails("P01: idle syncCycle changes state and makes hidden read calls in all 2,048 seeded idempotence checks", { timeout: 60000 }, () => {
+  it("P01: idle syncCycle changes state and makes hidden read calls in all 2,048 seeded idempotence checks", { timeout: 60000 }, () => {
     const initial = linked();
     let changed = 0;
     for (let seed = 1; seed <= SEQUENCES; seed++) {
@@ -136,7 +138,7 @@ describe("seeded SIMULATED bridge properties", () => {
     expect(changed).toBe(0);
   });
 
-  it.fails("P02: a refused pin erases the good baseline and recovery echoes LiveLift's own bag and promotion", () => {
+  it("P02: a refused pin erases the good baseline and recovery echoes LiveLift's own bag and promotion", () => {
     const w = linked();
     const refused = pinFromLiveLift(withFault(w.sim, "token_expired"), w.sync, w.sync.links[0].productId, T);
     expect(refused.outcome.ok).toBe(false);
@@ -145,7 +147,7 @@ describe("seeded SIMULATED bridge properties", () => {
     expect(healed.notices.filter((notice) => ["item_added_known", "promotion_scheduled", "observed"].includes(notice.code))).toEqual([]);
   });
 
-  it.fails("P02: recovery echoes own changes across 2,048 seeded refused-pin/fault sequences", { timeout: 60000 }, () => {
+  it("P02: recovery echoes own changes across 2,048 seeded refused-pin/fault sequences", { timeout: 60000 }, () => {
     const initial = linked();
     let echoes = 0;
     for (let seed = 1; seed <= SEQUENCES; seed++) {
@@ -160,7 +162,7 @@ describe("seeded SIMULATED bridge properties", () => {
     expect(echoes).toBe(0);
   });
 
-  it.fails("P02: a host pin during an outage is lost when a refused LiveLift pin overwrites the baseline", () => {
+  it("P02: a host pin during an outage is lost when a refused LiveLift pin overwrites the baseline", () => {
     const w = linked();
     const itemId = w.sync.last!.itemIds[0];
     const hosted = hostAct(withFault(w.sim, "token_expired"), T, { type: "pin_item", itemId });
@@ -171,7 +173,7 @@ describe("seeded SIMULATED bridge properties", () => {
     expect(healed.commands).toHaveLength(1);
   });
 
-  it.fails("P03: a created live never starts after a refused product load is repaired", () => {
+  it("P03: a created live never starts after a refused product load is repaired", () => {
     const w = world();
     const refused = syncCycle(w.session, { ...w.sim, catalog: [] }, w.sync, T);
     expect(refused.calls.find((call) => call.endpoint === "add_item_list")?.ok).toBe(false);

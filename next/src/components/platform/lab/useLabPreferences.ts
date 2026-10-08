@@ -1,10 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useEffect, useState } from "react";
-import { labCopy, type LabLang, type LabWords } from "./labCopy";
-
-/** The Lab's words in the chosen language, for parts whose props are fixed by a contract (the host app). */
-export const LabWordsContext = createContext<LabWords>(labCopy.en);
+import { useCallback, useEffect, useState } from "react";
+import type { LabLang } from "./labCopy";
 
 const LANG_KEY = "livelift.lab.lang";
 const PRESENTER_KEY = "livelift.lab.presenter";

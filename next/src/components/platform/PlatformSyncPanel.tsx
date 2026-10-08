@@ -5,8 +5,8 @@ import Link from "next/link";
 import type { Session } from "@/contracts";
 import { formatClock, type CommandBody } from "@/lib/domain";
 import {
-  SIM_SHOP_ID, callJson, hostAct, ongoingSession, pinAndRecord, plannedProductIds, syncCycle,
-  unpinFromLiveLift, withAssumptions, withFault, type HostAction, type LedgerEntry, type ShopeeFault,
+  SIM_SHOP_ID, callJson, hostAct, linkSession, ongoingSession, pinAndRecord, plannedProductIds, syncCycle,
+  logReads, readsOf, unpinFromLiveLift, withAssumptions, withFault, type HostAction, type LedgerEntry, type ReadEntry, type ShopeeFault,
 } from "@/lib/platform";
 import { Button } from "@/components/ui";
 import { Signal } from "@/components/ops/StatusChips";
@@ -19,7 +19,7 @@ const FAULT_LABEL = labCopy.en.faults;
 const card = "rounded-[10px] bg-[#0F1218] border border-[#232935] p-3";
 const label = "text-[13px] font-semibold tracking-[1.2px] uppercase text-[#AEB7C5]";
 
-function LedgerRow({ entry, tz }: { entry: LedgerEntry; tz: string }): React.ReactElement {
+function LedgerRow({ entry, tz }: { entry: LedgerEntry | ReadEntry; tz: string }): React.ReactElement {
   if (entry.kind === "host_app") {
     return (
       <li className="py-2 flex gap-3 items-start" data-testid="ledger-host">
@@ -80,7 +80,7 @@ export function PlatformSyncPanel({
     (t: number): void => {
       const w = latest();
       const r = syncCycle(session, w.sim, w.sync, t);
-      update((x) => addNotices({ ...x, sim: r.sim, sync: r.sync }, t, r.notices));
+      update((x) => addNotices(logReads({ ...x, sim: r.sim, sync: r.sync }, r.reads), t, r.notices));
       for (const command of r.commands) recordRef.current(command);
     },
     [latest, session, update]
@@ -110,7 +110,7 @@ export function PlatformSyncPanel({
   const pin = (productId: string): void => {
     const w = latest();
     const r = pinAndRecord(w.sim, w.sync, session, productId, nowMs);
-    update((x) => ({ ...x, sim: r.sim, sync: r.sync }));
+    update((x) => logReads({ ...x, sim: r.sim, sync: r.sync }, r.reads));
     if (r.command) recordRef.current(r.command);
     if (r.notice) notice(r.notice.code, r.notice.summary);
   };
@@ -121,8 +121,15 @@ export function PlatformSyncPanel({
       notice("link_invalid", "Enter the session ID shown in the Shopee app.");
       return;
     }
-    update((w) => ({ ...w, sync: { ...w.sync, providerSessionId: id, last: null } }));
+    update((w) => ({ ...w, sync: linkSession(w.sync, id) }));
     setLinkText("");
+    if (latest().auto) runCycle(nowMs);
+  };
+
+  // A reset world has no live. With auto-sync on, bring the platform in line straight away instead of waiting for the
+  // clock or the show to move.
+  const resetWorld = (): void => {
+    reset();
     if (latest().auto) runCycle(nowMs);
   };
 
@@ -138,7 +145,11 @@ export function PlatformSyncPanel({
   });
   const bag = live ? live.items.map((i) => sim.catalog.find((c) => c.itemId === i.itemId)).filter((c) => c !== undefined) : [];
   const notInBag = sim.catalog.filter((c) => live && !live.items.some((i) => i.itemId === c.itemId));
-  const ledger = sim.ledger.filter((e) => showReads || e.kind === "host_app" || !e.readOnly).slice().reverse().slice(0, 14);
+  // Newest first. Reads come from the read log, placed after the call they followed.
+  const at = (e: LedgerEntry | ReadEntry): [number, number] => (e.kind === "read" ? [e.afterSeq, e.n] : [e.seq, 0]);
+  const ledger = [...sim.ledger.filter((e) => e.kind === "host_app" || !e.readOnly), ...(showReads ? readsOf(world) : [])]
+    .sort((a, b) => at(b)[0] - at(a)[0] || at(b)[1] - at(a)[1])
+    .slice(0, 14);
   const canPin = linked?.status === "ongoing";
   const nextNewItemId = 200001 + sim.catalog.filter((c) => c.itemId >= 200001).length;
 
@@ -172,7 +183,7 @@ export function PlatformSyncPanel({
             Auto-sync
           </label>
           <Button variant="secondary" size="desk" icon="ri-refresh-line" onClick={() => runCycle(nowMs)} data-testid="platform-sync-now">Sync now</Button>
-          <Button variant="ghost" size="desk" icon="ri-restart-line" onClick={reset} data-testid="platform-reset">Reset</Button>
+          <Button variant="ghost" size="desk" icon="ri-restart-line" onClick={resetWorld} data-testid="platform-reset">Reset</Button>
         </div>
       </div>
 
@@ -186,7 +197,8 @@ export function PlatformSyncPanel({
           )}
         </p>
         {sync.problem && <p className="text-[15px] text-[#F4A4A4] mt-1" data-testid="platform-problem">{sync.problem}</p>}
-        {live && !linked && (
+        {/* Any live LiveLift is not linked to, including when its own live could not start because this one was on air. */}
+        {live && live.sessionId !== sync.providerSessionId && (
           <div className="mt-2 flex items-center gap-2 flex-wrap">
             <label className="text-[15px] text-[#CAD0DA]" htmlFor="platform-link-id">A live is running in the app. Its session ID:</label>
             <input
@@ -313,7 +325,7 @@ export function PlatformSyncPanel({
         </div>
         <ol className="mt-1 divide-y divide-[#1F2530]" data-testid="platform-ledger">
           {ledger.length === 0 && <li className="py-2 text-[15px] text-[#9AA5B5]">No calls yet.</li>}
-          {ledger.map((e) => <LedgerRow key={`${e.kind}-${e.seq}`} entry={e} tz={tz} />)}
+          {ledger.map((e) => <LedgerRow key={e.kind === "read" ? `read-${e.n}` : `${e.kind}-${e.seq}`} entry={e} tz={tz} />)}
         </ol>
       </section>
 

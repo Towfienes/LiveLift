@@ -58,7 +58,7 @@ describe("the Lab copy", () => {
     }
     for (const lang of ["en", "vi"] as const) {
       const c = labCopy[lang];
-      for (const text of [c.wire.lanes.platform, c.wire.lanes.host, c.phone.region, c.phone.simulated, c.desk.products, c.source.provider_observed]) {
+      for (const text of [c.wire.lanes.platform, c.wire.lanes.host, c.phone.region, c.desk.products, c.source.provider_observed]) {
         expect(text).toContain("SIMULATED");
       }
     }

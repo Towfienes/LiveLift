@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SCENARIO_START_MS, applyCommand, createScenarioSession, createSession, runScript } from "@/lib/domain";
 import {
-  applyLabCommand, applyLabCommands, initialLabState, labNow, labRecords, type LabCommand, type LabState,
+  applyLabCommand, applyLabCommands, initialLabState, labNow, labRecords, readsOf, type LabCommand, type LabState,
 } from "@/lib/platform";
 
 const T = SCENARIO_START_MS;
@@ -57,7 +57,7 @@ describe("a lab run", () => {
     const [record] = labRecords(s.session);
     expect(record).toMatchObject({ state: "performed", source: "request_accepted" });
     expect(record.reason).toContain(pinCall.kind === "api" ? pinCall.envelope.request_id : "?");
-    expect(s.trace).toEqual([{ seq: pinCall.seq, atMs: T, source: "request_accepted", summary: expect.stringContaining("platform verification unknown") }]);
+    expect(s.trace).toEqual([{ seq: pinCall.seq, read: null, atMs: T, source: "request_accepted", summary: expect.stringContaining("platform verification unknown") }]);
   });
 
   it("a refused pin is an attempt in the platform's own words, and the platform is left as it was", () => {
@@ -77,8 +77,11 @@ describe("a lab run", () => {
     const [record] = labRecords(s.session);
     expect(record).toMatchObject({ title: "Pin Cargo Pants", state: "performed", source: "provider_observed" });
     const hostSeq = hosted.world.sim.seq;
-    const read = s.world.sim.ledger.find((e) => e.kind === "api" && e.endpoint === "get_session_detail" && e.seq > hostSeq)!;
-    expect(s.trace.at(-1)).toMatchObject({ seq: read.seq, source: "provider_observed" });
+    const read = readsOf(s.world).find((e) => e.endpoint === "get_session_detail" && e.afterSeq === hostSeq)!;
+    expect(read.envelope.error).toBe("");
+    expect(s.trace.at(-1)).toMatchObject({ seq: hostSeq, read: read.n, source: "provider_observed" });
+    // Reading changed nothing on the platform: its call log ends with the host's pin.
+    expect(s.world.sim.ledger.at(-1)).toMatchObject({ kind: "host_app", seq: hostSeq });
   });
 
   it("LiveLift's own pin is never echoed back as observed", () => {
