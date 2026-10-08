@@ -50,17 +50,17 @@ describe("Lab reducer and preference properties", () => {
       { kind: "host", action: { type: "pin_item", itemId: 100002 } }, { kind: "sync" },
     ]);
     const restored: typeof start = JSON.parse(JSON.stringify(start));
-    const records = labRecords(restored.session);
+    const records = labRecords(restored.session, restored.trace);
     expect(records.map(record => record.source).sort()).toEqual(["provider_observed", "request_accepted"]);
     expect(records.find(record => record.source === "provider_observed")?.reason).toMatch(/^Provider observed \(SIMULATED\)/);
     expect(records.find(record => record.source === "provider_observed")?.reason).not.toContain("request_id");
     expect(records.find(record => record.source === "request_accepted")?.reason).toContain("request_id");
   });
 
-  it.fails.each([
+  it.each([
     { marker: "provider-observed", reason: "Provider observed (SIMULATED): operator typed this" },
     { marker: "accepted request", reason: acceptedReason("synthetic-unaccepted-request") },
-  ])("L01: operator reason can spoof $marker provenance (known reason-marker limitation)", ({ reason }) => {
+  ])("L01: operator reason can spoof $marker provenance ", ({ reason }) => {
     const started = applyLabCommand(initialLabState(createScenarioSession("buffered")), { kind: "show", body: { type: "start_live" } });
     const reported = applyLabCommand(started, { kind: "show", body: {
       type: "report_manual_action", action: "pin_product", productId: "prod_m02", targetLabel: "Zip Hoodie", report: "performed", reason,
@@ -68,15 +68,15 @@ describe("Lab reducer and preference properties", () => {
     expect(Object.values(reported.session.runtime.actions)).toHaveLength(1);
     expect(reported.world.sim.ledger).toEqual([]);
     expect(reported.trace).toEqual([]);
-    expect(labRecords(reported.session)[0].source).toBe("operator_reported");
+    expect(labRecords(reported.session, reported.trace)[0].source).toBe("operator_reported");
   });
 
-  it.fails.each(["director", "assumptions"])("L02: %s has no SIMULATED label of its own before playback", (surface) => {
+  it.each(["director", "assumptions"])("L02: %s has no SIMULATED label of its own before playback", (surface) => {
     render(<PlatformLab show={createScenarioSession("buffered")} />);
     expect(screen.getByTestId(surface).textContent).toMatch(/\bSIMULATED\b/);
   });
 
-  it.fails("L06: Vietnamese mode leaves LiveLift's generated host-pin notice in English", () => {
+  it("L06: Vietnamese mode leaves LiveLift's generated host-pin notice in English", () => {
     window.localStorage.setItem("livelift.lab.lang", "vi");
     render(<PlatformLab show={createScenarioSession("buffered")} />);
     expect(screen.getByTestId("platform-lab").getAttribute("lang")).toBe("vi");
@@ -123,5 +123,15 @@ describe("Lab reducer and preference properties", () => {
     const set = vi.spyOn(Storage.prototype, "setItem");
     fireEvent.keyDown(window, { key: "p" });
     expect(set).not.toHaveBeenCalled();
+  });
+});
+
+describe("Lab accessibility names", () => {
+  it("the wire's scrollable log has a role that allows its name, distinct from the wire's own", () => {
+    render(<PlatformLab show={createScenarioSession("buffered")} />);
+    const scroll = screen.getByTestId("wire-scroll");
+    expect(scroll.getAttribute("role")).toBe("region");
+    expect(scroll.getAttribute("aria-label")).toBeTruthy();
+    expect(scroll.getAttribute("aria-label")).not.toBe(screen.getByTestId("lab-wire").getAttribute("aria-label"));
   });
 });

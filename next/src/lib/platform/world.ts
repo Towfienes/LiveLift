@@ -4,13 +4,15 @@
  */
 import type { Session } from "@/contracts";
 import { SHOPEE_ENDPOINTS, createShopeeLiveSim, readEntry, type LedgerEntry, type ReadEntry, type ShopeeLiveSim, type ShopeeRead } from "./shopeeLive";
-import { catalogFromProducts, initialSyncState, type SyncState } from "./sync";
+import { catalogFromProducts, initialSyncState, type NoticeData, type NoticeItem, type SyncState } from "./sync";
 
 export interface PlatformNotice {
   id: number;
   atMs: number;
   code: string;
   summary: string;
+  /** What the notice is about, for wording it in the Lab's language. Absent in a world saved before it existed. */
+  data?: NoticeData;
 }
 
 export interface PlatformWorld {
@@ -51,7 +53,7 @@ export function logReads(world: PlatformWorld, reads: readonly ShopeeRead[]): Pl
 /** The reads to show, oldest first. */
 export const readsOf = (world: PlatformWorld): ReadEntry[] => world.readLog?.entries ?? [];
 
-export function addNotices(world: PlatformWorld, atMs: number, items: Array<{ code: string; summary: string }>): PlatformWorld {
+export function addNotices(world: PlatformWorld, atMs: number, items: NoticeItem[]): PlatformWorld {
   if (items.length === 0) return world;
   let id = world.nextNoticeId;
   const added = items.map((n) => ({ id: id++, atMs, ...n }));
@@ -114,7 +116,12 @@ const isSync = shape({
   promotionRefused: mapOf(isStr),
   problem: orNull(isStr),
 });
-const isNotice = shape({ id: isCount, atMs: isTime, code: isStr, summary: isStr });
+const isNoticeData = shape({
+  action: (v) => v === undefined || ["pinned", "unpinned", "added", "removed"].includes(v as string),
+  product: (v) => v === undefined || isStr(v), itemId: (v) => v === undefined || isInt(v),
+  name: (v) => v === undefined || isStr(v), message: (v) => v === undefined || isStr(v),
+});
+const isNotice = shape({ id: isCount, atMs: isTime, code: isStr, summary: isStr, data: (v) => v === undefined || isNoticeData(v) });
 
 /** Every counter is ahead of what it has counted, so the next notice, read, call or live never reuses a number. */
 function countersAgree(w: PlatformWorld, log: ReadLog): boolean {

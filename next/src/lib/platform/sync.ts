@@ -391,10 +391,24 @@ export function diffSnapshots(prev: PlatformSnapshot | null, next: PlatformSnaps
   return out;
 }
 
+/**
+ * What a notice is about, kept apart from its English sentence so the Lab can word it in either language.
+ * Product names, item numbers and platform messages are original text and are never translated.
+ */
+export interface NoticeData {
+  action?: "pinned" | "unpinned" | "added" | "removed";
+  product?: string;
+  itemId?: number;
+  name?: string;
+  message?: string;
+}
+
+export interface NoticeItem { code: string; summary: string; data?: NoticeData }
+
 export type InboundAction =
-  | { kind: "command"; command: CommandBody; summary: string }
+  | { kind: "command"; command: CommandBody; summary: string; data: NoticeData }
   /** Nothing LiveLift may do by itself: it is shown to the operator as a notice. */
-  | { kind: "notice"; code: string; summary: string };
+  | ({ kind: "notice" } & NoticeItem);
 
 /** Turn what the platform now shows into LiveLift records or notices. */
 export function inboundActions(session: Session, sync: SyncState, observations: readonly Observation[]): InboundAction[] {
@@ -405,30 +419,30 @@ export function inboundActions(session: Session, sync: SyncState, observations: 
       case "showing_changed": {
         if (o.to.state === "item") {
           const link = linkOfItem(sync, o.to.itemId);
-          if (!link) { out.push({ kind: "notice", code: "unknown_item", summary: `The host pinned an item LiveLift has no product for (item ${o.to.itemId}). Import it from the catalog to track it.` }); break; }
-          out.push({ kind: "command", command: reportCommand(session, "pin_product", link.productId, "performed", `${OBSERVED_PREFIX}: the platform now shows this item`), summary: `Host pinned ${nameOf(link.productId)} on the platform` });
+          if (!link) { out.push({ kind: "notice", code: "unknown_item", summary: `The host pinned an item LiveLift has no product for (item ${o.to.itemId}). Import it from the catalog to track it.`, data: { action: "pinned", itemId: o.to.itemId } }); break; }
+          out.push({ kind: "command", command: reportCommand(session, "pin_product", link.productId, "performed", `${OBSERVED_PREFIX}: the platform now shows this item`), summary: `Host pinned ${nameOf(link.productId)} on the platform`, data: { action: "pinned", product: nameOf(link.productId) } });
         } else if (o.from.state === "item") {
           const link = linkOfItem(sync, o.from.itemId);
           if (!link) break;
-          out.push({ kind: "command", command: reportCommand(session, "unpin_product", link.productId, "performed", `${OBSERVED_PREFIX}: the platform no longer shows this item`), summary: `Host unpinned ${nameOf(link.productId)} on the platform` });
+          out.push({ kind: "command", command: reportCommand(session, "unpin_product", link.productId, "performed", `${OBSERVED_PREFIX}: the platform no longer shows this item`), summary: `Host unpinned ${nameOf(link.productId)} on the platform`, data: { action: "unpinned", product: nameOf(link.productId) } });
         }
         break;
       }
       case "item_added": {
         const link = linkOfItem(sync, o.itemId);
-        out.push({ kind: "notice", code: link ? "item_added_known" : "unknown_item", summary: link ? `The host added ${nameOf(link.productId)} to the live bag.` : `The host added an item LiveLift has no product for (item ${o.itemId}).` });
+        out.push({ kind: "notice", code: link ? "item_added_known" : "unknown_item", summary: link ? `The host added ${nameOf(link.productId)} to the live bag.` : `The host added an item LiveLift has no product for (item ${o.itemId}).`, data: link ? { action: "added", product: nameOf(link.productId) } : { action: "added", itemId: o.itemId } });
         break;
       }
       case "item_removed": {
         const link = linkOfItem(sync, o.itemId);
-        out.push({ kind: "notice", code: "item_removed", summary: `The host removed ${link ? nameOf(link.productId) : `item ${o.itemId}`} from the live bag.` });
+        out.push({ kind: "notice", code: "item_removed", summary: `The host removed ${link ? nameOf(link.productId) : `item ${o.itemId}`} from the live bag.`, data: link ? { action: "removed", product: nameOf(link.productId) } : { action: "removed", itemId: o.itemId } });
         break;
       }
       case "live_status_changed":
         if (o.to === "ended") out.push({ kind: "notice", code: "live_ended_on_platform", summary: "The live ended on the platform. End the LiveLift show when you are ready: LiveLift never ends it for you." });
         break;
       case "promotion_seen":
-        out.push({ kind: "notice", code: "promotion_scheduled", summary: `A promotion "${o.name}" was scheduled on the platform.` });
+        out.push({ kind: "notice", code: "promotion_scheduled", summary: `A promotion "${o.name}" was scheduled on the platform.`, data: { name: o.name } });
         break;
       case "showing_unobservable":
         out.push({ kind: "notice", code: "showing_unobservable", summary: "The platform did not say which product is pinned. Pins made in the app must be reported by hand." });
@@ -454,7 +468,7 @@ export interface CycleResult {
   /** Records for the show: what the host did on the platform. The caller dispatches them like any operator command. */
   commands: CommandBody[];
   /** Things the operator should know, each worded once. */
-  notices: Array<{ code: string; summary: string }>;
+  notices: NoticeItem[];
   /** Writes only: what LiveLift asked the platform to change. */
   calls: SyncCall[];
   /** Every read this cycle made, in order, for the read log. A cycle with nothing new has reads and nothing else. */
@@ -470,7 +484,7 @@ export function syncCycle(session: Session, simIn: ShopeeLiveSim, syncIn: SyncSt
   let sim = simIn;
   let sync = syncIn;
   const commands: CommandBody[] = [];
-  const notices: Array<{ code: string; summary: string }> = [];
+  const notices: NoticeItem[] = [];
   const calls: SyncCall[] = [];
   const reads: ShopeeRead[] = [];
   let problem: string | null = null;
@@ -485,8 +499,8 @@ export function syncCycle(session: Session, simIn: ShopeeLiveSim, syncIn: SyncSt
       for (const a of inboundActions(session, sync, diffSnapshots(sync.last, polled.snapshot))) {
         if (a.kind === "command") {
           commands.push(a.command);
-          notices.push({ code: "observed", summary: a.summary });
-        } else notices.push({ code: a.code, summary: a.summary });
+          notices.push({ code: "observed", summary: a.summary, data: a.data });
+        } else notices.push({ code: a.code, summary: a.summary, ...(a.data ? { data: a.data } : {}) });
       }
       sync = { ...sync, last: polled.snapshot };
     }
@@ -506,7 +520,7 @@ export function syncCycle(session: Session, simIn: ShopeeLiveSim, syncIn: SyncSt
     sync = out.sync;
     calls.push(...out.calls);
     reads.push(...out.reads);
-    if (out.blocked) notices.push({ code: "promotion_refused", summary: `Shopee refused the promotion: ${out.blocked.message}. It will not be retried until you ask.` });
+    if (out.blocked) notices.push({ code: "promotion_refused", summary: `Shopee refused the promotion: ${out.blocked.message}. It will not be retried until you ask.`, data: { message: out.blocked.message } });
   }
 
   // The live LiveLift opened never went on air (another live held the account, most likely). LiveLift cannot find or end

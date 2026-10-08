@@ -20,6 +20,7 @@ export function AssumptionsStrip({
   const w = words.assumptions;
   return (
     <section aria-label={w.title} data-testid="assumptions" className="shrink-0 rounded-[10px] border border-[#4A3D22] bg-[#17140E] px-3 flex flex-wrap items-center gap-x-4 gap-y-0 text-[15px]">
+      <span data-testid="assumptions-simulated" className="shrink-0 rounded-[6px] border border-[#C8B2FF] bg-[#211F2B] px-1.5 text-[13px] font-medium tracking-wide text-[#C8B2FF]">SIMULATED</span>{" "}
       <h2 className="font-medium text-[#F6C875] inline-flex items-center gap-1.5">
         <i className="ri-question-line" aria-hidden="true" />
         {w.title}

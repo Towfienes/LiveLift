@@ -153,7 +153,7 @@ export function Wire({
         <span className="text-center text-[#C8B2FF]"><i className="ri-flask-line mr-1" />{w.lanes.platform}</span>
         <span className="text-center text-[#C8B2FF]"><i className="ri-smartphone-line mr-1" />{w.lanes.host}</span>
       </div>
-      <div ref={scrollRef} className="relative flex-1 min-h-[220px] overflow-y-auto" tabIndex={0} aria-label={w.region} data-testid="wire-scroll">
+      <div ref={scrollRef} className="relative flex-1 min-h-[220px] overflow-y-auto" tabIndex={0} role="region" aria-label={w.scrollName} data-testid="wire-scroll">
         <div className="relative min-h-full">
           <div className={`${GRID} absolute inset-0 pointer-events-none`} aria-hidden="true">
             <span />

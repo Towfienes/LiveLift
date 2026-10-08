@@ -166,7 +166,7 @@ describe("inbound: what the host does in the app lands in LiveLift", () => {
     sim = hostAct(sim, T, { type: "add_live_item", itemId: 200001 }).sim;
     const polled = pollPlatform(sim, c.sync, T + 1000);
     const actions = inboundActions(c.session, c.sync, diffSnapshots(c.sync.last, polled.snapshot));
-    expect(actions).toEqual([{ kind: "notice", code: "unknown_item", summary: expect.stringContaining("no product for") }]);
+    expect(actions).toEqual([{ kind: "notice", code: "unknown_item", summary: expect.stringContaining("no product for"), data: { action: "added", itemId: 200001 } }]);
     const offer = importableItems(sim.catalog, c.sync.links);
     expect(offer.map((o) => o.name)).toEqual(["Bucket Hat"]);
     expect(productFromItem(offer[0])).toMatchObject({ name: "Bucket Hat", source: "import", price: 99000, currency: "VND" });
