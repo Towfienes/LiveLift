@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { Session } from "@/contracts";
 import { formatClock, type CommandBody } from "@/lib/domain";
 import {
@@ -152,6 +153,14 @@ export function PlatformSyncPanel({
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href={`/live/${session.id}/lab`}
+            className="min-h-[44px] px-2.5 rounded-[8px] text-[16px] font-medium text-[#C8B2FF] hover:bg-[#1E232B] inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-[#DFFF00] focus-visible:outline-offset-3"
+            data-testid="platform-open-lab"
+          >
+            <i className="ri-flask-line" aria-hidden="true" />
+            {labCopy.en.header.openLab}
+          </Link>
           <label className="inline-flex items-center gap-2 min-h-[44px] text-[16px] text-[#F5F7FC] cursor-pointer">
             <input
               type="checkbox"

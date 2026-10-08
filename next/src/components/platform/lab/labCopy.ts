@@ -6,7 +6,7 @@
  * is quoted, never translated. Never claim a connection to Shopee: write "SIMULATED Shopee".
  * Lines marked `vi-check` are ones a native speaker should confirm.
  */
-import type { DirectorStepId, HostAppWords, RecordSource, ShopeeFault } from "@/lib/platform";
+import type { DirectorStepId, HostAction, HostAppWords, RecordSource, ShopeeFault } from "@/lib/platform";
 
 export type LabLang = "en" | "vi";
 
@@ -28,9 +28,8 @@ const en = {
     labRunHint: "A copy of this show as planned, with its own SIMULATED Shopee. The show, its Review and the Operate desk are not changed.",
     presenter: "Presenter",
     presenterHint: "Press P to switch presenter mode",
-    openDesk: "Open the desk",
-    openPrepare: "Open Prepare",
     leave: "Leave the Lab",
+    openLab: "Open the Platform Lab",
   },
   notSimulated: {
     title: "The Platform Lab is for SIMULATED shows",
@@ -123,6 +122,17 @@ const en = {
     read: "read",
     ok: "OK",
     host: "Host in the app",
+    /** What the host did, by action. English shows the call log's own sentence instead, which names the product. */
+    hostActions: {
+      add_catalog_item: "Added a product to the shop",
+      start_live: "Went live",
+      end_live: "Ended the live",
+      add_live_item: "Added a product to the live bag",
+      remove_live_item: "Removed a product from the live bag",
+      pin_item: "Pinned a product",
+      unpin_item: "Unpinned the product",
+      create_promotion: "Scheduled a promotion",
+    } satisfies Record<HostAction["type"], string>,
     notPossible: "not possible right now",
     recorded: "LiveLift recorded",
     showJson: (endpoint: string): string => `Show the JSON for ${endpoint}`,
@@ -190,9 +200,8 @@ const vi: LabWords = {
     labRunHint: "Bản sao buổi live theo kế hoạch, chạy với SIMULATED Shopee riêng. Buổi live gốc, phần Review và bàn Operate không bị thay đổi.",
     presenter: "Trình chiếu",
     presenterHint: "Nhấn P để bật hoặc tắt chế độ trình chiếu",
-    openDesk: "Mở bàn điều khiển",
-    openPrepare: "Mở Prepare",
     leave: "Rời Lab",
+    openLab: "Mở Platform Lab",
   },
   notSimulated: {
     title: "Platform Lab chỉ dành cho buổi live SIMULATED",
@@ -303,6 +312,16 @@ const vi: LabWords = {
     read: "đọc",
     ok: "OK",
     host: "Host thao tác trên ứng dụng",
+    hostActions: {
+      add_catalog_item: "Thêm sản phẩm vào shop",
+      start_live: "Bắt đầu phát live",
+      end_live: "Kết thúc live",
+      add_live_item: "Thêm sản phẩm vào giỏ live",
+      remove_live_item: "Bỏ sản phẩm khỏi giỏ live",
+      pin_item: "Ghim một sản phẩm",
+      unpin_item: "Bỏ ghim sản phẩm",
+      create_promotion: "Đặt lịch khuyến mãi",
+    },
     notPossible: "lúc này không làm được",
     recorded: "LiveLift ghi nhận",
     showJson: (endpoint) => `Xem JSON của ${endpoint}`,
