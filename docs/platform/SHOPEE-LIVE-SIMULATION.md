@@ -16,6 +16,24 @@ Open a rehearsal, start the simulated session, open the **Platform** tab on the 
 
 Everything is deterministic: the same actions on the rehearsal's virtual clock give the same call log.
 
+## Call log and evidence
+
+Decided 2026-10-08 (`docs/orchestration/ROUND-2.md`, review findings P01 and P05).
+
+- **Reads are traffic, not changes.**
+  - Each sync reads the platform (`get_promotion_list`, `get_session_detail`, `get_item_list`). Those reads never enter the platform's call log and never move its call counter.
+  - They are kept in a separate **read log** of the latest 120 reads, with request ids of their own. However often LiveLift polls, no write leaves the call log because of it.
+  - A repeated sync with nothing new makes **no write, no record and no notice**, and leaves the platform byte for byte as it was. Only its reads are logged.
+  - The Platform Lab's wire and the Operate panel show both logs, and their fingerprint covers both.
+- **What "performed" carries.**
+  - A pin LiveLift sent is `performed` with the **accepted request id**, and stays *platform verification unknown*.
+  - A pin the host made in the app is `performed` with the reason `Provider observed (SIMULATED)` and **no request id**. LiveLift made no request, so none is invented.
+  - A refused call is `attempted`, in the platform's own words.
+- **Known limitation.** These three are told apart by the wording of the record's reason, not by a structured field. A structured marker needs a change in `next/src/lib/domain`, which no work package owns.
+- **A live the host started first.**
+  - If the host is already live in the app when the show starts, LiveLift's own live cannot start ("Another livestream is ongoing"). The Operate panel then keeps offering to link the host's live by its session ID.
+  - If it is never linked, at show end LiveLift says once that its own live never went on air and that any live still running must be ended in the app. With no call that lists lives, LiveLift cannot end one it is not linked to.
+
 ## How well each part is known
 
 | Part | Basis |
@@ -53,8 +71,10 @@ The *Shopee Seller* developer type is gated by the shop's tier (Mall or Preferre
 
 - `next/src/lib/platform/shopeeLive.ts`: the simulation (pure, deterministic).
 - `next/src/lib/platform/sync.ts`: the two-way bridge (`syncCycle`, `pinFromLiveLift`, `diffSnapshots`, `inboundActions`).
+- `next/src/lib/platform/world.ts`: what a rehearsal's simulated platform knows, the read log (`logReads`) and the check on a stored world (`parseWorld`).
+- `next/src/lib/platform/lab.ts`, `director.ts`, `wire.ts`, `viewModel.ts`: the Platform Lab (`/live/[sessionId]/lab`) and its Demo Director.
 - `next/src/lib/platform/capabilities.ts`: what each platform allows, with the strength of the evidence. Shown on **Integrations**.
-- `next/src/components/platform/`: the Platform tab.
+- `next/src/components/platform/`: the Platform tab, the Lab (`lab/`) and the host's simulated app (`host-app/`).
 - Tests: `next/src/__tests__/platform/`.
 
 TikTok has no documented API to open a live, pin or fire a promotion. In that table those rows say *operator does it, then reports*. See `docs/tiktok/FEASIBILITY.md`.
