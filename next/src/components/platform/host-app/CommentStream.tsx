@@ -40,8 +40,8 @@ export const CommentStream: React.FC<CommentStreamProps> = ({
         aria-live="polite"
         aria-relevant="additions text"
         aria-label="Synthetic live stream comments"
-        tabIndex={-1}
-        className="overflow-y-auto space-y-1.5 pr-1 max-h-[190px] scrollbar-thin scrollbar-thumb-[#39414D] scrollbar-track-transparent focus:outline-none"
+        tabIndex={0}
+        className="overflow-y-auto space-y-1.5 pr-1 max-h-[190px] scrollbar-thin scrollbar-thumb-[#39414D] scrollbar-track-transparent focus:outline-none focus-visible:outline-2 focus-visible:outline-[#DFFF00] focus-visible:outline-offset-1 rounded-lg"
       >
         {comments.length === 0 ? (
           <div className="text-[11px] text-[#8A95A5] italic px-2 py-1 bg-[#13161C]/60 rounded-lg">

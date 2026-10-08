@@ -20,9 +20,10 @@ export const PinnedCard: React.FC<PinnedCardProps> = ({
 
   return (
     <div
+      role="region"
       data-testid="pinned-card"
       aria-label={`Pinned product: ${item.name}`}
-      className={`relative rounded-2xl bg-[#13161C]/95 border border-[#39414D] p-2.5 sm:p-3 shadow-2xl backdrop-blur-md transition-all duration-300 animate-[host-app-slide-up_250ms_ease-out] motion-reduce:animate-none motion-reduce:transition-none select-none ${className}`}
+      className={`relative rounded-2xl bg-[#13161C] border border-[#39414D] p-2.5 sm:p-3 shadow-2xl backdrop-blur-md transition-all duration-300 animate-[host-app-slide-up_250ms_ease-out] motion-reduce:animate-none motion-reduce:transition-none select-none ${className}`}
     >
       <div className="flex items-start gap-2 sm:gap-2.5">
         {/* Product initials avatar */}
@@ -33,7 +34,7 @@ export const PinnedCard: React.FC<PinnedCardProps> = ({
           <span className="text-[15px] sm:text-[17px] font-semibold text-[#DFFF00]">
             {item.initials}
           </span>
-          <span className="text-[8px] sm:text-[9px] font-mono text-[#8A95A5] leading-none">
+          <span className="text-[8px] sm:text-[9px] font-mono text-[#CAD0DA] leading-none">
             #{item.itemId}
           </span>
         </div>
@@ -45,17 +46,17 @@ export const PinnedCard: React.FC<PinnedCardProps> = ({
               <i className="ri-pushpin-2-fill text-[11px]" aria-hidden="true" />
               <span>PINNED</span>
             </span>
-            <span className="text-[10px] font-mono text-[#8A95A5] hidden xs:inline">
+            <span className="text-[10px] font-mono text-[#CAD0DA] hidden xs:inline">
               LIVE HIGHLIGHT
             </span>
           </div>
 
-          <h4
+          <p
             className="text-[12px] sm:text-[13px] font-medium leading-snug text-[#F5F7FC] line-clamp-2 break-words"
             title={item.name}
           >
             {item.name}
-          </h4>
+          </p>
 
           <div className="mt-1 flex items-baseline gap-1.5">
             <span

@@ -107,12 +107,12 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
               <i className="ri-shopping-bag-3-fill text-[16px]" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="text-[14px] font-semibold text-[#F5F7FC] flex items-center gap-1.5">
+              <h2 className="text-[14px] font-semibold text-[#F5F7FC] flex items-center gap-1.5">
                 <span>Shop Bag (SIMULATED)</span>
                 <span className="text-[11px] font-mono font-medium text-[#C8B2FF] px-1.5 py-0.5 rounded bg-[#211F2B] border border-[#44385C]">
                   {bag.length} items
                 </span>
-              </h3>
+              </h2>
               <p className="text-[10px] text-[#8A95A5]">
                 Manage live pinned products & catalogue
               </p>
@@ -212,12 +212,12 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                       </span>
                     </div>
 
-                    <h4
+                    <p
                       className="text-[12px] font-medium leading-snug text-[#F5F7FC] line-clamp-2 break-words"
                       title={item.name}
                     >
                       {item.name}
-                    </h4>
+                    </p>
 
                     <p
                       data-testid={`bag-item-price-${item.itemId}`}
