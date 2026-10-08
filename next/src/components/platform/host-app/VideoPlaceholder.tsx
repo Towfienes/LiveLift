@@ -39,13 +39,13 @@ export const VideoPlaceholder: React.FC<VideoPlaceholderProps> = ({ className = 
 
       {/* Feed watermark */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-        <div className="w-16 h-16 mx-auto rounded-full border border-[#C8B2FF]/20 flex items-center justify-center bg-[#211F2B]/30 backdrop-blur-xs mb-2">
-          <i className="ri-live-line text-[28px] text-[#C8B2FF]/40" />
+        <div className="w-16 h-16 mx-auto rounded-full border border-[#C8B2FF]/40 flex items-center justify-center bg-[#211F2B]/60 backdrop-blur-xs mb-2">
+          <i className="ri-live-line text-[28px] text-[#C8B2FF]" />
         </div>
-        <p className="text-[11px] font-mono tracking-widest text-[#C8B2FF]/40 uppercase">
+        <p className="text-[11px] font-mono font-semibold tracking-widest text-[#C8B2FF] uppercase">
           SIMULATED FEED
         </p>
-        <p className="text-[9px] font-mono text-[#8A95A5]/40 mt-0.5">
+        <p className="text-[9px] font-mono text-[#CAD0DA] mt-0.5">
           NO REAL CAMERA STREAM
         </p>
       </div>
