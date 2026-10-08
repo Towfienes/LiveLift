@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { LabCommand, ShopeeFault, SimAssumptions } from "@/lib/platform";
+import type { LabCommand, SimAssumptions } from "@/lib/platform";
 import type { LabWords } from "./labCopy";
 
 /**
@@ -10,21 +10,16 @@ import type { LabWords } from "./labCopy";
  */
 export function AssumptionsStrip({
   assumptions,
-  fault,
   words,
-  presenter,
   act,
 }: {
   assumptions: SimAssumptions;
-  fault: ShopeeFault | null;
   words: LabWords;
-  presenter: boolean;
   act: (cmds: LabCommand[]) => void;
 }): React.ReactElement {
   const w = words.assumptions;
-  const text = presenter ? "text-[17px]" : "text-[15px]";
   return (
-    <section aria-label={w.title} data-testid="assumptions" className={`shrink-0 rounded-[10px] border border-[#4A3D22] bg-[#17140E] px-3 py-1 flex flex-wrap items-center gap-x-5 gap-y-0 ${text}`}>
+    <section aria-label={w.title} data-testid="assumptions" className="shrink-0 rounded-[10px] border border-[#4A3D22] bg-[#17140E] px-3 flex flex-wrap items-center gap-x-4 gap-y-0 text-[15px]">
       <h2 className="font-medium text-[#F6C875] inline-flex items-center gap-1.5">
         <i className="ri-question-line" aria-hidden="true" />
         {w.title}
@@ -50,21 +45,6 @@ export function AssumptionsStrip({
         />
         {w.a2}
       </label>
-      {!presenter && (
-        <label className="inline-flex items-center gap-2 min-h-[44px] text-[#CAD0DA]">
-          {w.condition}
-          <select
-            value={fault ?? "none"}
-            onChange={(e) => act([{ kind: "fault", fault: e.target.value === "none" ? null : (e.target.value as ShopeeFault) }])}
-            className="min-h-[36px] rounded-[8px] bg-[#13161C] border border-[#2C3340] px-2 text-[15px] text-[#F5F7FC]"
-            data-testid="lab-fault"
-          >
-            {(Object.keys(words.faults) as Array<ShopeeFault | "none">).map((k) => (
-              <option key={k} value={k}>{words.faults[k]}</option>
-            ))}
-          </select>
-        </label>
-      )}
     </section>
   );
 }

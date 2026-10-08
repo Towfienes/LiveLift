@@ -2,9 +2,9 @@
 
 import React from "react";
 import { activeSegment, currentPlan, formatClock, nextPendingSegment, type Forecast } from "@/lib/domain";
-import { labRecords, plannedProductIds, type LabCommand, type LabState, type RecordSource } from "@/lib/platform";
+import { labRecords, plannedProductIds, type LabCommand, type LabState, type RecordSource, type ShopeeFault } from "@/lib/platform";
 import { Button } from "@/components/ui";
-import { SimulatorStrip } from "@/components/ops/SimulatorStrip";
+import type { SimulatorStrip } from "@/components/ops/SimulatorStrip";
 import type { LabLang, LabWords } from "./labCopy";
 
 const SOURCE_STYLE: Record<RecordSource, { icon: string; tone: string }> = {
@@ -43,7 +43,7 @@ export function LabDesk({
   const heading = `${presenter ? "text-[22px]" : "text-[18px]"} font-medium text-[#F5F7FC]`;
 
   const active = activeSegment(session);
-  const next = nextPendingSegment(session);
+  const next = session.lifecycle === "ended" ? null : nextPendingSegment(session);
   const nextStart = next ? (forecast.segments.find((s) => s.segmentId === next.id)?.startMs ?? null) : null;
   const guard = forecast.anchorGuard;
   const guardTitle = guard ? (currentPlan(session).segments.find((s) => s.id === guard.segmentId)?.title ?? "") : "";
@@ -57,29 +57,33 @@ export function LabDesk({
     const l = world.sync.links.find((x) => x.productId === id);
     return p && l ? [{ product: p, link: l }] : [];
   });
+  const ended = session.lifecycle === "ended";
+  const clockBtn =
+    "min-h-[44px] min-w-[44px] px-2.5 rounded-[8px] text-[15px] font-medium bg-[#2A2540] text-[#E4DAFF] hover:bg-[#363052] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-2 focus-visible:outline-[#DFFF00] focus-visible:outline-offset-2";
   const records = labRecords(session);
   const notices = presenter ? world.notices.slice(0, 3) : world.notices;
 
   return (
-    <section aria-label={w.region} data-testid="lab-desk" className="h-full min-h-0 xl:overflow-y-auto rounded-[12px] bg-[#13161C] p-3 flex flex-col gap-3">
+    <section aria-label={w.region} tabIndex={0} data-testid="lab-desk" className="h-full min-h-0 xl:overflow-y-auto rounded-[12px] bg-[#13161C] p-3 flex flex-col gap-3 outline-none focus-visible:outline-2 focus-visible:outline-[#DFFF00]">
       <h2 className={heading}>{w.region}</h2>
 
       <dl className={`grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 ${text}`} data-testid="lab-now-next-why">
         <dt className="text-[#9AA5B5]">{w.now}</dt>
         <dd className="text-[#F5F7FC] truncate" data-testid="lab-now">{now}</dd>
         <dt className="text-[#9AA5B5]">{w.next}</dt>
-        <dd className="text-[#F5F7FC] truncate">
+        <dd className="text-[#F5F7FC] truncate" title={next?.title}>
           {next ? <>{next.title}{nextStart !== null && <span className="text-[#9AA5B5] tabular-nums"> · {formatClock(nextStart, tz)}</span>}</> : w.nothingNext}
         </dd>
         <dt className="text-[#9AA5B5]">{w.why}</dt>
-        <dd className="text-[#F5F7FC] truncate">
+        <dd className="text-[#F5F7FC] truncate" title={guard ? w.anchor(guardTitle, formatClock(guard.committedMs, tz)) : undefined}>
           {guard ? (
             <><i className="ri-lock-line text-[#9AA5B5] mr-1" aria-hidden="true" />{w.anchor(guardTitle, formatClock(guard.committedMs, tz))}</>
           ) : w.noAnchor}
         </dd>
       </dl>
 
-      <div className="flex flex-wrap items-center gap-2">
+      {/* The row keeps its height after the show ends, so the clock and the pins below never move up. */}
+      <div className="flex flex-wrap items-center gap-2 min-h-[44px]">
         {session.lifecycle === "planned" && (
           <Button variant="secondary" size="desk" icon="ri-play-line" onClick={() => act([{ kind: "show", body: { type: "start_live" } }])} data-testid="lab-start">{w.startShow}</Button>
         )}
@@ -90,8 +94,27 @@ export function LabDesk({
           </>
         )}
       </div>
-      <div className="flex">
-        <SimulatorStrip {...strip} disabled={session.lifecycle === "ended"} />
+      {/* The same clock commands as the Operate desk (useSimulatorControls), laid out for a narrow column. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1" role="group" aria-label={w.clock} data-testid="lab-clock">
+        <span className={`${text} tabular-nums text-[#E4DAFF] mr-1`} data-testid="virtual-clock">
+          <i className="ri-flask-line text-[#C8B2FF] mr-1" aria-hidden="true" />
+          {w.virtualClock(formatClock(strip.virtualNowMs, tz, true))}
+        </span>
+        {([[30, "+30s"], [60, "+1m"], [300, "+5m"]] as const).map(([sec, label]) => (
+          <button key={sec} type="button" className={clockBtn} disabled={ended} onClick={() => strip.onAdvance(sec)} data-testid={`lab-clock-${sec}`}>
+            {label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={clockBtn}
+          disabled={ended || strip.nextAnchorMs === null || strip.nextAnchorMs - 60_000 <= strip.virtualNowMs}
+          onClick={strip.onToAnchor}
+          title={w.toAnchorHint}
+          data-testid="lab-clock-anchor"
+        >
+          {w.toAnchor}
+        </button>
       </div>
 
       {world.sync.problem && (
@@ -182,6 +205,19 @@ export function LabDesk({
             {w.autoSync}
           </label>
           <Button variant="secondary" size="desk" icon="ri-refresh-line" onClick={() => act([{ kind: "sync" }])} data-testid="lab-sync-now">{w.syncNow}</Button>
+          <label className="inline-flex items-center gap-2 min-h-[44px] text-[15px] text-[#CAD0DA]">
+            {words.assumptions.condition}
+            <select
+              value={world.sim.fault ?? "none"}
+              onChange={(e) => act([{ kind: "fault", fault: e.target.value === "none" ? null : (e.target.value as ShopeeFault) }])}
+              className="min-h-[40px] rounded-[8px] bg-[#0F1218] border border-[#2C3340] px-2 text-[15px] text-[#F5F7FC]"
+              data-testid="lab-fault"
+            >
+              {(Object.keys(words.faults) as Array<ShopeeFault | "none">).map((k) => (
+                <option key={k} value={k}>{words.faults[k]}</option>
+              ))}
+            </select>
+          </label>
         </div>
       )}
     </section>

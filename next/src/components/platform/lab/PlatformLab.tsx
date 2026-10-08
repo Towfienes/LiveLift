@@ -118,10 +118,10 @@ export function PlatformLab({ show }: { show: Session }): React.ReactElement {
           </div>
         </header>
 
-        <main className="flex-1 min-h-0 flex flex-col gap-2 p-2 xl:p-3">
+        <main id="main-content" tabIndex={-1} className="flex-1 min-h-0 flex flex-col gap-2 p-2 xl:p-3 outline-none">
           <DirectorBar player={player} cursor={ui.cursor} fit={fit} tz={session.timezone} words={words} presenter={presenter} />
-          <AssumptionsStrip assumptions={world.sim.assumptions} fault={world.sim.fault} words={words} presenter={presenter} act={act} />
-          <div className="flex-1 min-h-0 grid gap-2 xl:gap-3 grid-cols-1 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)_clamp(260px,24vw,420px)]">
+          <AssumptionsStrip assumptions={world.sim.assumptions} words={words} act={act} />
+          <div className="flex-1 min-h-0 grid gap-2 xl:gap-3 grid-cols-1 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)_clamp(230px,calc((100dvh-230px)*0.462),420px)]">
             <div className="order-2 xl:order-1 min-h-0">
               <LabDesk lab={lab} forecast={forecast} strip={simulator.strip} words={words} lang={lang} presenter={presenter} act={act} />
             </div>

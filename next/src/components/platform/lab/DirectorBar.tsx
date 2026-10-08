@@ -41,9 +41,9 @@ export function DirectorBar({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex items-center gap-1.5" role="group" aria-label={w.region}>
           {player.playing ? (
-            <Button variant="primary" size="desk" icon="ri-pause-line" onClick={player.pause} data-testid="director-pause">{w.pause}</Button>
+            <Button variant="primary" size="desk" icon="ri-pause-line" onClick={player.pause} className="min-w-[8.5rem]" data-testid="director-pause">{w.pause}</Button>
           ) : (
-            <Button variant="primary" size="desk" icon="ri-play-fill" onClick={player.play} disabled={!fit.ok} data-testid="director-play">{w.play}</Button>
+            <Button variant="primary" size="desk" icon="ri-play-fill" onClick={player.play} disabled={!fit.ok} className="min-w-[8.5rem]" data-testid="director-play">{w.play}</Button>
           )}
           <Button variant="secondary" size="desk" icon="ri-skip-forward-line" onClick={player.step} disabled={!fit.ok || player.done} data-testid="director-step">{w.step}</Button>
           <Button variant="ghost" size="desk" icon="ri-restart-line" onClick={player.reset} data-testid="director-reset">{w.reset}</Button>
@@ -69,17 +69,18 @@ export function DirectorBar({
               <li key={step.id} className={`h-[6px] flex-1 rounded-full ${i < cursor ? "bg-[#C8B2FF]" : "bg-[#2B2640]"}`} />
             ))}
           </ol>
-          <span className="text-[14px] text-[#CAD0DA] tabular-nums whitespace-nowrap" data-testid="director-progress">{w.progress(cursor, total)}</span>
+          <span className="min-w-[6.5em] text-right text-[14px] text-[#CAD0DA] tabular-nums whitespace-nowrap" data-testid="director-progress">{w.progress(cursor, total)}</span>
         </div>
       </div>
+      {/* Two lines are always reserved (more on a phone), so a longer caption never moves the zones below. */}
       <p
         aria-live="polite"
         data-testid="director-caption"
-        className={`${presenter ? "text-[clamp(22px,2.4vw,34px)] leading-snug" : "text-[18px] leading-snug"} text-[#F5F7FC] min-h-[1.4em]`}
+        className={`${presenter ? "text-[clamp(22px,2.4vw,34px)]" : "text-[18px]"} leading-snug min-h-[5.5em] md:min-h-[2.75em] text-[#F5F7FC]`}
       >
         {caption}
+        {player.done && !presenter && <span className="block text-[14px] leading-5 text-[#9AA5B5]">{w.done}</span>}
       </p>
-      {player.done && !presenter && <p className="text-[14px] text-[#9AA5B5]">{w.done}</p>}
     </section>
   );
 }
