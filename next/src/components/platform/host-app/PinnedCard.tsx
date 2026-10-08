@@ -77,6 +77,7 @@ export const PinnedCard: React.FC<PinnedCardProps> = ({
           onClick={onUnpin}
           aria-label={`Unpin ${item.name} from screen`}
           title="Unpin this product from viewer screen"
+          data-testid="host-app-unpin"
           className="shrink-0 min-w-[44px] min-h-[44px] w-[44px] h-[44px] rounded-xl bg-[#252A34] hover:bg-[#303643] text-[#CAD0DA] hover:text-[#F5F7FC] border border-[#39414D] transition-colors flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
         >
           <i className="ri-unpin-line text-[17px]" aria-hidden="true" />

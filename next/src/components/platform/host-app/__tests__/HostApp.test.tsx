@@ -259,3 +259,190 @@ describe("CommentStream Component", () => {
     expect(screen.getByText("Có freeship không?")).toBeInTheDocument();
   });
 });
+
+describe("HostApp: L05 Focus Management & Contract Stability", () => {
+  it("after pinning from the phone with keyboard/click, focus lands on the enabled Unpin control", () => {
+    let items: HostAppBagItem[] = [
+      { itemId: 101, name: "Product A", priceLabel: "100.000 ₫", initials: "PA", pinned: false },
+      { itemId: 102, name: "Product B", priceLabel: "200.000 ₫", initials: "PB", pinned: false },
+    ];
+
+    const onPin = vi.fn((id: number) => {
+      items = items.map((i) => (i.itemId === id ? { ...i, pinned: true } : i));
+      rerender(
+        <BagDrawer
+          bag={items}
+          isOpen={true}
+          onClose={() => undefined}
+          onPin={onPin}
+          onUnpin={onUnpin}
+          onAddItem={() => undefined}
+          onRemoveItem={() => undefined}
+        />
+      );
+    });
+
+    const onUnpin = vi.fn();
+
+    const { rerender } = render(
+      <BagDrawer
+        bag={items}
+        isOpen={true}
+        onClose={() => undefined}
+        onPin={onPin}
+        onUnpin={onUnpin}
+        onAddItem={() => undefined}
+        onRemoveItem={() => undefined}
+      />
+    );
+
+    const pinBtn = screen.getByTestId("host-app-pin-101");
+    pinBtn.focus();
+    expect(document.activeElement).toBe(pinBtn);
+
+    // Trigger pin via Enter / click
+    fireEvent.click(pinBtn);
+    expect(onPin).toHaveBeenCalledWith(101);
+
+    // L05: Focus must now land on the enabled Unpin control
+    const unpinBtn = screen.getByTestId("host-app-unpin-101");
+    expect(document.activeElement).toBe(unpinBtn);
+    expect(unpinBtn).not.toBeDisabled();
+  });
+
+  it("after unpinning from BagDrawer with keyboard/click, focus lands on the enabled Pin control", () => {
+    let items: HostAppBagItem[] = [
+      { itemId: 101, name: "Product A", priceLabel: "100.000 ₫", initials: "PA", pinned: true },
+    ];
+
+    const onPin = vi.fn();
+    const onUnpin = vi.fn(() => {
+      items = items.map((i) => ({ ...i, pinned: false }));
+      rerender(
+        <BagDrawer
+          bag={items}
+          isOpen={true}
+          onClose={() => undefined}
+          onPin={onPin}
+          onUnpin={onUnpin}
+          onAddItem={() => undefined}
+          onRemoveItem={() => undefined}
+        />
+      );
+    });
+
+    const { rerender } = render(
+      <BagDrawer
+        bag={items}
+        isOpen={true}
+        onClose={() => undefined}
+        onPin={onPin}
+        onUnpin={onUnpin}
+        onAddItem={() => undefined}
+        onRemoveItem={() => undefined}
+      />
+    );
+
+    const unpinBtn = screen.getByTestId("host-app-unpin-101");
+    unpinBtn.focus();
+    expect(document.activeElement).toBe(unpinBtn);
+
+    // Trigger unpin
+    fireEvent.click(unpinBtn);
+    expect(onUnpin).toHaveBeenCalledTimes(1);
+
+    // Focus lands back on the enabled Pin button
+    const pinBtn = screen.getByTestId("host-app-pin-101");
+    expect(document.activeElement).toBe(pinBtn);
+    expect(pinBtn).not.toBeDisabled();
+  });
+
+  it("unrelated phone updates (comments, viewers, timers) never move or steal focus", () => {
+    let vm = { ...fixtureLiveStandard };
+    const { rerender } = render(<HostApp viewModel={vm} actions={mockActions} />);
+
+    // Focus on the End button
+    const endBtn = screen.getByTestId("host-app-end");
+    endBtn.focus();
+    expect(document.activeElement).toBe(endBtn);
+
+    // 1. Unrelated comment stream update
+    vm = {
+      ...vm,
+      comments: [
+        ...vm.comments,
+        { id: "c_new", user: "viewer99", text: "New incoming live comment!" },
+      ],
+    };
+    rerender(<HostApp viewModel={vm} actions={mockActions} />);
+    expect(document.activeElement).toBe(endBtn);
+
+    // 2. Unrelated viewer count increment
+    vm = {
+      ...vm,
+      viewers: 2500,
+    };
+    rerender(<HostApp viewModel={vm} actions={mockActions} />);
+    expect(document.activeElement).toBe(endBtn);
+
+    // 3. Unrelated elapsed timer tick
+    vm = {
+      ...vm,
+      elapsedLabel: "00:15:00",
+    };
+    rerender(<HostApp viewModel={vm} actions={mockActions} />);
+    expect(document.activeElement).toBe(endBtn);
+  });
+
+  it("unpinning from PinnedCard returns focus to bag button", () => {
+    let vm = { ...fixtureLiveStandard };
+    const actions: HostAppActions = {
+      ...mockActions,
+      onUnpin: vi.fn(() => {
+        vm = {
+          ...vm,
+          bag: vm.bag.map((i) => ({ ...i, pinned: false })),
+        };
+        rerender(<HostApp viewModel={vm} actions={actions} />);
+      }),
+    };
+
+    const { rerender } = render(<HostApp viewModel={vm} actions={actions} />);
+
+    const unpinBtn = screen.getByTestId("host-app-unpin");
+    unpinBtn.focus();
+    expect(document.activeElement).toBe(unpinBtn);
+
+    fireEvent.click(unpinBtn);
+    expect(actions.onUnpin).toHaveBeenCalledTimes(1);
+
+    // PinnedCard is now unmounted; focus must return to bag button
+    const bagBtn = screen.getByTestId("host-app-bag-button");
+    expect(document.activeElement).toBe(bagBtn);
+  });
+
+  it("preserves contract data-testids across idle, live, and ended modes", () => {
+    // 1. Idle mode contracts
+    const { rerender } = render(<HostApp viewModel={fixtureIdle} actions={mockActions} />);
+    expect(screen.getByTestId("host-app")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-viewers")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-bag")).toBeInTheDocument();
+
+    // 2. Live mode contracts
+    rerender(<HostApp viewModel={fixtureLiveStandard} actions={mockActions} />);
+    expect(screen.getByTestId("host-app")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-viewers")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-bag")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-bag-button")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-pinned")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-unpin")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-banner")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-promotion")).toBeInTheDocument();
+
+    // 3. Ended mode contracts
+    rerender(<HostApp viewModel={fixtureEnded} actions={mockActions} />);
+    expect(screen.getByTestId("host-app")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-viewers")).toBeInTheDocument();
+    expect(screen.getByTestId("host-app-bag")).toBeInTheDocument();
+  });
+});

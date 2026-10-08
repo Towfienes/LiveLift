@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { HostAppActions, HostAppViewModel } from "./types";
 import { ViewerPill } from "./ViewerPill";
 import { ConditionBanner } from "./ConditionBanner";
@@ -24,6 +24,8 @@ export const HostApp: React.FC<HostAppProps> = ({
   className = "",
 }) => {
   const [bagOpen, setBagOpen] = useState(initialBagOpen);
+  const bagButtonRef = useRef<HTMLButtonElement>(null);
+  const unpinFromCardRef = useRef(false);
 
   const vm = viewModel ?? model!;
   const {
@@ -39,6 +41,20 @@ export const HostApp: React.FC<HostAppProps> = ({
   } = vm;
 
   const pinnedItem = bag.find((item) => item.pinned) ?? null;
+
+  // L05: If user unpins from the PinnedCard, focus returns safely to the bag button
+  // instead of dropping to document.body. Unrelated updates never move focus.
+  const handleUnpinFromCard = () => {
+    unpinFromCardRef.current = true;
+    actions.onUnpin();
+  };
+
+  useEffect(() => {
+    if (unpinFromCardRef.current && !pinnedItem) {
+      unpinFromCardRef.current = false;
+      bagButtonRef.current?.focus();
+    }
+  }, [pinnedItem]);
 
   return (
     <div
@@ -75,11 +91,9 @@ export const HostApp: React.FC<HostAppProps> = ({
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-[#211F2B] text-[#C8B2FF] border border-[#44385C]">
                 PRE-LIVE SETUP
               </span>
-              {sessionId && (
-                <span className="text-[11px] font-mono text-[#8A95A5]">
-                  Session #{sessionId}
-                </span>
-              )}
+              <span data-testid="host-app-viewers" className="text-[11px] font-mono text-[#8A95A5]">
+                {sessionId ? `Session #${sessionId}` : "Pre-live"}
+              </span>
             </div>
 
             <h2 className="text-[18px] sm:text-[20px] font-bold leading-tight tracking-tight text-[#F5F7FC] mb-2 break-words">
@@ -91,10 +105,14 @@ export const HostApp: React.FC<HostAppProps> = ({
           </div>
 
           {/* Condition banner if any */}
-          <ConditionBanner banner={banner} />
+          {banner && (
+            <div data-testid="host-app-banner">
+              <ConditionBanner banner={banner} />
+            </div>
+          )}
 
           {/* Bag Preview */}
-          <div className="my-auto rounded-2xl bg-[#13161C] border border-[#2A303A] p-3 sm:p-4 shadow-sm">
+          <div data-testid="host-app-bag" className="my-auto rounded-2xl bg-[#13161C] border border-[#2A303A] p-3 sm:p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#2A303A]">
               <div className="flex items-center gap-2">
                 <i className="ri-shopping-bag-3-fill text-[#DFFF00] text-[18px]" aria-hidden="true" />
@@ -206,7 +224,9 @@ export const HostApp: React.FC<HostAppProps> = ({
 
             {/* Row 2: Viewers & Elapsed Time */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <ViewerPill viewers={viewers} />
+              <div data-testid="host-app-viewers" className="inline-flex">
+                <ViewerPill viewers={viewers} />
+              </div>
 
               {elapsedLabel && (
                 <span
@@ -219,16 +239,24 @@ export const HostApp: React.FC<HostAppProps> = ({
             </div>
 
             {/* Condition Banner */}
-            <ConditionBanner banner={banner} />
+            {banner && (
+              <div data-testid="host-app-banner">
+                <ConditionBanner banner={banner} />
+              </div>
+            )}
 
             {/* Promotion Banner */}
-            <PromotionBanner promotion={promotion} />
+            {promotion && (
+              <div data-testid="host-app-promotion">
+                <PromotionBanner promotion={promotion} />
+              </div>
+            )}
           </div>
 
           {/* BOTTOM INTERACTIVE ZONE */}
           <div className="relative z-20 p-2.5 sm:p-3 pb-5 flex flex-col justify-end gap-2 sm:gap-2.5">
             {/* Pinned Card (if an item is pinned) */}
-            <PinnedCard item={pinnedItem} onUnpin={actions.onUnpin} />
+            <PinnedCard item={pinnedItem} onUnpin={handleUnpinFromCard} />
 
             {/* Synthetic Comments Stream */}
             <CommentStream comments={comments} />
@@ -236,19 +264,22 @@ export const HostApp: React.FC<HostAppProps> = ({
             {/* Host Bottom Controls Toolbar */}
             <div className="flex items-center justify-between gap-2 pt-1">
               {/* Bag Trigger Button (min 44x44px touch target) */}
-              <button
-                type="button"
-                onClick={() => setBagOpen(true)}
-                aria-label={`Open shop bag (${bag.length} items)`}
-                data-testid="host-app-bag-button"
-                className="relative min-h-[44px] min-w-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#13161C]/90 hover:bg-[#1B1F27] border border-[#39414D] text-[#F5F7FC] shadow-lg backdrop-blur-md transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
-              >
-                <i className="ri-shopping-bag-3-fill text-[#DFFF00] text-[17px]" />
-                <span className="text-[12px] font-semibold">Bag</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-[#DFFF00] text-[#111407]">
-                  {bag.length}
-                </span>
-              </button>
+              <div data-testid="host-app-bag" className="inline-flex">
+                <button
+                  type="button"
+                  ref={bagButtonRef}
+                  onClick={() => setBagOpen(true)}
+                  aria-label={`Open shop bag (${bag.length} items)`}
+                  data-testid="host-app-bag-button"
+                  className="relative min-h-[44px] min-w-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#13161C]/90 hover:bg-[#1B1F27] border border-[#39414D] text-[#F5F7FC] shadow-lg backdrop-blur-md transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+                >
+                  <i className="ri-shopping-bag-3-fill text-[#DFFF00] text-[17px]" />
+                  <span className="text-[12px] font-semibold">Bag</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-[#DFFF00] text-[#111407]">
+                    {bag.length}
+                  </span>
+                </button>
+              </div>
 
               {/* Host Quick Status Indicator */}
               <div className="flex items-center gap-1 bg-[#13161C]/80 border border-[#2A303A] px-2.5 py-1.5 rounded-xl text-[11px] font-mono text-[#8A95A5]">
@@ -262,7 +293,10 @@ export const HostApp: React.FC<HostAppProps> = ({
           <BagDrawer
             bag={bag}
             isOpen={bagOpen}
-            onClose={() => setBagOpen(false)}
+            onClose={() => {
+              setBagOpen(false);
+              bagButtonRef.current?.focus();
+            }}
             onPin={actions.onPin}
             onUnpin={actions.onUnpin}
             onAddItem={actions.onAddItem}
@@ -305,14 +339,20 @@ export const HostApp: React.FC<HostAppProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center justify-between py-2.5">
+            <div
+              data-testid="host-app-viewers"
+              className="flex items-center justify-between py-2.5"
+            >
               <span className="text-[12px] text-[#8A95A5]">Peak Viewers</span>
               <span className="text-[12px] font-mono text-[#C8B2FF] font-semibold tabular-nums">
                 {viewers !== null ? viewers.toLocaleString() : "Not simulated"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between py-2.5">
+            <div
+              data-testid="host-app-bag"
+              className="flex items-center justify-between py-2.5"
+            >
               <span className="text-[12px] text-[#8A95A5]">Products in Bag</span>
               <span className="text-[12px] font-mono text-[#F5F7FC]">
                 {bag.length} items

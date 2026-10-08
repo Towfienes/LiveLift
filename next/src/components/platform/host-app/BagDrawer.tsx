@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { HostAppBagItem } from "./types";
 
 export interface BagDrawerProps {
@@ -23,6 +23,8 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
   className = "",
 }) => {
   const [newItemId, setNewItemId] = useState<string>("");
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const pendingFocusTargetRef = useRef<{ itemId: number; targetAction: "unpin" | "pin" } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -34,6 +36,41 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
+
+  // L05: Move focus to the resulting enabled control after keyboard/touch action.
+  // Unrelated updates (comments, viewers, timers, external sync) must never move focus.
+  useEffect(() => {
+    if (!pendingFocusTargetRef.current) return;
+    const { itemId, targetAction } = pendingFocusTargetRef.current;
+    const testId = targetAction === "unpin" ? `host-app-unpin-${itemId}` : `host-app-pin-${itemId}`;
+
+    const focusControl = () => {
+      const el = drawerRef.current?.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+      if (el) {
+        el.focus();
+        pendingFocusTargetRef.current = null;
+        return true;
+      }
+      return false;
+    };
+
+    if (!focusControl()) {
+      const raf = requestAnimationFrame(() => {
+        focusControl();
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [bag]);
+
+  const handlePin = (itemId: number) => {
+    pendingFocusTargetRef.current = { itemId, targetAction: "unpin" };
+    onPin(itemId);
+  };
+
+  const handleUnpin = (itemId: number) => {
+    pendingFocusTargetRef.current = { itemId, targetAction: "pin" };
+    onUnpin();
+  };
 
   if (!isOpen) return null;
 
@@ -59,6 +96,7 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
     >
       {/* Drawer surface */}
       <div
+        ref={drawerRef}
         className="w-full max-h-[82%] bg-[#13161C] border-t border-[#39414D] rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-[host-app-slide-up_250ms_ease-out] motion-reduce:animate-none"
         onClick={(e) => e.stopPropagation()}
       >
@@ -198,7 +236,7 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                     {item.pinned ? (
                       <button
                         type="button"
-                        onClick={onUnpin}
+                        onClick={() => handleUnpin(item.itemId)}
                         aria-label={`Unpin ${item.name}`}
                         data-testid={`host-app-unpin-${item.itemId}`}
                         className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-[#252A34] hover:bg-[#303643] text-[#CAD0DA] hover:text-[#F5F7FC] text-[11px] font-medium border border-[#39414D] transition-colors flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
@@ -208,7 +246,7 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => onPin(item.itemId)}
+                        onClick={() => handlePin(item.itemId)}
                         aria-label={`Pin ${item.name}`}
                         data-testid={`host-app-pin-${item.itemId}`}
                         className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-[#DFFF00] hover:bg-[#CBEA00] text-[#111407] text-[11px] font-bold transition-colors shadow-xs flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
