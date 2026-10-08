@@ -48,3 +48,7 @@ The original LiveLift ([bminhnemhoi/AISC2026_LIVEFIT](https://github.com/bminhne
 - Project record: [project summary](TONG-KET-DU-AN.md) · [incident log](incident-log.md) · [research log](research-log.md) · [fact sheet](competition/FACT-SHEET.md)
 - Competition dossier (Sáng tạo trẻ 2026): [competition/sang-tao-tre-2026/](competition/sang-tao-tre-2026/noi-dung.md)
 - Screenshots of the original interface: [img/](img/) (everything except `img/readme/`)
+
+CI checks the two tracks independently: Python fast tests and nightly statistical validation for the original research, and typecheck, lint, Vitest, build and production dependency audit in `next/` on Node.js 22.23.3 for the current product. The `web/` build remains a legacy check. These jobs do not run full browser certification; Vitest's live-server cases require a configured test server.
+
+`legacy/ORIGIN-README.vi.md` is a historical snapshot. Research evidence checks use that archive and `competition/FACT-SHEET.md`, with the incident log and benchmark reports as sources. `scripts/dong_bo_so_test.py` synchronizes Python **collected** test counts in the legacy web page, fact sheet and competition dossier. It writes neither README and never invents passed-test results; recorded run results stay tied to their original date and commit.
