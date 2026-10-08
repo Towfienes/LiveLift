@@ -194,7 +194,8 @@ export function promotionStatus(p: SimPromotion, nowMs: number): "scheduled" | "
 
 // ---- Deterministic request ids ---------------------------------------------------------------------------------------
 
-function fnv1a(text: string): number {
+/** FNV-1a, 32 bit. Shared by everything that needs a stable, seedless hash of the simulation. */
+export function fnv1a(text: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
     h ^= text.charCodeAt(i);

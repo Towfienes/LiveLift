@@ -1,24 +1,20 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { Session } from "@/contracts";
 import { formatClock, type CommandBody } from "@/lib/domain";
 import {
-  SIM_SHOP_ID, acceptedReason, hostAct, ongoingSession, plannedProductIds, pinFromLiveLift, refusedReason, reportCommand, syncCycle,
+  SIM_SHOP_ID, callJson, hostAct, ongoingSession, pinAndRecord, plannedProductIds, syncCycle,
   unpinFromLiveLift, withAssumptions, withFault, type HostAction, type LedgerEntry, type ShopeeFault,
 } from "@/lib/platform";
 import { Button } from "@/components/ui";
 import { Signal } from "@/components/ops/StatusChips";
 import { CapabilityTable } from "./CapabilityTable";
+import { labCopy } from "./lab/labCopy";
 import { addNotices, usePlatformWorld } from "./usePlatformWorld";
 
-const FAULT_LABEL: Record<ShopeeFault | "none", string> = {
-  none: "Normal",
-  token_expired: "Authorisation expired",
-  region_unsupported: "Region not supported",
-  rate_limited: "Rate limited",
-  server_error: "Shopee server error",
-};
+const FAULT_LABEL = labCopy.en.faults;
 
 const card = "rounded-[10px] bg-[#0F1218] border border-[#232935] p-3";
 const label = "text-[13px] font-semibold tracking-[1.2px] uppercase text-[#AEB7C5]";
@@ -45,11 +41,11 @@ function LedgerRow({ entry, tz }: { entry: LedgerEntry; tz: string }): React.Rea
           <span className="font-mono">{entry.endpoint}</span>{" "}
           <span className={failed ? "text-[#F4A4A4]" : "text-[#DFFF00]"}>{failed ? `${entry.envelope.error}: ${entry.envelope.message}` : "OK"}</span>{" "}
           <span className={entry.basis === "documented" ? "text-[#B4C6DD] text-[13px]" : "text-[#F6C875] text-[13px]"}>
-            {entry.basis === "documented" ? "shape from Shopee's page" : "shape inferred"}
+            {labCopy.en.wire.basis[entry.basis]}
           </span>
         </summary>
         <pre className="mt-1 p-2 rounded-[8px] bg-[#13161C] text-[13px] text-[#CAD0DA] overflow-x-auto whitespace-pre-wrap break-all">
-          {`POST ${entry.path}\n${JSON.stringify(entry.params)}\n→ ${JSON.stringify(entry.envelope)}`}
+          {callJson(entry)}
         </pre>
       </details>
     </li>
@@ -113,16 +109,10 @@ export function PlatformSyncPanel({
 
   const pin = (productId: string): void => {
     const w = latest();
-    const r = pinFromLiveLift(w.sim, w.sync, productId, nowMs);
+    const r = pinAndRecord(w.sim, w.sync, session, productId, nowMs);
     update((x) => ({ ...x, sim: r.sim, sync: r.sync }));
-    if (r.outcome.ok) {
-      recordRef.current(reportCommand(session, "pin_product", productId, "performed", acceptedReason(r.outcome.requestId)));
-    } else if (r.outcome.reason === "api_error") {
-      recordRef.current(reportCommand(session, "pin_product", productId, "attempted", refusedReason(r.outcome.message, r.outcome.requestId)));
-      notice("pin_refused", `Shopee refused the pin: ${r.outcome.message}`);
-    } else {
-      notice("pin_not_sent", r.outcome.message);
-    }
+    if (r.command) recordRef.current(r.command);
+    if (r.notice) notice(r.notice.code, r.notice.summary);
   };
 
   const link = (): void => {
@@ -163,6 +153,14 @@ export function PlatformSyncPanel({
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href={`/live/${session.id}/lab`}
+            className="min-h-[44px] px-2.5 rounded-[8px] text-[16px] font-medium text-[#C8B2FF] hover:bg-[#1E232B] inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-[#DFFF00] focus-visible:outline-offset-3"
+            data-testid="platform-open-lab"
+          >
+            <i className="ri-flask-line" aria-hidden="true" />
+            {labCopy.en.header.openLab}
+          </Link>
           <label className="inline-flex items-center gap-2 min-h-[44px] text-[16px] text-[#F5F7FC] cursor-pointer">
             <input
               type="checkbox"
