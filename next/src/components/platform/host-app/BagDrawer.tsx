@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { HostAppBagItem } from "./types";
 
 export interface BagDrawerProps {
@@ -24,6 +24,17 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
 }) => {
   const [newItemId, setNewItemId] = useState<string>("");
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleQuickAdd = (e: React.FormEvent) => {
@@ -41,14 +52,14 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
       aria-modal="true"
       aria-label="Shop product bag"
       data-testid="bag-drawer"
-      className={`absolute inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs transition-opacity duration-300 ${className}`}
+      className={`absolute inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs transition-opacity duration-300 motion-reduce:transition-none ${className}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       {/* Drawer surface */}
       <div
-        className="w-full max-h-[82%] bg-[#13161C] border-t border-[#39414D] rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-[host-app-slide-up_250ms_ease-out]"
+        className="w-full max-h-[82%] bg-[#13161C] border-t border-[#39414D] rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-[host-app-slide-up_250ms_ease-out] motion-reduce:animate-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drawer header */}
@@ -74,16 +85,16 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close product bag"
-            className="w-8 h-8 rounded-lg bg-[#252A34] hover:bg-[#303643] text-[#CAD0DA] hover:text-[#F5F7FC] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+            className="min-w-[44px] min-h-[44px] w-[44px] h-[44px] rounded-xl bg-[#252A34] hover:bg-[#303643] text-[#CAD0DA] hover:text-[#F5F7FC] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
           >
-            <i className="ri-close-line text-[18px]" aria-hidden="true" />
+            <i className="ri-close-line text-[20px]" aria-hidden="true" />
           </button>
         </div>
 
         {/* Quick Add item bar */}
         <form
           onSubmit={handleQuickAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1B1F27] border-b border-[#2A303A]"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#1B1F27] border-b border-[#2A303A]"
         >
           <div className="relative flex-1">
             <input
@@ -91,15 +102,15 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
               placeholder="Enter item ID to add..."
               value={newItemId}
               onChange={(e) => setNewItemId(e.target.value)}
-              className="w-full bg-[#13161C] border border-[#2A303A] rounded-lg px-2.5 py-1.5 text-[12px] text-[#F5F7FC] placeholder-[#8A95A5] focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+              className="w-full min-h-[44px] bg-[#13161C] border border-[#2A303A] rounded-lg px-3 py-2 text-[12px] text-[#F5F7FC] placeholder-[#8A95A5] focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
             />
           </div>
           <button
             type="submit"
             disabled={!newItemId.trim()}
-            className="px-3 py-1.5 rounded-lg bg-[#252A34] hover:bg-[#303643] text-[#DFFF00] font-medium text-[12px] disabled:opacity-40 disabled:hover:bg-[#252A34] transition-colors flex items-center gap-1 border border-[#39414D]"
+            className="min-h-[44px] min-w-[44px] px-3.5 py-2 rounded-lg bg-[#252A34] hover:bg-[#303643] text-[#DFFF00] font-medium text-[12px] disabled:opacity-40 disabled:hover:bg-[#252A34] transition-colors flex items-center gap-1.5 border border-[#39414D] focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
           >
-            <i className="ri-add-line text-[14px]" aria-hidden="true" />
+            <i className="ri-add-line text-[15px]" aria-hidden="true" />
             <span>Add Item</span>
           </button>
         </form>
@@ -126,7 +137,7 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                 <div
                   key={item.itemId}
                   data-testid={`bag-item-${item.itemId}`}
-                  className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
+                  className={`flex items-center gap-2.5 sm:gap-3 p-2.5 rounded-xl border transition-all ${
                     item.pinned
                       ? "bg-[#1C2028] border-[#DFFF00]/50 shadow-xs"
                       : "bg-[#181B22] border-[#2A303A] hover:border-[#39414D]"
@@ -150,7 +161,7 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pr-1">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       {item.pinned && (
                         <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-[#DFFF00]/15 text-[#DFFF00] border border-[#DFFF00]/30">
@@ -164,7 +175,7 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                     </div>
 
                     <h4
-                      className="text-[12px] font-medium leading-snug text-[#F5F7FC] line-clamp-2"
+                      className="text-[12px] font-medium leading-snug text-[#F5F7FC] line-clamp-2 break-words"
                       title={item.name}
                     >
                       {item.name}
@@ -174,7 +185,7 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                       data-testid={`bag-item-price-${item.itemId}`}
                       className={`text-[12px] font-semibold mt-0.5 tabular-nums ${
                         isPriceUnknown
-                          ? "text-[#CAD0DA]/70 italic text-[11px] font-normal"
+                          ? "text-[#CAD0DA] italic text-[11px] font-normal"
                           : "text-[#DFFF00]"
                       }`}
                     >
@@ -182,14 +193,15 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                     </p>
                   </div>
 
-                  {/* Action buttons */}
+                  {/* Action buttons (all >= 44x44px touch targets) */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     {item.pinned ? (
                       <button
                         type="button"
                         onClick={onUnpin}
                         aria-label={`Unpin ${item.name}`}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#252A34] hover:bg-[#303643] text-[#CAD0DA] hover:text-[#F5F7FC] text-[11px] font-medium border border-[#39414D] transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+                        data-testid={`host-app-unpin-${item.itemId}`}
+                        className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-[#252A34] hover:bg-[#303643] text-[#CAD0DA] hover:text-[#F5F7FC] text-[11px] font-medium border border-[#39414D] transition-colors flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
                       >
                         Unpin
                       </button>
@@ -198,7 +210,8 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                         type="button"
                         onClick={() => onPin(item.itemId)}
                         aria-label={`Pin ${item.name}`}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#DFFF00] hover:bg-[#CBEA00] text-[#111407] text-[11px] font-bold transition-colors shadow-xs focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+                        data-testid={`host-app-pin-${item.itemId}`}
+                        className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-[#DFFF00] hover:bg-[#CBEA00] text-[#111407] text-[11px] font-bold transition-colors shadow-xs flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
                       >
                         Pin
                       </button>
@@ -209,9 +222,9 @@ export const BagDrawer: React.FC<BagDrawerProps> = ({
                       onClick={() => onRemoveItem(item.itemId)}
                       aria-label={`Remove ${item.name} from bag`}
                       title="Remove from bag"
-                      className="w-7 h-7 rounded-lg bg-[#1B1F27] hover:bg-[#302025] text-[#8A95A5] hover:text-[#FF5C5C] flex items-center justify-center transition-colors border border-[#2A303A]"
+                      className="min-w-[44px] min-h-[44px] w-[44px] h-[44px] rounded-xl bg-[#1B1F27] hover:bg-[#302025] text-[#8A95A5] hover:text-[#FF5C5C] flex items-center justify-center transition-colors border border-[#2A303A] focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
                     >
-                      <i className="ri-delete-bin-line text-[13px]" aria-hidden="true" />
+                      <i className="ri-delete-bin-line text-[15px]" aria-hidden="true" />
                     </button>
                   </div>
                 </div>

@@ -13,12 +13,11 @@ export const VideoPlaceholder: React.FC<VideoPlaceholderProps> = ({ className = 
     >
       {/* Abstract animated gradient canvas */}
       <div
-        className="absolute inset-0 opacity-85 transition-opacity"
+        className="absolute inset-0 opacity-85 transition-opacity animate-[host-app-ambient-drift_16s_ease_infinite] motion-reduce:animate-none"
         style={{
           background:
             "radial-gradient(ellipse at 75% 20%, rgba(200, 178, 255, 0.22) 0%, transparent 60%), radial-gradient(ellipse at 25% 80%, rgba(223, 255, 0, 0.12) 0%, transparent 60%), radial-gradient(circle at 50% 50%, #151a24 0%, #090B0F 100%)",
           backgroundSize: "200% 200%",
-          animation: "host-app-ambient-drift 16s ease infinite",
         }}
       />
 

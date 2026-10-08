@@ -9,7 +9,8 @@ import { BagDrawer } from "./BagDrawer";
 import { VideoPlaceholder } from "./VideoPlaceholder";
 
 export interface HostAppProps {
-  viewModel: HostAppViewModel;
+  viewModel?: HostAppViewModel;
+  model?: HostAppViewModel;
   actions: HostAppActions;
   initialBagOpen?: boolean;
   className?: string;
@@ -17,12 +18,14 @@ export interface HostAppProps {
 
 export const HostApp: React.FC<HostAppProps> = ({
   viewModel,
+  model,
   actions,
   initialBagOpen = false,
   className = "",
 }) => {
   const [bagOpen, setBagOpen] = useState(initialBagOpen);
 
+  const vm = viewModel ?? model!;
   const {
     mode,
     title,
@@ -33,29 +36,30 @@ export const HostApp: React.FC<HostAppProps> = ({
     promotion,
     comments,
     banner,
-  } = viewModel;
+  } = vm;
 
   const pinnedItem = bag.find((item) => item.pinned) ?? null;
 
   return (
     <div
-      data-testid="host-app-phone"
+      data-testid="host-app"
+      data-mode={mode}
       aria-label="Simulated Shopee Live Host Screen"
-      className={`relative mx-auto w-full max-w-[390px] h-[844px] max-h-[100dvh] bg-[#090B0F] sm:border-[8px] sm:border-[#1C2028] sm:rounded-[44px] rounded-2xl border-2 border-[#1C2028] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden select-none font-sans ${className}`}
+      className={`relative mx-auto w-full min-w-[200px] max-w-[480px] h-[844px] max-h-[100dvh] bg-[#090B0F] sm:border-[8px] sm:border-[#1C2028] sm:rounded-[44px] rounded-2xl border-2 border-[#1C2028] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden select-none font-sans ${className}`}
     >
       {/* Permanent, Legible SIMULATED Tag Status Ribbon (Always Visible on the Phone) */}
-      <div className="relative z-40 bg-[#1A1726] border-b border-[#3E3456] px-3.5 py-1.5 flex items-center justify-between text-[11px] text-[#C8B2FF]">
+      <div className="relative z-40 bg-[#1A1726] border-b border-[#3E3456] px-2.5 sm:px-3.5 py-1.5 flex items-center justify-between text-[11px] text-[#C8B2FF]">
         <div
           data-testid="host-app-simulated-badge"
-          className="flex items-center gap-1.5 font-mono font-bold tracking-wider text-[10px] uppercase text-[#C8B2FF]"
+          className="flex items-center gap-1 sm:gap-1.5 font-mono font-bold tracking-wider text-[10px] uppercase text-[#C8B2FF] truncate"
         >
-          <i className="ri-flask-line text-[12px] text-[#C8B2FF]" aria-hidden="true" />
-          <span>SIMULATED SHOPEE LIVE</span>
+          <i className="ri-flask-line text-[12px] text-[#C8B2FF] shrink-0" aria-hidden="true" />
+          <span className="truncate">SIMULATED SHOPEE LIVE</span>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-mono text-[#CAD0DA]/80">
+        <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#CAD0DA] shrink-0 ml-1">
           <span className="tabular-nums">12:00</span>
-          <i className="ri-wifi-line text-[11px]" aria-hidden="true" />
-          <i className="ri-battery-fill text-[11px]" aria-hidden="true" />
+          <i className="ri-wifi-line text-[11px] hidden xs:inline" aria-hidden="true" />
+          <i className="ri-battery-fill text-[11px] hidden xs:inline" aria-hidden="true" />
         </div>
       </div>
 
@@ -63,7 +67,7 @@ export const HostApp: React.FC<HostAppProps> = ({
       {mode === "idle" && (
         <div
           data-testid="host-app-mode-idle"
-          className="relative flex-1 flex flex-col justify-between p-5 pt-7 bg-gradient-to-b from-[#13161C] to-[#090B0F] text-[#F5F7FC]"
+          className="relative flex-1 flex flex-col justify-between p-4 sm:p-5 pt-6 sm:pt-7 bg-gradient-to-b from-[#13161C] to-[#090B0F] text-[#F5F7FC] overflow-y-auto"
         >
           {/* Header */}
           <div>
@@ -78,7 +82,7 @@ export const HostApp: React.FC<HostAppProps> = ({
               )}
             </div>
 
-            <h2 className="text-[20px] font-bold leading-tight tracking-tight text-[#F5F7FC] mb-2">
+            <h2 className="text-[18px] sm:text-[20px] font-bold leading-tight tracking-tight text-[#F5F7FC] mb-2 break-words">
               {title}
             </h2>
             <p className="text-[12px] text-[#CAD0DA] leading-relaxed">
@@ -90,10 +94,10 @@ export const HostApp: React.FC<HostAppProps> = ({
           <ConditionBanner banner={banner} />
 
           {/* Bag Preview */}
-          <div className="my-auto rounded-2xl bg-[#13161C] border border-[#2A303A] p-4 shadow-sm">
+          <div className="my-auto rounded-2xl bg-[#13161C] border border-[#2A303A] p-3 sm:p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#2A303A]">
               <div className="flex items-center gap-2">
-                <i className="ri-shopping-bag-3-fill text-[#DFFF00] text-[18px]" />
+                <i className="ri-shopping-bag-3-fill text-[#DFFF00] text-[18px]" aria-hidden="true" />
                 <h3 className="text-[13px] font-semibold text-[#F5F7FC]">
                   Shop Bag Preview
                 </h3>
@@ -128,7 +132,7 @@ export const HostApp: React.FC<HostAppProps> = ({
                       <span
                         className={`shrink-0 font-mono ${
                           item.priceLabel === null
-                            ? "text-[#CAD0DA]/70 italic text-[11px]"
+                            ? "text-[#CAD0DA] italic text-[11px]"
                             : "text-[#DFFF00] font-semibold"
                         }`}
                       >
@@ -152,7 +156,8 @@ export const HostApp: React.FC<HostAppProps> = ({
             <button
               type="button"
               onClick={actions.onGoLive}
-              className="w-full py-3.5 px-4 rounded-xl bg-[#DFFF00] hover:bg-[#CBEA00] text-[#111407] font-bold text-[15px] tracking-wide shadow-lg transition-transform active:scale-[0.98] flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+              data-testid="host-app-go-live"
+              className="w-full min-h-[48px] py-3.5 px-4 rounded-xl bg-[#DFFF00] hover:bg-[#CBEA00] text-[#111407] font-bold text-[15px] tracking-wide shadow-lg transition-transform motion-reduce:transition-none active:scale-[0.98] flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
             >
               <i className="ri-broadcast-fill text-[18px]" aria-hidden="true" />
               <span>Go Live (SIMULATED)</span>
@@ -173,43 +178,44 @@ export const HostApp: React.FC<HostAppProps> = ({
           <VideoPlaceholder />
 
           {/* TOP OVERLAY BAR */}
-          <div className="relative z-20 pt-2 px-3 flex flex-col gap-1">
+          <div className="relative z-20 pt-2 px-2.5 sm:px-3 flex flex-col gap-1.5">
+            {/* Row 1: Room Title Pill & End Live Button */}
             <div className="flex items-center justify-between gap-1.5">
-              {/* Host Room Title & ID */}
-              <div className="flex items-center gap-2 min-w-0 bg-[#13161C]/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-[#2A303A]">
+              <div className="flex items-center gap-1.5 min-w-0 bg-[#13161C]/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-[#2A303A] flex-1">
                 <div className="w-5 h-5 rounded-full bg-[#DFFF00] text-[#111407] flex items-center justify-center font-bold text-[10px] shrink-0">
                   <i className="ri-user-star-fill" aria-hidden="true" />
                 </div>
-                <div className="min-w-0 pr-1">
-                  <span className="text-[11px] font-semibold text-[#F5F7FC] truncate block max-w-[100px]">
+                <div className="min-w-0 pr-1 flex-1">
+                  <span className="text-[11px] font-semibold text-[#F5F7FC] truncate block">
                     {title}
                   </span>
                 </div>
               </div>
 
-              {/* Viewers & Elapsed Time */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <ViewerPill viewers={viewers} />
+              {/* End Live Action (at least 44x44px touch target) */}
+              <button
+                type="button"
+                onClick={actions.onEndLive}
+                aria-label="End live broadcast"
+                data-testid="host-app-end"
+                className="min-h-[44px] min-w-[44px] px-3.5 py-1 rounded-full bg-[#302025]/90 hover:bg-[#FF5C5C] text-[#FF8585] hover:text-[#111407] border border-[#6B2A35] text-[12px] font-semibold transition-colors flex items-center justify-center shrink-0 focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+              >
+                End
+              </button>
+            </div>
 
-                {elapsedLabel && (
-                  <span
-                    data-testid="elapsed-label"
-                    className="px-2 py-1 rounded-full bg-[#13161C]/80 border border-[#2A303A] text-[11px] font-mono text-[#CAD0DA] tabular-nums"
-                  >
-                    {elapsedLabel}
-                  </span>
-                )}
+            {/* Row 2: Viewers & Elapsed Time */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <ViewerPill viewers={viewers} />
 
-                {/* End Live Action */}
-                <button
-                  type="button"
-                  onClick={actions.onEndLive}
-                  aria-label="End live broadcast"
-                  className="px-2.5 py-1 rounded-full bg-[#302025]/90 hover:bg-[#FF5C5C] text-[#FF8585] hover:text-[#111407] border border-[#6B2A35] text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+              {elapsedLabel && (
+                <span
+                  data-testid="elapsed-label"
+                  className="px-2 py-1 rounded-full bg-[#13161C]/80 border border-[#2A303A] text-[11px] font-mono text-[#CAD0DA] tabular-nums"
                 >
-                  End
-                </button>
-              </div>
+                  {elapsedLabel}
+                </span>
+              )}
             </div>
 
             {/* Condition Banner */}
@@ -220,7 +226,7 @@ export const HostApp: React.FC<HostAppProps> = ({
           </div>
 
           {/* BOTTOM INTERACTIVE ZONE */}
-          <div className="relative z-20 p-3 pb-5 flex flex-col justify-end gap-2.5">
+          <div className="relative z-20 p-2.5 sm:p-3 pb-5 flex flex-col justify-end gap-2 sm:gap-2.5">
             {/* Pinned Card (if an item is pinned) */}
             <PinnedCard item={pinnedItem} onUnpin={actions.onUnpin} />
 
@@ -229,13 +235,13 @@ export const HostApp: React.FC<HostAppProps> = ({
 
             {/* Host Bottom Controls Toolbar */}
             <div className="flex items-center justify-between gap-2 pt-1">
-              {/* Bag Trigger Button */}
+              {/* Bag Trigger Button (min 44x44px touch target) */}
               <button
                 type="button"
                 onClick={() => setBagOpen(true)}
                 aria-label={`Open shop bag (${bag.length} items)`}
                 data-testid="host-app-bag-button"
-                className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#13161C]/90 hover:bg-[#1B1F27] border border-[#39414D] text-[#F5F7FC] shadow-lg backdrop-blur-md transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+                className="relative min-h-[44px] min-w-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#13161C]/90 hover:bg-[#1B1F27] border border-[#39414D] text-[#F5F7FC] shadow-lg backdrop-blur-md transition-colors focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
               >
                 <i className="ri-shopping-bag-3-fill text-[#DFFF00] text-[17px]" />
                 <span className="text-[12px] font-semibold">Bag</span>
@@ -246,7 +252,7 @@ export const HostApp: React.FC<HostAppProps> = ({
 
               {/* Host Quick Status Indicator */}
               <div className="flex items-center gap-1 bg-[#13161C]/80 border border-[#2A303A] px-2.5 py-1.5 rounded-xl text-[11px] font-mono text-[#8A95A5]">
-                <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse motion-reduce:animate-none" />
                 <span>ON AIR</span>
               </div>
             </div>
@@ -268,17 +274,17 @@ export const HostApp: React.FC<HostAppProps> = ({
       {mode === "ended" && (
         <div
           data-testid="host-app-mode-ended"
-          className="relative flex-1 flex flex-col justify-between p-6 pt-9 bg-gradient-to-b from-[#13161C] to-[#090B0F] text-[#F5F7FC]"
+          className="relative flex-1 flex flex-col justify-between p-5 sm:p-6 pt-7 sm:pt-9 bg-gradient-to-b from-[#13161C] to-[#090B0F] text-[#F5F7FC] overflow-y-auto"
         >
           {/* Header */}
-          <div className="text-center pt-4">
+          <div className="text-center pt-2 sm:pt-4">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-[#211F2B] border border-[#44385C] text-[#C8B2FF] flex items-center justify-center mb-3 shadow-lg">
               <i className="ri-check-line text-[32px]" aria-hidden="true" />
             </div>
             <h2 className="text-[20px] font-bold text-[#F5F7FC]">
               Live Stream Ended
             </h2>
-            <p className="text-[12px] text-[#CAD0DA] mt-1 line-clamp-2 max-w-[280px] mx-auto">
+            <p className="text-[12px] text-[#CAD0DA] mt-1 line-clamp-2 max-w-[280px] mx-auto break-words">
               {title}
             </p>
           </div>
@@ -314,12 +320,12 @@ export const HostApp: React.FC<HostAppProps> = ({
             </div>
           </div>
 
-          {/* Return CTA */}
+          {/* Return CTA (at least 48px touch target) */}
           <div className="pt-2">
             <button
               type="button"
               onClick={actions.onGoLive}
-              className="w-full py-3 px-4 rounded-xl bg-[#252A34] hover:bg-[#303643] text-[#F5F7FC] font-semibold text-[14px] border border-[#39414D] transition-colors flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
+              className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-[#252A34] hover:bg-[#303643] text-[#F5F7FC] font-semibold text-[14px] border border-[#39414D] transition-colors flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-[#DFFF00]"
             >
               <i className="ri-arrow-go-back-line text-[16px]" aria-hidden="true" />
               <span>Back to Pre-Live Setup</span>
