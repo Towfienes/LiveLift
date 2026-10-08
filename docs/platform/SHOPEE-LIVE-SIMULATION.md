@@ -34,9 +34,13 @@ Shown on screen as switchable assumptions, never as silent behaviour.
 1. **A1.** Can the API control a live the host started in the Shopee app? The "not belong to you" error suggests ownership matters.
 2. **A2.** Does reading the session reveal which product is pinned? Without it, a pin made in the app can only be reported by hand.
 3. Does `start_session` put video on air, or does the host still stream from the app or OBS? Is the "showing item" the same thing as the pin viewers see?
-4. Can an individual without a business licence get an app with the Livestream permission?
+4. Can the team get a developer account at all? **Answered in part** (Open Platform Console, 2026-10-08). The *Shopee Seller* type accepts an ID number, but its identification step refuses a username that is not a **Mall Seller or Preferred Seller**: "You do not meet one of the criteria". Apps under it work for the owner's own shops only. The *Third-party Partner Platform* type needs a business registration number and a test account. Whether either type can hold the Livestream permission is still unknown.
 
 No call that lists live sessions was found, so LiveLift cannot discover a live started in the app. The operator enters its session ID.
+
+## Getting a developer account
+
+The *Shopee Seller* developer type is gated by the shop's tier (Mall or Preferred), not by the paperwork. A new or small shop does not qualify, and Shopee reviews tiers over time, so this cannot be forced before the competition. Realistic routes: a partner whose shop already is Mall or Preferred registers and runs LiveLift as their own in-house tool, or a registered business uses the *Third-party Partner Platform* type. Until one of them exists, the simulation is the demo and the real integration stays a documented plan.
 
 ## When a developer account is approved
 
