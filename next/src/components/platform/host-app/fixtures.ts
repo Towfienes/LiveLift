@@ -245,3 +245,126 @@ export const fixtureEnded: HostAppViewModel = {
   comments: FIXTURE_STANDARD_COMMENTS,
   banner: null,
 };
+
+export const FIXTURE_LONG_VIETNAMESE_ITEMS: HostAppBagItem[] = [
+  {
+    itemId: 301,
+    name: "Bộ Combo Chăm Sóc Da Toàn Diện Niacinamide 10% và Serum Phục Hồi Chuyên Sâu Tái Tạo Hàng Rào Bảo Vệ Ban Đêm Dung Tích 100ml Phiên Bản Giới Hạn",
+    priceLabel: "485.000 ₫",
+    initials: "BC",
+    pinned: true,
+  },
+  {
+    itemId: 302,
+    name: "Áo Sơ Mi Lụa Cổ Vest Phối Viền Ren Nữ Phong Cách Hàn Quốc Công Sở Trẻ Trung Dáng Rộng Thoáng Mát",
+    priceLabel: null, // "Price not set"
+    initials: "SM",
+    pinned: false,
+  },
+  {
+    itemId: 303,
+    name: "Nồi Chiên Không Dầu Điện Tử Cảm Ứng Đa Năng Dung Tích Cực Đại 12 Lít Công Nghệ Rapid Air Giảm 90% Dầu Mỡ",
+    priceLabel: "1.890.000 ₫",
+    initials: "NC",
+    pinned: false,
+  },
+];
+
+export const FIXTURE_LONG_ENGLISH_ITEMS: HostAppBagItem[] = [
+  {
+    itemId: 401,
+    name: "Ultra-Responsive Noise-Cancelling Bluetooth 5.4 Wireless Studio Over-Ear Headphones with Spatial Sound Architecture & High-Resolution Audio Driver",
+    priceLabel: "$129.99",
+    initials: "UR",
+    pinned: true,
+  },
+  {
+    itemId: 402,
+    name: "Ergonomic Multi-Angle Adjustable Aluminum Laptop Stand with Integrated Dual Silent Cooling Turbines and Cable Management Organizer",
+    priceLabel: null, // "Price not set"
+    initials: "ER",
+    pinned: false,
+  },
+  {
+    itemId: 403,
+    name: "Comprehensive Professional Hydroponic Indoor Herb Garden Starter Kit with Automated Full-Spectrum LED Lighting and Smart Water Reservoir Sensor",
+    priceLabel: "$89.50",
+    initials: "CP",
+    pinned: false,
+  },
+];
+
+export const FIXTURE_LONG_VIETNAMESE_COMMENTS: HostAppComment[] = [
+  {
+    id: "vn-1",
+    user: "nguyen_thi_bich_ngoc_official",
+    text: "Dạ shop ơi sản phẩm combo kem dưỡng B5 này da nhạy cảm dễ kích ứng có dùng chung với retinol được không ạ?",
+  },
+  {
+    id: "vn-2",
+    user: "le_hoang_phuong_thao_saigon",
+    text: "Mình vừa đặt đơn hàng số 889240 ship hoả tốc về quận 1 Bình Thạnh nhờ shop đóng gói cẩn thận giúp mình nhé!",
+  },
+  {
+    id: "vn-3",
+    user: "tran_dinh_quang_vinh_review",
+    text: "Voucher giảm 50k áp dụng cho tất cả sản phẩm trong giỏ hàng hay chỉ áp dụng cho sản phẩm đang ghim trên live vậy shop?",
+  },
+];
+
+export const FIXTURE_LONG_ENGLISH_COMMENTS: HostAppComment[] = [
+  {
+    id: "en-1",
+    user: "alexander_montgomery_tech",
+    text: "Does this wireless headphone pair support simultaneous dual-device Bluetooth multipoint connection and lossless AAC codec?",
+  },
+  {
+    id: "en-2",
+    user: "elizabeth_harrison_design",
+    text: "Is international priority shipping available to Singapore or Malaysia during this live broadcast with the current promo voucher?",
+  },
+  {
+    id: "en-3",
+    user: "christopher_vanderbilt_ca",
+    text: "Can you demonstrate the hinge stability and height adjustment mechanism on camera before I complete the checkout?",
+  },
+];
+
+export const fixtureLiveLongVietnamese: HostAppViewModel = {
+  mode: "live",
+  title: "Đại Tiệc Siêu Khuyến Mãi Săn Deal Chớp Nhoáng Công Nghệ Và Làm Đẹp Trực Tiếp 2026",
+  sessionId: 991201,
+  viewers: 18450,
+  elapsedLabel: "01:12:45",
+  bag: FIXTURE_LONG_VIETNAMESE_ITEMS,
+  promotion: {
+    name: "Flash Sale Đại Tiệc Mua Sắm Siêu Rẻ 20:30",
+    status: "active",
+    countdownLabel: "kết thúc sau 03:45",
+  },
+  comments: FIXTURE_LONG_VIETNAMESE_COMMENTS,
+  banner: {
+    tone: "info",
+    text: "Đã kết nối bàn điều khiển SIMULATED LiveLift. Tín hiệu phát sóng ổn định.",
+  },
+};
+
+export const fixtureLiveLongEnglish: HostAppViewModel = {
+  mode: "live",
+  title: "Global Flagship Technology & Lifestyle Exclusive Live Stream Showcase Demonstration 2026",
+  sessionId: 991202,
+  viewers: 24680,
+  elapsedLabel: "00:48:30",
+  bag: FIXTURE_LONG_ENGLISH_ITEMS,
+  promotion: {
+    name: "Worldwide Tech Prime Deal Showcase 21:00",
+    status: "active",
+    countdownLabel: "ends in 05:22",
+  },
+  comments: FIXTURE_LONG_ENGLISH_COMMENTS,
+  banner: {
+    tone: "info",
+    text: "Connected to SIMULATED Shopee Live broadcast environment. All controls responsive.",
+  },
+};
+
