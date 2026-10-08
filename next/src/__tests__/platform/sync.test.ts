@@ -3,7 +3,7 @@ import { SCENARIO_START_MS, applyCommand, createScenarioSession, currentPlan } f
 import type { Session } from "@/contracts";
 import {
   acceptedReason, catalogFromProducts, createShopeeLiveSim, diffSnapshots, hostAct, importableItems, inboundActions, initialSyncState,
-  ongoingSession, pinFromLiveLift, pollPlatform, productFromItem, reconcileOutbound, reportCommand, schedulePromotions,
+  linkSession, ongoingSession, pinFromLiveLift, pollPlatform, productFromItem, reconcileOutbound, reportCommand, schedulePromotions,
   syncCycle, unpinFromLiveLift, withAssumptions, withFault, type ShopeeLiveSim, type SyncState,
 } from "@/lib/platform";
 
@@ -261,5 +261,28 @@ describe("syncCycle: read first, then write, and never echo", () => {
     const out = syncCycle(planned, w.sim, w.sync, T);
     expect(out.calls).toEqual([]);
     expect(out.sim.ledger).toEqual([]);
+  });
+});
+
+describe("resuming a live LiveLift opened", () => {
+  it("does not retry going live every cycle when another live is already on air", () => {
+    const session = started();
+    const w = world(session);
+    const hosted = hostAct(w.sim, T, { type: "start_live", title: "Host's own live" });
+    const first = syncCycle(session, hosted.sim, w.sync, T);
+    expect(first.calls.map((c) => [c.endpoint, c.ok])).toContainEqual(["start_session", false]);
+    const again = syncCycle(session, first.sim, first.sync, T + 1000);
+    expect(again.calls).toEqual([]);
+  });
+
+  it("a live linked by hand is the host's: LiveLift never resumes starting it", () => {
+    const session = started();
+    const w = world(session);
+    const opened = syncCycle(session, { ...w.sim, catalog: [] }, w.sync, T);
+    expect(opened.sync.openedByLiveLift).toBe(true);
+    const linked = linkSession(opened.sync, opened.sync.providerSessionId!);
+    expect(linked).toMatchObject({ openedByLiveLift: false, last: null });
+    const retry = syncCycle(session, { ...opened.sim, catalog: w.sim.catalog }, linked, T + 1000);
+    expect(retry.calls.map((c) => c.endpoint)).not.toContain("start_session");
   });
 });

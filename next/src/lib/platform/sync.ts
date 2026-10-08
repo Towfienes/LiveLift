@@ -34,6 +34,8 @@ export interface ProductLink {
 export interface SyncState {
   /** The platform's live that this show is tied to. null until one is opened or linked. */
   providerSessionId: number | null;
+  /** True when LiveLift opened that live itself (create_session). A live linked by hand is the host's, never assumed ours. */
+  openedByLiveLift: boolean;
   links: ProductLink[];
   /** What LiveLift last read. The next read is compared with this. */
   last: PlatformSnapshot | null;
@@ -60,7 +62,7 @@ export function catalogFromProducts(products: readonly ProductSnapshot[], links:
 }
 
 export function initialSyncState(session: Pick<Session, "products">): SyncState {
-  return { providerSessionId: null, links: linkProducts(session.products), last: null, promotions: {}, promotionRefused: {}, problem: null };
+  return { providerSessionId: null, openedByLiveLift: false, links: linkProducts(session.products), last: null, promotions: {}, promotionRefused: {}, problem: null };
 }
 
 /** A platform item that LiveLift has no product for: shown as an offer to import, never imported silently. */
@@ -213,7 +215,7 @@ export function reconcileOutbound(sim: ShopeeLiveSim, session: Session, syncIn: 
     if (sync.providerSessionId === null) {
       const created = step("create_session", { title: session.title }, "The show started: open a live on Shopee");
       if (created && typeof created.session_id === "number") {
-        sync = { ...sync, providerSessionId: created.session_id };
+        sync = { ...sync, providerSessionId: created.session_id, openedByLiveLift: true };
         createdNow = true;
       }
     }
@@ -221,8 +223,11 @@ export function reconcileOutbound(sim: ShopeeLiveSim, session: Session, syncIn: 
       const sid = sync.providerSessionId;
       const have = new Set((sync.last?.itemIds ?? []) as number[]);
       const missing = createdNow ? wanted : wanted.filter((w) => !have.has(w.item_id));
-      if (missing.length > 0) step("add_item_list", { session_id: sid, item_list: missing }, `Load ${missing.length} product${missing.length === 1 ? "" : "s"} from the run of show`);
-      if (createdNow) step("start_session", { session_id: sid }, "Go live");
+      const loaded = missing.length > 0 && step("add_item_list", { session_id: sid, item_list: missing }, `Load ${missing.length} product${missing.length === 1 ? "" : "s"} from the run of show`) !== null;
+      // A live LiveLift opened whose product load was refused is resumed once the load succeeds. Never a live it did not
+      // open, never one that ended, and never every cycle: only when this cycle's load is what was missing.
+      const resume = loaded && sync.openedByLiveLift && sync.last?.status === "created";
+      if (createdNow || resume) step("start_session", { session_id: sid }, createdNow ? "Go live" : "Products loaded: go live");
     }
   } else if (session.lifecycle === "ended" && sync.providerSessionId !== null && sync.last?.status === "ongoing") {
     step("end_session", { session_id: sync.providerSessionId }, "The show ended: end the live on Shopee");
@@ -300,6 +305,9 @@ export function pinFromLiveLift(sim: ShopeeLiveSim, syncIn: SyncState, productId
     ? { sim: based.sim, sync: based.sync, outcome: { ok: true, requestId: pin.envelope.request_id } }
     : fail(based.sim, based.sync, "api_error", pin.envelope.message, pin.envelope.request_id);
 }
+
+/** Tie the show to a live the host started in the app, by the session ID the host reads out. It is the host's live. */
+export const linkSession = (sync: SyncState, sessionId: number): SyncState => ({ ...sync, providerSessionId: sessionId, openedByLiveLift: false, last: null });
 
 /** Unpinning has no documented endpoint, so the answer is always the operator-assisted path. */
 export function unpinFromLiveLift(): PinOutcome {

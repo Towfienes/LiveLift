@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Session } from "@/contracts";
 import { formatClock, type CommandBody } from "@/lib/domain";
 import {
-  SIM_SHOP_ID, callJson, hostAct, ongoingSession, pinAndRecord, plannedProductIds, syncCycle,
+  SIM_SHOP_ID, callJson, hostAct, linkSession, ongoingSession, pinAndRecord, plannedProductIds, syncCycle,
   unpinFromLiveLift, withAssumptions, withFault, type HostAction, type LedgerEntry, type ShopeeFault,
 } from "@/lib/platform";
 import { Button } from "@/components/ui";
@@ -121,7 +121,7 @@ export function PlatformSyncPanel({
       notice("link_invalid", "Enter the session ID shown in the Shopee app.");
       return;
     }
-    update((w) => ({ ...w, sync: { ...w.sync, providerSessionId: id, last: null } }));
+    update((w) => ({ ...w, sync: linkSession(w.sync, id) }));
     setLinkText("");
     if (latest().auto) runCycle(nowMs);
   };

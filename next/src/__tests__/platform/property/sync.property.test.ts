@@ -171,7 +171,7 @@ describe("seeded SIMULATED bridge properties", () => {
     expect(healed.commands).toHaveLength(1);
   });
 
-  it.fails("P03: a created live never starts after a refused product load is repaired", () => {
+  it("P03: a created live never starts after a refused product load is repaired", () => {
     const w = world();
     const refused = syncCycle(w.session, { ...w.sim, catalog: [] }, w.sync, T);
     expect(refused.calls.find((call) => call.endpoint === "add_item_list")?.ok).toBe(false);
