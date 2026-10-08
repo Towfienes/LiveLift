@@ -330,8 +330,23 @@ export function reportCommand(
   return { type: "report_manual_action", action, productId, report, reason };
 }
 
-export const acceptedReason = (requestId: string): string => `Shopee (SIMULATED) accepted the request · request_id ${requestId}`;
-export const refusedReason = (message: string, requestId?: string): string => `Shopee (SIMULATED) refused: ${message}${requestId ? ` · request_id ${requestId}` : ""}`;
+const ACCEPTED_PREFIX = "Shopee (SIMULATED) accepted the request";
+const REFUSED_PREFIX = "Shopee (SIMULATED) refused";
+/** How a record of something the host did in the app begins. */
+export const OBSERVED_PREFIX = "Provider observed (SIMULATED)";
+
+export const acceptedReason = (requestId: string): string => `${ACCEPTED_PREFIX} · request_id ${requestId}`;
+export const refusedReason = (message: string, requestId?: string): string => `${REFUSED_PREFIX}: ${message}${requestId ? ` · request_id ${requestId}` : ""}`;
+
+/** Where a pin/unpin record came from, read back from the reason the bridge wrote. Anything else is the operator's own report. */
+export type RecordSource = "request_accepted" | "request_refused" | "provider_observed" | "operator_reported";
+
+export function recordSource(reason: string | null): RecordSource {
+  if (reason?.startsWith(ACCEPTED_PREFIX)) return "request_accepted";
+  if (reason?.startsWith(REFUSED_PREFIX)) return "request_refused";
+  if (reason?.startsWith(OBSERVED_PREFIX)) return "provider_observed";
+  return "operator_reported";
+}
 
 // ---- Inbound ---------------------------------------------------------------------------------------------------------
 
@@ -375,11 +390,11 @@ export function inboundActions(session: Session, sync: SyncState, observations: 
         if (o.to.state === "item") {
           const link = linkOfItem(sync, o.to.itemId);
           if (!link) { out.push({ kind: "notice", code: "unknown_item", summary: `The host pinned an item LiveLift has no product for (item ${o.to.itemId}). Import it from the catalog to track it.` }); break; }
-          out.push({ kind: "command", command: reportCommand(session, "pin_product", link.productId, "performed", "Provider observed (SIMULATED): the platform now shows this item"), summary: `Host pinned ${nameOf(link.productId)} on the platform` });
+          out.push({ kind: "command", command: reportCommand(session, "pin_product", link.productId, "performed", `${OBSERVED_PREFIX}: the platform now shows this item`), summary: `Host pinned ${nameOf(link.productId)} on the platform` });
         } else if (o.from.state === "item") {
           const link = linkOfItem(sync, o.from.itemId);
           if (!link) break;
-          out.push({ kind: "command", command: reportCommand(session, "unpin_product", link.productId, "performed", "Provider observed (SIMULATED): the platform no longer shows this item"), summary: `Host unpinned ${nameOf(link.productId)} on the platform` });
+          out.push({ kind: "command", command: reportCommand(session, "unpin_product", link.productId, "performed", `${OBSERVED_PREFIX}: the platform no longer shows this item`), summary: `Host unpinned ${nameOf(link.productId)} on the platform` });
         }
         break;
       }

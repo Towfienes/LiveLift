@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@/contracts";
 import { formatClock, type CommandBody } from "@/lib/domain";
 import {
-  SIM_SHOP_ID, acceptedReason, hostAct, ongoingSession, plannedProductIds, pinFromLiveLift, refusedReason, reportCommand, syncCycle,
+  SIM_SHOP_ID, hostAct, ongoingSession, pinAndRecord, plannedProductIds, syncCycle,
   unpinFromLiveLift, withAssumptions, withFault, type HostAction, type LedgerEntry, type ShopeeFault,
 } from "@/lib/platform";
 import { Button } from "@/components/ui";
