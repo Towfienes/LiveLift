@@ -371,11 +371,12 @@ export function callShopee(sim: ShopeeLiveSim, nowMs: number, endpoint: ShopeeEn
       : { error: "", message: "", request_id: requestIdFor(draft.seq), response: outcome.response };
   // A failed call must leave the platform untouched, so the rejected draft's changes are discarded.
   const base = "error" in outcome ? { ...sim, seq: draft.seq } : draft;
+  // The log keeps its own copies: a caller reusing its objects must never rewrite what was sent or answered.
   const next: ShopeeLiveSim = {
     ...base,
     ledger: append(base, {
       kind: "api", seq: draft.seq, atMs: nowMs, endpoint, path: ENDPOINT_PATH[endpoint], basis: ENDPOINT_BASIS[endpoint],
-      readOnly: READ_ONLY_ENDPOINTS.includes(endpoint), params, envelope,
+      readOnly: READ_ONLY_ENDPOINTS.includes(endpoint), params: structuredClone(params), envelope: structuredClone(envelope),
     }),
   };
   return { sim: next, envelope, ok: envelope.error === "" };
