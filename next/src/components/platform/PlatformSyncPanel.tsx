@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@/contracts";
 import { formatClock, type CommandBody } from "@/lib/domain";
 import {
-  SIM_SHOP_ID, hostAct, ongoingSession, pinAndRecord, plannedProductIds, syncCycle,
+  SIM_SHOP_ID, callJson, hostAct, ongoingSession, pinAndRecord, plannedProductIds, syncCycle,
   unpinFromLiveLift, withAssumptions, withFault, type HostAction, type LedgerEntry, type ShopeeFault,
 } from "@/lib/platform";
 import { Button } from "@/components/ui";
@@ -49,7 +49,7 @@ function LedgerRow({ entry, tz }: { entry: LedgerEntry; tz: string }): React.Rea
           </span>
         </summary>
         <pre className="mt-1 p-2 rounded-[8px] bg-[#13161C] text-[13px] text-[#CAD0DA] overflow-x-auto whitespace-pre-wrap break-all">
-          {`POST ${entry.path}\n${JSON.stringify(entry.params)}\n→ ${JSON.stringify(entry.envelope)}`}
+          {callJson(entry)}
         </pre>
       </details>
     </li>
