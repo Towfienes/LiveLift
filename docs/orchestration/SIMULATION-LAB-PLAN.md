@@ -27,6 +27,16 @@ Acceptance, all required:
 5. **Quality gates.** typecheck, lint, all tests, `npm run build` green. A browser acceptance run against the production build passes on three viewports (1920×1080, 1280×720, 390×844) with **0 axe violations** and no layout shift when the phone updates. `prefers-reduced-motion` is respected.
 6. **Media for the poster and slides**, produced from the real app: 6 stills (2560×1440) and one 60–90 s recording, in `docs/img/platform/` with a README saying what each shows.
 
+## 1b. Competition deliverables (from the AISC'26 round-2 page and the organisers' template)
+
+| Item | Spec |
+|---|---|
+| Slide | Due 2026-10-19. PDF, PPT or PPTX, at most 25 MB. File name `<team id>-<team name>_Slide`, for example `AISC26-0039-LiveLift_Slide.pdf`. |
+| Poster | Due 2026-10-25. Organisers' template: fixed red header and footer art, **content area 55 cm × 60 cm** (guide ratio 1100 × 1200 px). Backdrop PNG and logos supplied (white and colour). Do not alter header, footer or logos. File name assumed to follow the slide pattern; confirm on the page. |
+| Confirmation of participation | Done 2026-10-08; editable until 2026-10-14 23:59. |
+
+The template files are the organisers' artwork. Keep them out of this repository; the operator holds them.
+
 ## 2. Who does what, and why
 
 Evidence for the split. In this repository, every commit that carries a co-author trailer carries a Claude one (63 trailers, Opus 5, Opus 5.5, Sonnet 5.5, Fable 5), so Claude Code wrote the product and knows its invariants. Codex produced the gap study (`docs/research/codex-gap-study/`): bounded, claim-disciplined, strong on "NOT FOUND" honesty. Antigravity produced the architecture study and the screenshot set (`docs/research/antigravity/`). Outside the repo, secondary reviews (blogs, not official, they disagree in places) say: Claude Code is favoured for planning and multi-file refactors and has the stronger subagent ecosystem; Codex is favoured for scoped, sandboxed, repetitive work and as a second-model reviewer; Antigravity's strength is driving a real browser to verify its own UI work and publishing screenshots and recordings, with reported instability and security caveats while in preview. Treat those as leads, and judge by the diffs you get back.
