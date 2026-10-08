@@ -38,7 +38,8 @@ describe("the Platform Lab page", () => {
     mount();
     expect(within(screen.getByTestId("lab-desk")).getByText(/Pin on SIMULATED Shopee/)).toBeTruthy();
     expect(screen.getByTestId("lab-wire").textContent).toContain("SIMULATED Shopee");
-    expect(screen.getByTestId("host-app").textContent).toContain("SIMULATED");
+    expect(screen.getByRole("region", { name: "Host's Shopee app (SIMULATED)" })).toContainElement(screen.getByTestId("host-app-phone"));
+    expect(screen.getByTestId("host-app-simulated-badge").textContent).toMatch(/SIMULATED/);
     expect(screen.getByTestId("environment-badge-simulated")).toBeTruthy();
     expect(screen.getByTestId("lab-run-note").textContent).toMatch(/nothing is saved/);
     const strip = screen.getByTestId("assumptions");
@@ -54,7 +55,7 @@ describe("the Platform Lab page", () => {
     fireEvent.click(screen.getByTestId("director-step"));
     expect(screen.getByTestId("director-caption").textContent).toMatch(/LiveLift opens a live on SIMULATED Shopee.*20:12 flash sale/);
     expect(screen.getAllByTestId("wire-call").map((n) => n.getAttribute("data-endpoint"))).toEqual(["create_session", "add_item_list", "start_session", "create_promotion"]);
-    expect(screen.getByTestId("host-app").getAttribute("data-mode")).toBe("live");
+    expect(screen.getByTestId("host-app-mode-live")).toBeTruthy();
     stepAll();
     expect(screen.getByTestId("director-progress").textContent).toBe(`Step ${DIRECTOR_STEPS.length} of ${DIRECTOR_STEPS.length}`);
     expect(digest()).toBe(STORY_DIGEST);
@@ -81,11 +82,25 @@ describe("the Platform Lab page", () => {
   it("the host's pin on the phone is recorded by LiveLift as Provider observed (SIMULATED)", () => {
     mount();
     fireEvent.click(screen.getByTestId("lab-start"));
-    fireEvent.click(screen.getByTestId("host-app-pin-100002"));
-    expect(screen.getByTestId("host-app-pinned").textContent).toContain("Cargo Pants");
+    fireEvent.click(screen.getByTestId("host-app-bag-button"));
+    fireEvent.click(within(screen.getByTestId("bag-drawer")).getByRole("button", { name: "Pin Cargo Pants" }));
+    expect(screen.getByTestId("pinned-card").textContent).toContain("Cargo Pants");
     const observed = screen.getByTestId("lab-records").querySelector('[data-source="provider_observed"]');
     expect(observed?.textContent).toContain("Provider observed (SIMULATED)");
-    expect(screen.getAllByTestId("wire-record").map((n) => n.getAttribute("data-source"))).toContain("provider_observed");
+    // On the wire: the host's pin on the host lane, then the read that noticed it, then the record it led to.
+    const rows = within(screen.getByTestId("wire-rows")).getAllByRole("listitem");
+    const record = rows.findIndex((n) => n.getAttribute("data-source") === "provider_observed");
+    expect(rows[record - 1].getAttribute("data-endpoint")).toBe("get_session_detail");
+    expect(rows.slice(0, record).some((n) => n.getAttribute("data-testid") === "wire-host")).toBe(true);
+  });
+
+  it("the phone's End ends the host's live, and the desk and the wire follow", () => {
+    mount();
+    fireEvent.click(screen.getByTestId("lab-start"));
+    fireEvent.click(screen.getByRole("button", { name: "End live broadcast" }));
+    expect(screen.getByTestId("host-app-mode-ended")).toBeTruthy();
+    expect(screen.getAllByTestId("wire-host").at(-1)?.textContent).toMatch(/Ended the live/);
+    expect(screen.getByTestId("lab-notices").textContent).toMatch(/The live ended on the platform/);
   });
 
   it("a call opens to show its JSON", () => {
