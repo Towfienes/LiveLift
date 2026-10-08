@@ -10,15 +10,10 @@ import {
 import { Button } from "@/components/ui";
 import { Signal } from "@/components/ops/StatusChips";
 import { CapabilityTable } from "./CapabilityTable";
+import { labCopy } from "./lab/labCopy";
 import { addNotices, usePlatformWorld } from "./usePlatformWorld";
 
-const FAULT_LABEL: Record<ShopeeFault | "none", string> = {
-  none: "Normal",
-  token_expired: "Authorisation expired",
-  region_unsupported: "Region not supported",
-  rate_limited: "Rate limited",
-  server_error: "Shopee server error",
-};
+const FAULT_LABEL = labCopy.en.faults;
 
 const card = "rounded-[10px] bg-[#0F1218] border border-[#232935] p-3";
 const label = "text-[13px] font-semibold tracking-[1.2px] uppercase text-[#AEB7C5]";
@@ -45,7 +40,7 @@ function LedgerRow({ entry, tz }: { entry: LedgerEntry; tz: string }): React.Rea
           <span className="font-mono">{entry.endpoint}</span>{" "}
           <span className={failed ? "text-[#F4A4A4]" : "text-[#DFFF00]"}>{failed ? `${entry.envelope.error}: ${entry.envelope.message}` : "OK"}</span>{" "}
           <span className={entry.basis === "documented" ? "text-[#B4C6DD] text-[13px]" : "text-[#F6C875] text-[13px]"}>
-            {entry.basis === "documented" ? "shape from Shopee's page" : "shape inferred"}
+            {labCopy.en.wire.basis[entry.basis]}
           </span>
         </summary>
         <pre className="mt-1 p-2 rounded-[8px] bg-[#13161C] text-[13px] text-[#CAD0DA] overflow-x-auto whitespace-pre-wrap break-all">
