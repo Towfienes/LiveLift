@@ -2,31 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@/contracts";
-import { catalogFromProducts, createShopeeLiveSim, initialSyncState, type ShopeeLiveSim, type SyncState } from "@/lib/platform";
+import { freshWorld, type PlatformWorld } from "@/lib/platform";
 
-export interface PlatformNotice {
-  id: number;
-  atMs: number;
-  code: string;
-  summary: string;
-}
-
-/** Everything the rehearsal's simulated platform knows, kept beside (never inside) the show's own record. */
-export interface PlatformWorld {
-  sim: ShopeeLiveSim;
-  sync: SyncState;
-  notices: PlatformNotice[];
-  nextNoticeId: number;
-  auto: boolean;
-}
+export { addNotices, freshWorld, type PlatformNotice, type PlatformWorld } from "@/lib/platform";
 
 const KEY = (sessionId: string): string => `livelift.platformSim.v1.${sessionId}`;
-const NOTICE_LIMIT = 20;
-
-export function freshWorld(session: Pick<Session, "products">): PlatformWorld {
-  const sync = initialSyncState(session);
-  return { sim: createShopeeLiveSim({ catalog: catalogFromProducts(session.products, sync.links) }), sync, notices: [], nextNoticeId: 1, auto: true };
-}
 
 function isWorld(value: unknown): value is PlatformWorld {
   const w = value as Partial<PlatformWorld> | null;
@@ -50,13 +30,6 @@ function save(sessionId: string, world: PlatformWorld): void {
   } catch {
     // Storage can be blocked or full. The rehearsal keeps working from memory; it just will not survive a reload.
   }
-}
-
-export function addNotices(world: PlatformWorld, atMs: number, items: Array<{ code: string; summary: string }>): PlatformWorld {
-  if (items.length === 0) return world;
-  let id = world.nextNoticeId;
-  const added = items.map((n) => ({ id: id++, atMs, ...n }));
-  return { ...world, notices: [...added.reverse(), ...world.notices].slice(0, NOTICE_LIMIT), nextNoticeId: id };
 }
 
 export function usePlatformWorld(session: Pick<Session, "id" | "products">): {
