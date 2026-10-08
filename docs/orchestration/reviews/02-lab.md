@@ -1,5 +1,10 @@
 # WP3b: Platform Lab adversarial review and browser acceptance
 
+Round-3 housekeeping: this review and its exact output remain historical.
+The oversized browser JSON was removed; the three linked frames now show the
+fresh integrated build. Current results and compact diagnostics are in
+[03-lab-regression.md](03-lab-regression.md).
+
 Reviewed 2026-10-08 on `agent/codex/wp3b-acceptance`, created from
 `origin/claude/youthful-galileo-92o0nz` at
 `f3b1dd64081cf9e79179bbd100cf870385ac363c`. This audits **SIMULATED Shopee**;
@@ -338,7 +343,8 @@ journeys rather than stopping at the first defect.
 Attached artifacts:
 
 - [Exact browser stdout/stderr](02-lab-browser-output.txt)
-- [Structured results, axe nodes/incomplete checks, layout boxes and focus](02-lab-browser/results.json)
+- Structured JSON removed in round 3; see the compact diagnostics in
+  [03-lab-regression.md](03-lab-regression.md).
 - [1920×1080 EN](02-lab-browser/1920x1080-run1-state6.png)
 - [1280×720 VI/Presenter](02-lab-browser/1280x720-run2-state6.png)
 - [390×844 VI/Presenter](02-lab-browser/390x844-run2-state6.png)

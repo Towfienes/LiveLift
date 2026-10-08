@@ -183,19 +183,30 @@ describe("seeded SIMULATED bridge properties", () => {
     expect(ongoingSession(retry.sim)?.sessionId).toBe(retry.sync.providerSessionId);
   });
 
-  it.fails("P04: an app live remains ongoing after the show ends because opening another live hid the link control", () => {
+  it("P04: an unlinked host live stays ongoing at show end and LiveLift discloses the manual end once", () => {
     const w = world();
     const hosted = hostAct(w.sim, T, { type: "start_live", title: "Synthetic existing app live" });
     expect(hosted.ok).toBe(true);
+    const host = ongoingSession(hosted.sim)!;
     const first = syncCycle(w.session, hosted.sim, w.sync, T);
     expect(first.calls.find((call) => call.endpoint === "start_session")?.ok).toBe(false);
+    expect(first.sync.providerSessionId).not.toBe(host.sessionId);
     const ended = applyCommand(w.session, { type: "end_live", nowMs: T });
     expect(ended.receipt.outcome).toBe("committed");
     const result = syncCycle(ended.session, first.sim, first.sync, T);
-    expect(ongoingSession(result.sim)).toBeNull();
+    expect(ongoingSession(result.sim)).toEqual(host);
+    expect(result.calls).toEqual([]);
+    expect(result.commands).toEqual([]);
+    expect(result.sync.problem).toMatch(/SIMULATED Shopee.*nothing to end.*end it there/);
+    expect(result.notices).toEqual([{ code: "platform_problem", summary: result.sync.problem }]);
+    const repeated = syncCycle(ended.session, result.sim, result.sync, T);
+    expect(repeated.calls).toEqual([]);
+    expect(repeated.notices).toEqual([]);
+    expect(repeated.sync.problem).toBe(result.sync.problem);
+    expect(ongoingSession(repeated.sim)).toEqual(host);
   });
 
-  it.fails("P05: provider-observed host pins are emitted as performed without an accepted mutation request id", () => {
+  it("P05: a performed provider observation carries its SIMULATED source and no outbound request id", () => {
     const w = linked();
     const productId = currentPlan(w.session).cues.find((cue) => cue.action === "pin_product")!.productId!;
     const itemId = w.sync.links.find((link) => link.productId === productId)!.itemId;
@@ -204,7 +215,9 @@ describe("seeded SIMULATED bridge properties", () => {
     const result = syncCycle(w.session, hosted.sim, w.sync, T);
     expect(result.commands).toHaveLength(1);
     const command = result.commands[0];
-    expect(command).toMatchObject({ report: "performed" });
-    expect("reason" in command && command.reason).toContain("request_id");
+    expect(command).toMatchObject({ report: "performed", reason: expect.stringMatching(/^Provider observed \(SIMULATED\)/) });
+    expect("reason" in command && command.reason).not.toContain("request_id");
+    expect(result.calls).toEqual([]);
+    expect(result.reads.some((read) => read.endpoint === "get_session_detail" && read.error === "")).toBe(true);
   });
 });
