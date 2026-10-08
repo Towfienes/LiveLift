@@ -190,7 +190,8 @@ export function PlatformSyncPanel({
           )}
         </p>
         {sync.problem && <p className="text-[15px] text-[#F4A4A4] mt-1" data-testid="platform-problem">{sync.problem}</p>}
-        {live && !linked && (
+        {/* Any live LiveLift is not linked to, including when its own live could not start because this one was on air. */}
+        {live && live.sessionId !== sync.providerSessionId && (
           <div className="mt-2 flex items-center gap-2 flex-wrap">
             <label className="text-[15px] text-[#CAD0DA]" htmlFor="platform-link-id">A live is running in the app. Its session ID:</label>
             <input

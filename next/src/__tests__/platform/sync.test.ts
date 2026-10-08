@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SCENARIO_START_MS, applyCommand, createScenarioSession, currentPlan } from "@/lib/domain";
 import type { Session } from "@/contracts";
 import {
-  READ_LOG_LIMIT, acceptedReason, callShopee, catalogFromProducts, createShopeeLiveSim, freshWorld, logReads, readShopee, readsOf, diffSnapshots, hostAct, importableItems, inboundActions, initialSyncState,
+  NEVER_ON_AIR, READ_LOG_LIMIT, acceptedReason, callShopee, catalogFromProducts, createShopeeLiveSim, freshWorld, logReads, readShopee, readsOf, diffSnapshots, hostAct, importableItems, inboundActions, initialSyncState,
   linkSession, ongoingSession, pinFromLiveLift, pollPlatform, productFromItem, reconcileOutbound, reportCommand, schedulePromotions,
   syncCycle, unpinFromLiveLift, withAssumptions, withFault, type ShopeeLiveSim, type SyncState,
 } from "@/lib/platform";
@@ -330,5 +330,37 @@ describe("reads are traffic, kept in their own bounded log", () => {
 
   it("a read-only helper refuses an endpoint that changes the platform", () => {
     expect(() => readShopee(createShopeeLiveSim(), T, "start_session", {})).toThrow(/callShopee/);
+  });
+});
+
+describe("a live the host started first", () => {
+  function blocked() {
+    const session = started();
+    const w = world(session);
+    const hosted = hostAct(w.sim, T, { type: "start_live", title: "Host's own live" });
+    const first = syncCycle(session, hosted.sim, w.sync, T);
+    expect(first.sync.problem).toContain("Another livestream is ongoing");
+    return { session, first, hostLive: ongoingSession(hosted.sim)! };
+  }
+
+  it("at show end LiveLift says once that its live never went on air, and touches nothing it is not linked to", () => {
+    const { session, first, hostLive } = blocked();
+    const ended = applyCommand(session, { type: "end_live", nowMs: T + 1000 }).session;
+    const out = syncCycle(ended, first.sim, first.sync, T + 1000);
+    expect(out.calls).toEqual([]);
+    expect(out.notices).toEqual([{ code: "platform_problem", summary: NEVER_ON_AIR }]);
+    expect(ongoingSession(out.sim)?.sessionId).toBe(hostLive.sessionId);
+    const again = syncCycle(ended, out.sim, out.sync, T + 2000);
+    expect(again.notices).toEqual([]);
+  });
+
+  it("once the operator links the host's live, the show's end ends it", () => {
+    const { session, first, hostLive } = blocked();
+    const linked = syncCycle(session, first.sim, linkSession(first.sync, hostLive.sessionId), T + 500);
+    expect(linked.sync.last?.status).toBe("ongoing");
+    const ended = applyCommand(session, { type: "end_live", nowMs: T + 1000 }).session;
+    const out = syncCycle(ended, linked.sim, linked.sync, T + 1000);
+    expect(out.calls.map((c) => [c.endpoint, c.ok])).toEqual([["end_session", true]]);
+    expect(ongoingSession(out.sim)).toBeNull();
   });
 });

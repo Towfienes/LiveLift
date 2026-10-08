@@ -444,6 +444,10 @@ export const promotionWords = (sim: ShopeeLiveSim, nowMs: number): Array<{ id: n
 
 // ---- One full cycle --------------------------------------------------------------------------------------------------
 
+/** Said once when the show ends and the live LiveLift opened never started. */
+export const NEVER_ON_AIR =
+  "The live LiveLift opened never went on air on SIMULATED Shopee, so LiveLift has nothing to end. If a live is still running in the Shopee app, end it there.";
+
 export interface CycleResult {
   sim: ShopeeLiveSim;
   sync: SyncState;
@@ -505,6 +509,11 @@ export function syncCycle(session: Session, simIn: ShopeeLiveSim, syncIn: SyncSt
     if (out.blocked) notices.push({ code: "promotion_refused", summary: `Shopee refused the promotion: ${out.blocked.message}. It will not be retried until you ask.` });
   }
 
+  // The live LiveLift opened never went on air (another live held the account, most likely). LiveLift cannot find or end
+  // a live it is not linked to, so it says so plainly, once, and leaves it to the operator.
+  if (session.lifecycle === "ended" && sync.providerSessionId !== null && sync.last?.status === "created") {
+    problem ??= NEVER_ON_AIR;
+  }
   if (problem !== null && problem !== sync.problem) notices.push({ code: "platform_problem", summary: problem });
   if (problem === null && sync.problem !== null) notices.push({ code: "platform_recovered", summary: "The platform is answering again." });
   return { sim, sync: { ...sync, problem }, commands, notices, calls, reads };

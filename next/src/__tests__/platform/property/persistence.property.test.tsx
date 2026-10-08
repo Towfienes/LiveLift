@@ -128,7 +128,7 @@ describe("SIMULATED platform persistence and caller properties", () => {
     expect(screen.getByTestId("platform-linked").textContent).toContain("ongoing");
   });
 
-  it.fails("P04: a refused duplicate start links a created session and removes the UI needed to link the existing host live", () => {
+  it("P04: a refused duplicate start links a created session and removes the UI needed to link the existing host live", () => {
     const planned = createScenarioSession("buffered");
     const mounted = render(<PlatformSyncPanel session={planned} nowMs={T} onRecord={() => undefined} />);
     fireEvent.click(screen.getByTestId("host-go-live"));
