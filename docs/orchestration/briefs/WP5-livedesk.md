@@ -1,5 +1,7 @@
 # WP5: Live Desk, the original LiveLift idea on top of the simulation
 
+> **Shared spec.** The work is split in two: [WP5a logic](WP5a-livedesk-logic.md) and [WP5b screens](WP5b-livedesk-ui.md). Each has its own brief, ownership and branch, and they meet at the contract in `next/src/lib/livedesk/types.ts`. Sections 4 to 6 below apply only to an agent doing the whole job alone.
+
 You are a coding agent working for the LiveLift team. Work alone and finish in one pass. Do not ask questions; where this brief is silent, choose the simplest option that keeps the evidence model and say so in your report.
 
 ## 0. Read first, in this order
