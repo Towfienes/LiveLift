@@ -30,7 +30,7 @@ async function diagnostics(origin) {
   const [home, simulator, health, ready] = await Promise.all([
     request(origin + '/'), request(origin + '/simulator'), request(origin + '/api/healthz', true), request(origin + '/api/readyz', true),
   ]);
-  const appOk = home.status === 200 && typeof home.body === 'string' && home.body.includes('Your LIVE desk') && home.body.includes('data-testid="truth-panel"');
+  const appOk = home.status === 200 && typeof home.body === 'string' && (home.body.includes('Your LIVE desk') || home.body.includes('data-testid="home-flow"')) && home.body.includes('data-testid="truth-panel"');
   const simOk = simulator.status === 200 && typeof simulator.body === 'string' && simulator.body.includes('All signals and evidence are simulated');
   const healthOk = health.status === 200 && health.body?.live === true;
   const readyOk = ready.status === 200 && ready.body?.ready === true;
