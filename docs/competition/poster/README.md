@@ -27,3 +27,11 @@ LiveLift là bàn điều hành đặt cạnh người dẫn live bán hàng. Op
 
 - Team members and advisors are not on the poster; only the representative is named.
 - A person should read the Vietnamese copy once before submission.
+
+## Bản v2 (09/10/2026): bố cục thẻ đánh số, nền nâu mực
+
+`AISC26-0039-LiveLift_Poster_v2.png` (4933×6634, 9,1 MB). Bố cục kiểu "thẻ đánh số 1 đến 11" theo mẫu nhóm gửi, màu Calm Studio trên nền nâu mực. Nguồn: `source/poster2.html`, phông Be Vietnam Pro đóng gói trong `source/fonts/`. Dựng lại: `node source/render2.mjs 4` (cần Playwright), rồi dán kết quả vào y = 1254 trên backdrop.
+- Đầu và chân trang của BTC giữ nguyên từng điểm ảnh (đã so sánh).
+- Chỉ dùng ảnh mockup thật (dữ liệu mô phỏng, có nhãn SIMULATED); không có minh họa hay người thật.
+- Con số lấy từ `docs/competition/FACT-SHEET.md`; mục 9 nói thẳng điều chưa biết.
+- Chưa có mã QR hay địa chỉ web vì chưa có trang công khai; thêm khi có. Chưa ghi email liên hệ cá nhân: nhóm quyết định có thêm không.
