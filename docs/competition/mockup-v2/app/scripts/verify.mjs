@@ -71,7 +71,7 @@ const text = (page) => page.evaluate(() => document.body.innerText);
       await ctx.close();
     }
   }
-  record("axe-core, 18 states x 2 themes x 2 viewports, zero violations", total === 0, total ? detail.slice(0, 8).join(" | ") : "0 violations");
+  record(`axe-core, ${SHOTS.length} states x 2 themes x 2 viewports, zero violations`, total === 0, total ? detail.slice(0, 8).join(" | ") : "0 violations");
 }
 
 // ---------- 2. whole story by keyboard only, network blocked ----------
@@ -165,6 +165,65 @@ const text = (page) => page.evaluate(() => document.body.innerText);
     JSON.stringify({ journeyOpen, journeyClosed, helpOpen, dark, presenter, recap, setup, reset, autoplayed }),
   );
   record("no console errors during keyboard checks", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
+// ---------- 3b. data journey: steps, rings, and covers nothing ----------
+{
+  const { ctx, page, errors } = await newPage();
+  await page.goto(`${url}?beat=16&motion=reduce`);
+  await settle(page, 700);
+  const layout = await page.evaluate(() => {
+    const panel = document.querySelector(".journey-panel")?.getBoundingClientRect();
+    const stage = document.querySelector(".stage")?.getBoundingClientRect();
+    const badges = [...document.querySelectorAll(".jbadge")].map((b) => b.textContent);
+    return { overlap: panel && stage ? panel.left < stage.right - 0.5 : true, badges };
+  });
+  await page.keyboard.press("ArrowRight");
+  const s1 = await page.evaluate(() => window.__lift.get().journeyStage);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await settle(page, 400);
+  const s4 = await page.evaluate(() => window.__lift.get().journeyStage);
+  const ring = await page.evaluate(() => !!document.querySelector(".journey-ring"));
+  record(
+    "journey: panel beside the desk (no overlap), six badges in place, → / ↓ step stages with a ring",
+    !layout.overlap && [...layout.badges].sort().join("") === "123456" && s1 === 1 && s4 === 4 && ring,
+    JSON.stringify({ overlap: layout.overlap, badges: [...layout.badges].sort().join(""), s1, s4, ring }),
+  );
+  record("no console errors in the journey", errors.length === 0, errors.slice(0, 3).join(" | "));
+  await ctx.close();
+}
+
+// ---------- 3c. presenter mode: type at least 14 px, body text at least 16 px (1920x1080) ----------
+{
+  const { ctx, page } = await newPage();
+  const small = [];
+  for (const beat of [3, 6, 9, 11, 15, 16]) {
+    await page.goto(`${url}?beat=${beat}&presenter=1&motion=reduce`);
+    await settle(page, 600);
+    const found = await page.evaluate(() => {
+      const BODY = ".cmt-text, .answer-lede, .flash > p, .unknowns li, .lede, .step-body > p, .dtable td, .journey-text, .chart-note, .confidence"; // running sentences; labels (prices, ticks, chips) need 14
+      const out = [];
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (!node.textContent.trim()) continue;
+        const el = node.parentElement;
+        if (!el || el.closest(".phone-screen, .sr-only, [aria-hidden='true'] .jbadge, noscript, style, script")) continue;
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        if (r.width === 0 || r.height === 0 || cs.visibility === "hidden" || cs.display === "none") continue;
+        const size = parseFloat(cs.fontSize);
+        const isBody = !!el.closest(BODY) && !el.closest(".chip, .row-kind, .outcome, .outcome-at, .sim-tag, .sample-tag, .jbadge");
+        if (size < 14 || (isBody && size < 16)) out.push(`${el.tagName.toLowerCase()}.${String(el.className).split(" ")[0]} ${size}px "${node.textContent.trim().slice(0, 24)}"`);
+      }
+      return out;
+    });
+    for (const f of found) small.push(`beat ${beat}: ${f}`);
+  }
+  record("presenter mode: no text under 14 px, body text at least 16 px (phone mock excluded)", small.length === 0, small.slice(0, 6).join(" | "));
   await ctx.close();
 }
 

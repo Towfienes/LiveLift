@@ -1,5 +1,6 @@
 // Screenshots of every key state, straight from dist/index.html over file:// (no server, no network).
 //   npm run shots                                  -> screens/, 1920x1080 at 4/3 scale = 2560x1440 PNG, both themes
+//   npm run shots:presenter                        -> screens/presenter/, same states in presenter mode (P) for slides
 //   node app/scripts/shoot.mjs --out DIR --vp 1280x720 --scale 1 --themes light,dark --only 02-
 // Chromium: $CHROMIUM_PATH, else /opt/pw-browsers/chromium*, else /usr/bin/chromium.
 import { chromium } from "playwright-core";
@@ -13,7 +14,8 @@ const arg = (name, def) => {
   const i = process.argv.indexOf(`--${name}`);
   return i > -1 ? process.argv[i + 1] : def;
 };
-const out = resolve(arg("out", join(root, "screens")));
+const presenter = process.argv.includes("--presenter");
+const out = resolve(arg("out", join(root, presenter ? "screens/presenter" : "screens")));
 const [vw, vh] = arg("vp", "1920x1080").split("x").map(Number);
 const scale = Number(arg("scale", String(2560 / 1920)));
 const themes = arg("themes", "light,dark").split(",");
@@ -52,6 +54,7 @@ export const SHOTS = [
   ["02-live-desk-keys", 6, { help: true }],
   ["03-recap", 15],
   ["04-data-journey", 16],
+  ["04-data-journey-stage-4", 16, { journeyStage: 4 }],
 ];
 
 async function main() {
@@ -66,7 +69,7 @@ async function main() {
     page.on("pageerror", (e) => problems.push(`${theme}: ${e.message}`));
     for (const [name, beat, extra] of SHOTS) {
       if (only && !name.startsWith(only)) continue;
-      await page.goto(`${url}?beat=${beat}&theme=${theme}`);
+      await page.goto(`${url}?beat=${beat}&theme=${theme}${presenter ? "&presenter=1" : ""}`);
       await page.evaluate(() => document.fonts.ready);
       if (extra) await page.evaluate((x) => window.__lift.set(x), extra);
       await page.mouse.move(vw - 2, vh - 2);
@@ -75,7 +78,7 @@ async function main() {
       await page.screenshot({ path: file });
       console.log(file.replace(root + "/", ""));
     }
-    if (!only || "00-style-tiles".startsWith(only)) {
+    if (!presenter && (!only || "00-style-tiles".startsWith(only))) {
       if (theme === themes[0]) {
         await page.goto(pathToFileURL(join(root, "dist/style-tiles.html")).href);
         await page.evaluate(() => document.fonts.ready);

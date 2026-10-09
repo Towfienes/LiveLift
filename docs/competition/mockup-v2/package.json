@@ -9,6 +9,7 @@
     "typecheck": "tsc -p app/tsconfig.json --noEmit",
     "check:story": "node app/scripts/check-story.mjs",
     "shots": "node app/scripts/shoot.mjs",
+    "shots:presenter": "node app/scripts/shoot.mjs --presenter",
     "verify": "node app/scripts/verify.mjs",
     "serve": "npx serve dist"
   },
