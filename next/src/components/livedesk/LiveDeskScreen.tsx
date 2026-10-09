@@ -467,7 +467,7 @@ function ClockControls({ view, actions }: { view: LiveDeskViewModel; actions: Li
 
 // ---- screen -------------------------------------------------------------------------------------------------------
 
-function DeskBody({ view, actions, mode, recap }: { view: LiveDeskViewModel; actions: LiveDeskActions; mode: Mode; recap: RecapViewModel | null }) {
+function DeskBody({ liveId, view, actions, mode, recap }: { liveId: string; view: LiveDeskViewModel; actions: LiveDeskActions; mode: Mode; recap: RecapViewModel | null }) {
   const { c, lang } = useShell();
   const next = proposed(view, "show_next");
   const suggested = mode === "suggest" && view.mode === "live" && next ? next.productId : null;
@@ -495,7 +495,7 @@ function DeskBody({ view, actions, mode, recap }: { view: LiveDeskViewModel; act
       {view.mode === "ended" && (
         <div className="ended-note">
           <span>{c.endedNote(view.clock.elapsedLabel)}</span>
-          <Link href={`/desk/${encodeURIComponent(recap?.liveId ?? "")}/recap`} className="btn btn-primary btn-sm" data-testid="desk-recap-link">{c.seeRecap}</Link>
+          <Link href={`/desk/${encodeURIComponent(liveId)}/recap`} className="btn btn-primary btn-sm" data-testid="desk-recap-link">{c.seeRecap}</Link>
         </div>
       )}
       <div className="desk-grid">
@@ -592,7 +592,7 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
       dockEnd={<AboutButton onOpen={() => setAbout(true)} />}
       onSpace={live ? () => (view.clock.running ? actions.onPause() : actions.onRun()) : undefined}
     >
-      <DeskBody view={view} actions={actions} mode={mode} recap={recap} />
+      <DeskBody liveId={liveId} view={view} actions={actions} mode={mode} recap={recap} />
       {about && <AboutDrawer view={view} liveId={liveId} onClose={() => setAbout(false)} />}
       {confirm && live && (
         <ConfirmEnd view={view} onCancel={() => setConfirm(false)} onConfirm={() => { setConfirm(false); setEnding(true); actions.onEndLive(); }} />
