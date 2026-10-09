@@ -12,7 +12,7 @@ header{height:72px;display:flex;align-items:center;gap:24px;padding:0 44px;borde
 .logo{font-size:22px;font-weight:500;letter-spacing:-.01em}.logo b{font-weight:500;color:var(--rust)}
 .modes{display:flex;gap:22px;margin-left:14px}.modes span{color:var(--soft);padding:6px 0;border-bottom:2px solid transparent}.modes span.on{color:var(--ink);border-color:var(--ink);font-weight:500}
 .sp{flex:1}.live{display:flex;gap:9px;align-items:center;font-weight:500}.live i{width:9px;height:9px;border-radius:50%;background:var(--rust)}.live span{color:var(--soft);font-weight:400}
-.stamp{font-size:12.5px;font-weight:500;color:var(--sim);background:var(--simbg);padding:5px 10px}
+.stamp{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--sim);border:1.5px solid var(--sim);padding:4px 9px;transform:rotate(-1.5deg)}
 .ctl{border:1px solid var(--ink);padding:9px 16px;font-weight:500;font-size:14px}.ctl.solid{background:var(--ink);color:var(--bg)}
 main{display:grid;grid-template-columns:350px 1fr 360px;gap:0;height:calc(900px - 72px)}
 .col{padding:26px 28px;display:flex;flex-direction:column;gap:26px;min-height:0;border-right:1px solid var(--rule)}.col:last-child{border-right:0}
@@ -20,7 +20,9 @@ main{display:grid;grid-template-columns:350px 1fr 360px;gap:0;height:calc(900px 
 .sect{border-top:1px solid var(--ink);padding-top:14px}
 .prod{display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid var(--rule)}
 .prod b{font-weight:500;font-size:17px;display:block}.prod small{color:var(--soft);font-size:13.5px}
-.prod.on{background:#F0E4DC;margin:0 -28px;padding:14px 28px;border-left:3px solid var(--rust)}
+.prod.on{position:relative;background:#FBF7EF;margin:14px 2px 12px;padding:16px 18px;border:1px solid var(--rule);box-shadow:0 1px 1px rgba(42,37,34,.08),0 6px 14px rgba(42,37,34,.10);transform:rotate(-.8deg)}
+.prod.on::before{content:"";position:absolute;top:-12px;left:50%;width:78px;height:22px;transform:translateX(-50%) rotate(-3deg);background:rgba(201,180,138,.78);box-shadow:0 1px 2px rgba(42,37,34,.2)}
+.prod.on .tag{color:var(--rust)}
 .tag{font-size:11.5px;letter-spacing:.12em;color:var(--rust);font-weight:600;display:block}
 .chips{display:flex;gap:6px;margin-top:6px}.chip{font-size:12px;background:var(--chip);color:var(--soft);padding:2px 8px}
 .btn{border:1px solid var(--ink);padding:8px 14px;font-weight:500;font-size:14px;white-space:nowrap}.btn.fill{background:var(--ink);color:var(--bg)}
@@ -38,12 +40,18 @@ main{display:grid;grid-template-columns:350px 1fr 360px;gap:0;height:calc(900px 
 .cm{padding:12px 0;border-bottom:1px solid var(--rule)}.who{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--soft)}.who b{color:var(--ink);font-weight:500;font-size:13.5px}
 .t{font-size:11.5px;background:var(--chip);color:var(--soft);padding:2px 7px}.t.p{background:#F0D9D0;color:var(--rust)}.t.m{background:#E8E0C8;color:var(--amber)}
 .cm p{margin-top:2px;font-size:15px}
-.phone{display:flex;gap:14px;align-items:flex-end;border-top:1px solid var(--ink);padding-top:14px}
-.screen{width:96px;height:150px;background:#2A2522;border-radius:14px;position:relative;flex:none}
-.screen .card{position:absolute;left:6px;right:6px;bottom:6px;background:var(--bg);padding:5px 6px;font-size:10.5px;line-height:1.2}
+.phone{border-top:1px solid var(--ink);padding-top:14px;display:flex;gap:16px;align-items:flex-start;margin-top:auto}
+.screen{width:164px;height:262px;border-radius:16px;position:relative;flex:none;overflow:hidden;background:linear-gradient(180deg,#d9cdbb 0%,#b9a98f 58%,#8d7c63 100%);box-shadow:0 8px 18px rgba(42,37,34,.18)}
+.screen .rack{position:absolute;left:0;right:0;top:0;height:46px;display:flex;gap:7px;padding:8px 10px 0}.screen .rack i{flex:1;border-radius:3px 3px 0 0;opacity:.85}
+.screen .head{position:absolute;left:57px;top:44px;width:36px;height:42px;border-radius:50%;background:#e8cdb4}
+.screen .body{position:absolute;left:36px;right:36px;top:84px;bottom:0;border-radius:30px 30px 0 0;background:#f5efe4}
+.screen .live{position:absolute;top:8px;left:8px;font-size:9.5px;background:var(--rust);color:#fff;padding:1px 5px;border-radius:2px;font-weight:600;gap:0}
+.screen .chat{position:absolute;left:0;right:0;bottom:44px;padding:16px 8px 6px;font-size:9.5px;line-height:1.3;color:#fff;background:linear-gradient(180deg,rgba(42,37,34,0),rgba(42,37,34,.78) 40%)}
+.screen .pc{position:absolute;left:7px;right:7px;bottom:7px;background:#FBF7EF;border-radius:4px;padding:6px 8px;font-size:10px;line-height:1.2;display:flex;justify-content:space-between;align-items:center;gap:4px;white-space:nowrap}
+.pcap{font-size:12.5px;color:var(--soft)}.pcap b{display:block;font-weight:500;color:var(--ink);margin-bottom:4px;font-size:13px}
 </style></head><body>
 <header><div class="logo">Live<b>Lift</b></div><div class="modes"><span>Quan sát</span><span class="on">Đề xuất</span><span>Thí nghiệm</span></div><div class="sp"></div>
-<div class="live"><i></i>LIVE <span class="num">04:00 · 182 người xem</span></div><span class="stamp">SIMULATED Shopee Live</span><span class="ctl">Hành trình dữ liệu</span><span class="ctl solid">Kết thúc live</span></header>
+<div class="live"><i></i>LIVE <span class="num">04:00 · 182 người xem</span></div><span class="stamp">Simulated Shopee Live</span><span class="ctl">Hành trình dữ liệu</span><span class="ctl solid">Kết thúc live</span></header>
 <main>
 <div class="col"><div><div class="label" style="margin-bottom:10px">Sản phẩm · 4 · ghim, bỏ ghim tự do</div>
  <div class="sect"></div>
@@ -51,7 +59,7 @@ main{display:grid;grid-template-columns:350px 1fr 360px;gap:0;height:calc(900px 
  <div class="prod"><div style="flex:1"><b>Quần cargo</b><small class="num">249.000 ₫ · còn 9</small><div class="chips"><span class="chip">Thêm giỏ 6</span><span class="chip">Hỏi size 4</span></div></div><span class="btn fill">Ghim</span></div>
  <div class="prod"><div style="flex:1"><b>Áo sơ mi linen</b><small class="num">229.000 ₫ · còn 15</small></div><span class="btn fill">Ghim</span></div>
  <div class="prod"><div style="flex:1"><b>Túi vải tote</b><small class="miss">Giá và tồn kho chưa nhập</small></div><span class="btn fill">Ghim</span></div></div>
- <div class="phone" style="margin-top:auto"><div class="screen"><div class="card"><b style="font-weight:500">Áo hoodie zip</b><br><span style="color:#9E3B2B">199.000 ₫</span></div></div><div style="font-size:12.5px;color:var(--soft)"><div class="label" style="margin-bottom:4px">Điện thoại người dẫn</div>SIMULATED Shopee Live, dữ liệu mẫu</div></div></div>
+ <div class="phone"><div class="screen"><div class="rack"><i style="background:#8a9a7b"></i><i style="background:#c08a6a"></i><i style="background:#7d8aa5"></i><i style="background:#b8a06a"></i></div><div class="head"></div><div class="body"></div><span class="live">LIVE</span><div class="chat"><b>viewer_8608</b> Áo hoodie giá bao nhiêu<br><b>viewer_3862</b> Hoodie có size XL không</div><div class="pc"><b style="font-weight:500">Áo hoodie zip</b><span style="color:#9E3B2B;font-weight:600">199.000 ₫</span></div></div><div class="pcap"><b>Điện thoại người dẫn</b>Người dẫn thấy đúng sản phẩm đang ghim.<br><br>SIMULATED Shopee Live, dữ liệu mẫu.</div></div></div>
 <div class="col" style="flex:1"><div class="slip"><span class="label">Trợ lý đọc tín hiệu 2 phút gần nhất · dữ liệu SIMULATED</span>
  <h1>Nên ghim tiếp: Quần cargo</h1><p class="lead">Người xem hỏi giá và size về sản phẩm này nhiều hơn các sản phẩm khác. Bạn quyết định, trợ lý không tự ghim.</p>
  <div class="why"><div><b class="num">7</b><span>bình luận hỏi giá</span></div><div><b class="num">8</b><span>lượt thêm giỏ, 2 phút trước: 3</span></div><div><b class="num">9</b><span>còn trong kho</span></div></div>
@@ -81,9 +89,9 @@ window.addEventListener('load',()=>{
  s+=`<path d="M${v.map((d,i)=>x(i/3)+','+y1(d)).join(' L')}" fill="none" stroke="#2A2522" stroke-width="2"/>`;
  [0,4,8].forEach(d=>{s+=`<line x1="${P.l}" x2="${W-P.r}" y1="${y2(d)}" y2="${y2(d)}" stroke="#D8D0C4"/><text x="${P.l-8}" y="${y2(d)+4}" font-size="12" fill="#5A5047" text-anchor="end">${d}</text>`});
  a.forEach((d,i)=>{s+=`<rect x="${x(i/3+.17)-8}" y="${y2(d)}" width="16" height="${b2-y2(d)}" fill="#9E3B2B"/>`});
- const xp=x(2.4);s+=`<line x1="${xp}" x2="${xp}" y1="${P.t}" y2="${b2}" stroke="#2A2522" stroke-dasharray="3 4"/><text x="${xp+6}" y="${P.t+2}" font-size="12" font-weight="500" fill="#2A2522">Ghim Hoodie</text>`;
+ const xp=x(2.4);s+=`<line x1="${xp}" x2="${xp}" y1="${P.t}" y2="${b2}" stroke="#2A2522" stroke-dasharray="3 4"/><text x="${xp+6}" y="${P.t+2}" font-size="12" font-weight="500" fill="#2A2522" style="paint-order:stroke;stroke:#F6F3EE;stroke-width:5px">Ghim Hoodie</text>`;
  s+=`<circle cx="${x(4)}" cy="${y1(182)}" r="4" fill="#2A2522"/><text x="${x(4)+9}" y="${y1(182)-9}" font-size="13" font-weight="500">182</text>`;
- s+=`<text x="${x(7)}" y="${y1(150)}" font-size="12" fill="#8c8379" text-anchor="middle">chưa tới</text>`;
+ s+=`<defs><pattern id="h" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#D8D0C4" stroke-width="1"/></pattern></defs><rect x="${x(4)+10}" y="${P.t}" width="${x(10)-x(4)-10}" height="${b2-P.t}" fill="url(#h)" opacity=".6"/><text x="${x(7)}" y="${P.t+h1/2}" font-size="12" fill="#5A5047" text-anchor="middle" style="paint-order:stroke;stroke:#F6F3EE;stroke-width:6px">chưa tới</text>`;
  [0,2,4,6,8,10].forEach(m=>{s+=`<text x="${x(m)}" y="${H-6}" font-size="12" fill="#5A5047" text-anchor="middle">${String(m).padStart(2,'0')}:00</text>`});
  svg.innerHTML=s;});
 </script></body></html>
