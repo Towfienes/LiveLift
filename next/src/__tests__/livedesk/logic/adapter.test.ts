@@ -69,6 +69,21 @@ describe("SIMULATED Live adapter: product sync", () => {
   });
 });
 
+describe("the import note never outlives the list it describes", () => {
+  it("importing the sample twice, then removing every product, leaves no stale 'code already imported' note", () => {
+    let s = S.importSamplePack(S.connect(S.initialDeskState()));
+    s = S.importSamplePack(s);
+    expect(s.importNote).toBe("0 imported, 4 rows skipped: code already imported");
+    for (const p of [...s.products]) s = S.removeProduct(s, p.id);
+    expect(s.products).toEqual([]);
+    expect(s.importNote).toBeNull();
+    // A fresh import after that is accepted and says so.
+    s = S.importSamplePack(s);
+    expect(s.products).toHaveLength(4);
+    expect(s.importNote).toBe("4 imported, 0 rows skipped");
+  });
+});
+
 describe("free pin and unpin", () => {
   it("pins immediately after start, with no schedule, cooldown or confirmation", () => {
     const { state, liveId } = liveDesk();

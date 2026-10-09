@@ -1725,12 +1725,6 @@
   padding: var(--s-48) var(--s-32);
   align-items: start;
 }
-.ld .setup-intro {
-  position: sticky;
-  top: 0;
-  display: grid;
-  gap: var(--s-16);
-}
 .ld .setup h1 {
   font-size: var(--fs-56);
   font-weight: var(--w-light);
@@ -1739,48 +1733,6 @@
 }
 .ld .lede {
   font-size: var(--fs-16);
-  color: var(--ink-2);
-}
-.ld .sim-note {
-  padding: var(--s-16) 0;
-  border-top: 1px solid var(--line-strong);
-  border-bottom: 1px solid var(--line);
-  display: grid;
-  gap: var(--s-12);
-  justify-items: start;
-}
-.ld .sim-note p {
-  color: var(--ink);
-}
-.ld .steps {
-  display: grid;
-}
-.ld .step {
-  padding: var(--s-16) 0;
-  border-top: 1px solid var(--line);
-}
-.ld .step:first-child {
-  border-top: 1px solid var(--line-strong);
-}
-.ld .step.is-active {
-  border-top-color: var(--line-strong);
-}
-.ld .step-head {
-  display: grid;
-  grid-template-columns: 32px 1fr;
-  column-gap: var(--s-16);
-  align-items: center;
-}
-.ld .step-head h2 {
-  font-size: var(--fs-28);
-  font-weight: var(--w-light);
-  letter-spacing: var(--track-title);
-}
-.ld .is-todo .step-head h2 {
-  color: var(--ink-3);
-}
-.ld .step-summary {
-  grid-column: 2;
   color: var(--ink-2);
 }
 .ld .step-n {
@@ -1802,36 +1754,6 @@
   background: var(--ok);
   border-color: var(--ok);
   color: var(--ink-inverse);
-}
-.ld .step-body {
-  display: grid;
-  gap: var(--s-16);
-  justify-items: start;
-  margin-top: var(--s-16);
-  padding-left: calc(32px + var(--s-16));
-  animation: rise var(--t-slow) var(--ease) both;
-}
-.ld .step-body > p {
-  color: var(--ink-2);
-  max-width: 60ch;
-}
-.ld .empty-inline {
-  display: grid;
-  gap: 4px;
-  width: 100%;
-  padding: var(--s-16);
-  border: 1px solid var(--line);
-}
-.ld .empty-inline > p {
-  justify-self: start;
-  background: var(--bg);
-}
-.ld .empty-title {
-  font-weight: var(--w-medium);
-  font-size: var(--fs-16);
-}
-.ld .empty-inline p + p {
-  color: var(--ink-2);
 }
 .ld .field {
   display: grid;
@@ -2790,9 +2712,6 @@
     gap: var(--s-32);
     padding: var(--s-24) var(--s-16);
   }
-  .ld .setup-intro {
-    position: static;
-  }
   .ld .kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2854,9 +2773,6 @@
   }
   .ld .reasons dd {
     font-size: var(--fs-40);
-  }
-  .ld .step-body {
-    padding-left: 0;
   }
   .ld .ptable thead {
     display: none;
@@ -3811,4 +3727,332 @@
   .ld .home-status {
     padding-top: 0;
   }
+}
+
+/* =====================================================================================================================
+   Start (phase 1 of the navy direction): ivory page, white work surface, Navy Blazer for the brand moments and the one
+   primary action. Scoped to this screen until Home, Desk and Recap move over. Status colours keep their meaning.
+   ===================================================================================================================== */
+.ld.screen-start {
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --surface-3: #e3e8ef;
+  --paper: #ffffff;
+  --line: #dce1e8;
+  --line-strong: #272d3b;
+  --ink: #272d3b;
+  --ink-2: #667085;
+  --ink-3: #667085;
+  --ink-inverse: #ffffff;
+  --focus: #041e42;
+  --signal: #041e42;
+  --signal-ink: #ffffff;
+  --signal-press: #0b2e5c;
+  --signal-soft: #e3e9f2;
+  --signal-text: #041e42;
+  --navy: #041e42;
+  --navy-ink: #ffffff;
+  --navy-muted: #c9d3e3;
+  --navy-line: rgba(255, 255, 255, 0.18);
+  --navy-done: #9fcbaa;
+  --lift: 0 1px 2px rgba(4, 30, 66, 0.06), 0 6px 16px rgba(4, 30, 66, 0.05);
+  --r-control: 6px;
+  --r-surface: 8px;
+}
+/* Dark: Navy Blazer is the ground, surfaces sit a step lighter, and the primary action turns light so it still leads. */
+.ld.screen-start[data-theme="dark"] {
+  --bg: #041e42;
+  --surface: #0b2a55;
+  --surface-2: #12345f;
+  --surface-3: #1a3f6e;
+  --paper: #0b2a55;
+  --line: #24466f;
+  --line-strong: #dce6f5;
+  --ink: #f2f4f7;
+  --ink-2: #b4bfd0;
+  --ink-3: #b4bfd0;
+  --ink-inverse: #041e42;
+  --focus: #f2f4f7;
+  --signal: #e8eef7;
+  --signal-ink: #041e42;
+  --signal-press: #ffffff;
+  --signal-soft: #12345f;
+  --signal-text: #dce6f5;
+  --navy: #0f3566;
+  --navy-line: rgba(255, 255, 255, 0.2);
+  --lift: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* shape: light rounding on controls and the two surfaces, nothing else */
+.ld.screen-start .btn,
+.ld.screen-start .field textarea,
+.ld.screen-start .status,
+.ld.screen-start .note-warn {
+  border-radius: var(--r-control);
+}
+.ld.screen-start .btn-lg {
+  font-size: var(--fs-16);
+}
+
+/* layout: a 320 px progress column beside the work surface; both end where their content ends */
+.ld .prep-layout {
+  grid-template-columns: 320px minmax(0, 720px);
+  gap: var(--s-48);
+  padding: var(--s-48) var(--s-32) var(--s-64);
+}
+.ld .prep {
+  position: sticky;
+  top: var(--s-24);
+  display: grid;
+  gap: var(--s-24);
+  padding: var(--s-32) var(--s-24) var(--s-24);
+  border-radius: var(--r-surface);
+  background: var(--navy);
+  color: var(--navy-ink);
+}
+.ld .prep h1 {
+  font-size: var(--fs-28);
+  font-weight: var(--w-medium);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.01em;
+}
+.ld .prep-lede {
+  color: var(--navy-muted);
+  font-size: var(--fs-14);
+  line-height: 1.55;
+}
+.ld .prep-steps {
+  display: grid;
+  gap: var(--s-4);
+  padding-top: var(--s-16);
+  border-top: 1px solid var(--navy-line);
+}
+.ld .prep-step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--s-12);
+  align-items: start;
+  padding: var(--s-8) 0;
+}
+.ld .prep-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--navy-line);
+  color: var(--navy-muted);
+  font-size: var(--fs-13);
+  font-weight: var(--w-medium);
+}
+.ld .prep-step.is-active .prep-mark {
+  background: var(--navy-ink);
+  border-color: var(--navy-ink);
+  color: var(--navy);
+}
+.ld .prep-step.is-done .prep-mark {
+  border-color: var(--navy-done);
+  color: var(--navy-done);
+}
+.ld .prep-text {
+  display: grid;
+  gap: 2px;
+  padding-top: 3px;
+}
+.ld .prep-title {
+  font-size: var(--fs-16);
+  font-weight: var(--w-medium);
+}
+.ld .prep-step.is-todo .prep-title {
+  color: var(--navy-muted);
+}
+.ld .prep-status {
+  color: var(--navy-muted);
+  font-size: var(--fs-13);
+  line-height: 1.45;
+}
+.ld .prep-sim {
+  display: grid;
+  gap: var(--s-12);
+  justify-items: start;
+  padding-top: var(--s-16);
+  border-top: 1px solid var(--navy-line);
+}
+/* the SIMULATED stamp keeps its violet identity, on a light chip so it reads on navy */
+.ld .prep .sim-tag {
+  background: var(--sim-soft);
+}
+.ld .prep-why > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--navy-ink);
+  font-size: var(--fs-14);
+  font-weight: var(--w-medium);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+.ld .prep-why > p {
+  color: var(--navy-muted);
+  font-size: var(--fs-14);
+  line-height: 1.55;
+}
+.ld .prep :focus-visible {
+  outline-color: var(--navy-ink);
+}
+
+.ld .work {
+  display: grid;
+  gap: var(--s-32);
+  padding: var(--s-32);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  background: var(--surface);
+  box-shadow: var(--lift);
+  min-width: 0;
+}
+.ld .work-step {
+  display: grid;
+  gap: var(--s-16);
+  justify-items: start;
+  min-width: 0;
+  animation: rise var(--t-slow) var(--ease) both;
+}
+.ld .work-step > h2 {
+  font-size: 32px;
+  font-weight: var(--w-medium);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.015em;
+}
+.ld .work-lede {
+  color: var(--ink-2);
+  font-size: var(--fs-16);
+  line-height: 1.5;
+  max-width: 60ch;
+}
+.ld .work-step > .ptable,
+.ld .work-step > details.more,
+.ld .work-step > .import-form {
+  width: 100%;
+}
+.ld .import-sample {
+  display: grid;
+  gap: var(--s-16);
+  justify-items: start;
+  padding-bottom: var(--s-8);
+}
+.ld .import-or {
+  color: var(--ink-2);
+  font-size: var(--fs-14);
+}
+.ld .field-hint {
+  color: var(--ink-2);
+  font-size: var(--fs-13);
+}
+.ld.screen-start .field-label {
+  font-size: var(--fs-14);
+  color: var(--ink);
+}
+.ld .work-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-16) var(--s-24);
+  padding-top: var(--s-24);
+  border-top: 1px solid var(--line);
+}
+.ld .work-foot-text {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.ld .foot-label {
+  color: var(--ink-2);
+  font-size: var(--fs-13);
+}
+.ld .foot-reason {
+  font-size: var(--fs-14);
+  font-weight: var(--w-medium);
+}
+.ld .foot-reason.is-ready {
+  color: var(--ink-2);
+  font-weight: var(--w-regular);
+  max-width: 52ch;
+}
+.ld.screen-start .ptable thead th {
+  letter-spacing: 0;
+  font-size: var(--fs-13);
+}
+
+/* tablet and phone: progress becomes one compact row at the top; the work surface follows directly */
+@media (max-width: 1023px) {
+  .ld .prep-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-16);
+    padding: var(--s-16) var(--s-16) var(--s-48);
+  }
+  .ld .prep {
+    position: static;
+    gap: var(--s-12);
+    padding: var(--s-16);
+  }
+  .ld .prep h1 {
+    font-size: var(--fs-20);
+  }
+  .ld .prep-lede,
+  .ld .prep-status {
+    display: none;
+  }
+  .ld .prep-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-8);
+    padding-top: var(--s-12);
+  }
+  .ld .prep-step {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: var(--s-8);
+    padding: 0;
+    align-items: center;
+  }
+  .ld .prep-mark {
+    width: 24px;
+    height: 24px;
+  }
+  .ld .prep-text {
+    padding-top: 0;
+  }
+  .ld .prep-title {
+    font-size: var(--fs-14);
+  }
+  .ld .prep-sim {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    padding-top: var(--s-12);
+  }
+  /* once opened, the explanation takes the whole row instead of a narrow column beside the stamp */
+  .ld .prep-why[open] {
+    grid-column: 1 / -1;
+  }
+  .ld .work {
+    padding: var(--s-24) var(--s-16);
+    gap: var(--s-24);
+  }
+  .ld .work-step > h2 {
+    font-size: var(--fs-28);
+  }
+}
+@media (max-width: 640px) {
+  .ld .work-foot .row,
+  .ld .work-foot .row .btn {
+    width: 100%;
+  }
+}
+/* #667085 on the chip grey is 4.39:1; the dock's "simulated data" chip takes the ink instead */
+.ld.screen-start .sample-tag {
+  color: var(--ink);
 }

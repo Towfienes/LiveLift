@@ -228,7 +228,9 @@ export const importSamplePack = (state: DeskState): DeskState => importText(stat
 export function removeProduct(state: DeskState, productId: string): DeskState {
   if (state.live?.mode === "live" || !state.products.some((p) => p.id === productId)) return state;
   const r = adapter.removeProduct(state.world, productId, state.nowMs);
-  return { ...state, world: r.world, products: state.products.filter((p) => p.id !== productId) };
+  // The import note describes an earlier import; after a removal it would contradict the list ("no products" beside
+  // "4 rows skipped: code already imported"), so it goes.
+  return { ...state, world: r.world, products: state.products.filter((p) => p.id !== productId), importNote: null };
 }
 
 export function startBlockedReason(state: DeskState): string | null {

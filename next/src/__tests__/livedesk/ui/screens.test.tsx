@@ -264,6 +264,40 @@ describe("Start actions and blocked reasons", () => {
     expect(screen.getByTestId("desk-product-p3")).toHaveTextContent("error_param: item not found");
   });
 
+  it("one progress column says where the live stands; the work surface holds only the step in progress", () => {
+    currentLive = null;
+    render(<StartPage />);
+    const steps = within(screen.getByRole("complementary")).getAllByRole("listitem");
+    expect(steps).toHaveLength(3);
+    expect(steps[2]).toHaveAttribute("aria-current", "step");
+    expect(steps[0]).toHaveTextContent("Đã kết nối SIMULATED Live");
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Sản phẩm");
+    expect(screen.queryByTestId("start-connect-panel")).toBeNull();
+    expect(screen.getByTestId("start-live-panel")).not.toHaveTextContent("Còn thiếu");
+    cleanup();
+    startView.connected = false;
+    startView.products = [];
+    startView.startBlockedReason = "Connect SIMULATED Live first.";
+    render(<StartPage />);
+    expect(within(screen.getByRole("complementary")).getAllByRole("listitem")[0]).toHaveAttribute("aria-current", "step");
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Kết nối");
+    expect(screen.getByTestId("start-live-panel")).toHaveTextContent("Còn thiếu");
+    expect(screen.getByTestId("start-live-panel")).toHaveTextContent("Kết nối SIMULATED Live trước.");
+  });
+
+  it("with no products the sample pack is the one primary action, until a list of your own is typed", () => {
+    startView.products = [];
+    startView.startBlockedReason = "No product has synced to SIMULATED Live yet.";
+    render(<StartPage />);
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Thêm sản phẩm");
+    expect(screen.getByTestId("start-sample")).toHaveClass("btn-primary");
+    expect(screen.getByTestId("start-import")).toHaveClass("btn-secondary");
+    expect(screen.getByTestId("start-live")).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Dán CSV hoặc TSV"), { target: { value: "HD-01, Áo hoodie, 199000, 24" } });
+    expect(screen.getByTestId("start-import")).toHaveClass("btn-primary");
+    expect(screen.getByTestId("start-sample")).toHaveClass("btn-secondary");
+  });
+
   it("products cannot be removed while a live runs (the logic refuses it too)", () => {
     render(<StartPage />);
     expect(screen.getByRole("button", { name: "Xóa Canvas Tote" })).toBeDisabled();
