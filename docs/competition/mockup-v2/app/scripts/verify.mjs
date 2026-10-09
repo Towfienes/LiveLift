@@ -227,6 +227,52 @@ const text = (page) => page.evaluate(() => document.body.innerText);
   await ctx.close();
 }
 
+// ---------- 3d. Vietnamese render test: the self-hosted face draws every glyph ----------
+{
+  const SAMPLE = "Nên ghim tiếp: Quần cargo, ếệạữ ởầ";
+  const { ctx, page } = await newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 2 });
+  await page.goto(`${url}?motion=reduce`);
+  const res = await page.evaluate(async (text) => {
+    const box = document.createElement("div");
+    box.id = "font-test";
+    box.style.cssText = "position:fixed;left:0;top:0;z-index:999;background:var(--bg);color:var(--ink);padding:48px;display:grid;gap:20px;align-content:start";
+    const rows = [
+      ["300", "56px"],
+      ["400", "28px"],
+      ["500", "16px"],
+    ];
+    for (const [w, s] of rows) {
+      const p = document.createElement("p");
+      p.textContent = text;
+      p.style.cssText = `font:${w} ${s}/1.25 "Be Vietnam Pro";letter-spacing:-0.01em`;
+      box.append(p);
+    }
+    const cap = document.createElement("p");
+    cap.textContent = "Be Vietnam Pro 300 / 400 / 500, tự lưu trong gói (tập vietnamese), không tải từ mạng.";
+    cap.style.cssText = "font:400 14px 'Be Vietnam Pro';color:var(--ink-2)";
+    box.append(cap);
+    document.body.append(box);
+    await document.fonts.ready;
+    await Promise.all(rows.map(([w, s]) => document.fonts.load(`${w} ${s} "Be Vietnam Pro"`, text)));
+    const loaded = rows.every(([w, s]) => document.fonts.check(`${w} ${s} "Be Vietnam Pro"`, text));
+    // the vietnamese subset face must be the one in use: a missing glyph would fall back and change widths
+    const c = document.createElement("canvas").getContext("2d");
+    c.font = '300 56px "Be Vietnam Pro"';
+    const wBVP = c.measureText(text).width;
+    c.font = "300 56px monospace";
+    const wMono = c.measureText(text).width;
+    const faces = [...document.fonts].filter((f) => f.family.includes("Be Vietnam Pro") && f.status === "loaded").map((f) => `${f.weight}:${f.unicodeRange.slice(0, 10)}`);
+    return { loaded, differs: Math.abs(wBVP - wMono) > 10, faces: faces.length };
+  }, SAMPLE);
+  await page.locator("#font-test").screenshot({ path: join(root, "screens/00-font-render-test.png") });
+  record(
+    `Vietnamese render test "${SAMPLE}" at 300/400/500 (self-hosted face, no fallback)`,
+    res.loaded && res.differs && res.faces >= 3,
+    `fonts.check=${res.loaded}, loaded faces=${res.faces}; PNG: screens/00-font-render-test.png`,
+  );
+  await ctx.close();
+}
+
 // ---------- 4. reduced motion: calm and complete ----------
 {
   const { ctx, page, errors } = await newPage({ reducedMotion: "reduce" });
