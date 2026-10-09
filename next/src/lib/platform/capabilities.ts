@@ -74,7 +74,7 @@ export const PLATFORM_CAPABILITIES: Record<PlatformId, CapabilityRow[]> = {
     { key: "end_live", support: "official_api", basis: "inferred", note: "end_session exists by name." },
     { key: "add_items", support: "official_api", basis: "inferred", note: "add_item_list, delete_item_list and update_item_list exist by name." },
     { key: "pin", support: "official_api", basis: "documented", note: "update_show_item, listed for VN. Needs an ongoing live that belongs to the authorised account. \"Showing item\" is read as pin; unconfirmed." },
-    { key: "unpin", support: "operator_assisted", basis: "not_documented", note: "No endpoint to clear the showing item was found: item_id is required. The operator unpins in the app and reports it." },
+    { key: "unpin", support: "operator_assisted", basis: "not_documented", note: "No endpoint to clear the showing item was found: item_id is required. The operator unpins in the app and reports it. The Live Desk's SIMULATED Shopee answers a guessed unpin call (unpin_show_item): guessed, no Shopee page found, never Shopee's behaviour." },
     { key: "promotion", support: "official_api", basis: "inferred", note: "Promotions are scheduled through separate Shopee modules (flash sale, discount, voucher). Nothing found that fires one inside a live." },
     { key: "observe_showing_item", support: "official_api", basis: "unverified", note: "Whether reading the session reveals the showing item, and whether a live started in the app can be read at all, is not known." },
     { key: "read_comments", support: "official_api", basis: "repo_research", note: "get_latest_comment_list, a 10 second window, listed for VN." },

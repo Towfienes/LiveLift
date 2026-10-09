@@ -10,6 +10,8 @@
  *   2026-10-08. The call needs an ONGOING session that BELONGS to the authorised account.
  * - Every other endpoint is known by NAME only (the page's menu). Their parameters and replies here are INFERRED and are
  *   labelled so through `ENDPOINT_BASIS`. They must be replaced by the real reference before anything is claimed.
+ * - `unpin_show_item` is LiveLift's own GUESS (see `GUESSED_ENDPOINTS`): no Shopee page was found for clearing the showing
+ *   item, so even its name and path are placeholders. Only the Live Desk calls it; the Lab and Operate never do.
  *
  * Questions the reference does not answer are modelled as explicit, visible `assumptions`, never as silent behaviour.
  */
@@ -25,6 +27,7 @@ export const SHOPEE_ENDPOINTS = [
   "update_show_item",
   "create_promotion",
   "get_promotion_list",
+  "unpin_show_item",
 ] as const;
 export type ShopeeEndpoint = (typeof SHOPEE_ENDPOINTS)[number];
 
@@ -42,7 +45,11 @@ export const ENDPOINT_BASIS: Record<ShopeeEndpoint, EndpointBasis> = {
   update_show_item: "documented",
   create_promotion: "inferred",
   get_promotion_list: "inferred",
+  unpin_show_item: "inferred",
 };
+
+/** Not even the name is Shopee's: no Shopee page was found. The call exists so a SIMULATED rehearsal can unpin. */
+export const GUESSED_ENDPOINTS: readonly ShopeeEndpoint[] = ["unpin_show_item"];
 
 /** Promotions live in Shopee's separate shop_flash_sale module (names from a third-party listing); no live-specific endpoint was found. */
 export const ENDPOINT_PATH: Record<ShopeeEndpoint, string> = {
@@ -56,6 +63,8 @@ export const ENDPOINT_PATH: Record<ShopeeEndpoint, string> = {
   update_show_item: "/api/v2/livestream/update_show_item",
   create_promotion: "/api/v2/shop_flash_sale/create_shop_flash_sale",
   get_promotion_list: "/api/v2/shop_flash_sale/get_shop_flash_sale_list",
+  /** A placeholder path for the guess above: no Shopee page names it. */
+  unpin_show_item: "/api/v2/livestream/unpin_show_item",
 };
 
 /** Reads never change the platform; the call log can hide them. */
@@ -318,6 +327,15 @@ function handle(draft: Draft, nowMs: number, endpoint: ShopeeEndpoint, params: R
       // Inferred: an item that is not in the live's list cannot be shown.
       if (!s.items.some((i) => i.itemId === params.item_id && i.shopId === params.shop_id)) return err("error_data", "data not exist");
       s.showingItemId = params.item_id;
+      return ok();
+    }
+    case "unpin_show_item": {
+      // Guessed shape: the live's id only; clears whatever is showing, and an empty showcase stays empty.
+      const found = sessionFor(draft, params);
+      if ("problem" in found) return found.problem;
+      const s = found.session;
+      if (s.status !== "ongoing") return err("error_data", `The session(session_id:${s.sessionId}) is not ongoing`);
+      s.showingItemId = null;
       return ok();
     }
     case "create_promotion": {
