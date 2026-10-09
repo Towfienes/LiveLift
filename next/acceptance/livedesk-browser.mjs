@@ -20,7 +20,7 @@ export function assertHonest(text, size) {
 }
 
 function selfTest() {
-  assertHonest('SIMULATED Shopee Live', { client: 390, scroll: 390 });
+  assertHonest('SIMULATED Live', { client: 390, scroll: 390 });
   assert.throws(() => assertHonest('connected to Shopee', { client: 390, scroll: 390 }));
   assert.throws(() => assertHonest('Đã kết nối với Shopee', { client: 390, scroll: 390 }));
   assert.throws(() => assertHonest('Create LIVE', { client: 390, scroll: 390 }));

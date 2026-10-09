@@ -10,7 +10,7 @@ import { idOf, liveDesk, writes } from "./helpers";
 
 const T0 = S.DESK_EPOCH_MS;
 
-describe("SIMULATED Shopee adapter: product sync", () => {
+describe("SIMULATED Live adapter: product sync", () => {
   it("queues products until connected, then syncs each with add_item_list on a prepared live", () => {
     const queued = S.importSamplePack(S.initialDeskState());
     expect(queued.products.map((p) => p.sync.state)).toEqual(["queued", "queued", "queued", "queued"]);
@@ -152,7 +152,7 @@ describe("platform conditions", () => {
     s = S.setPlatformFault(s, "token_expired");
     s = S.advance(s, 5);
     expect(s.live!.halted).toBe(true);
-    expect(s.live!.banner).toEqual({ tone: "danger", text: 'Authorisation expired on SIMULATED Shopee: "You are not authorized". The Live Desk stopped calling it. Carry on in the app by hand.' });
+    expect(s.live!.banner).toEqual({ tone: "danger", text: 'Authorisation expired on SIMULATED Live: "You are not authorized". The Live Desk stopped calling it. Carry on in the app by hand.' });
     const readsBefore = readsOf(s.world).length;
     s = S.advance(s, 30);
     expect(readsOf(s.world).length).toBe(readsBefore);
@@ -161,7 +161,7 @@ describe("platform conditions", () => {
     expect(pinned.live!.markers).toEqual([]);
     s = S.pin(S.setPlatformFault(pinned, null), idOf(s, "Zip Hoodie"));
     expect(s.live!.halted).toBe(false);
-    expect(s.live!.banner).toEqual({ tone: "info", text: "SIMULATED Shopee is answering again." });
+    expect(s.live!.banner).toEqual({ tone: "info", text: "SIMULATED Live is answering again." });
     expect(s.live!.showingProductId).toBe(idOf(s, "Zip Hoodie"));
   });
 
