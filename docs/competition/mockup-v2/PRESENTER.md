@@ -6,7 +6,7 @@ Mockup chạy hoàn toàn trong một trang, không cần mạng, không cần m
 
 1. Chép cả thư mục `dist/` vào máy trình chiếu (và một USB dự phòng).
 2. Mở `dist/index.html` bằng Chrome hoặc Edge (bấm đúp là được). Hoặc chạy `npx serve dist` rồi mở địa chỉ nó in ra.
-3. Bấm **F11** để toàn màn hình, rồi **P** để vào chế độ trình chiếu (ẩn thanh dưới).
+3. Bấm **F11** để toàn màn hình, rồi **P** để vào chế độ trình chiếu: ẩn thanh dưới, ẩn “Đã lưu”, và **chữ to hơn** (chữ thường từ 16 px, nhãn nhỏ từ 14 px) để đọc được từ cuối hội trường.
 4. Bấm **R** để chắc chắn đang ở bước 0. Màn hình chuẩn để chiếu là 1920×1080; 1440×900 và 1280×720 cũng hiển thị đủ.
 
 Kiểm tra trước giờ báo cáo: bấm `→` vài lần, rồi `R` để quay về. Nếu chữ tiếng Việt có dấu hiển thị đúng và nút đỏ “Kết nối SIMULATED Shopee Live” hiện ra, máy đã sẵn sàng.
@@ -15,11 +15,12 @@ Kiểm tra trước giờ báo cáo: bấm `→` vài lần, rồi `R` để qua
 
 | Phím | Việc |
 |---|---|
-| `→` / `←` | Bước tiếp / bước trước của kịch bản (luôn chạy, kể cả khi có hộp thoại) |
+| `→` / `←` | Bước tiếp / bước trước của kịch bản (luôn chạy, kể cả khi có hộp thoại). Khi Hành trình dữ liệu đang mở, `→` đi qua từng bước 1 đến 6 trước |
 | `Space` | Tự chạy kịch bản hoặc dừng |
 | `R` | Về đầu (bước 0) |
 | `1` `2` `3` | Chuẩn bị / Live Desk / Tổng kết |
 | `J` | Bật, tắt Hành trình dữ liệu |
+| `↑` `↓` | Khi Hành trình dữ liệu đang mở: chọn bước 1 đến 6 (khung đỏ hiện trên đúng chỗ) |
 | `T` | Giao diện sáng hoặc tối (máy chiếu: để sáng) |
 | `P` | Chế độ trình chiếu: ẩn thanh dưới và đồng hồ |
 | `?` | Hiện danh sách phím |
@@ -49,7 +50,8 @@ Mỗi dòng là một lần bấm `→`. Cột “Nói” là câu gợi ý; nó
 | 13 | Tự đổi ghim sang Quần cargo; hai vạch | “Ghim, bỏ ghim luôn tự do. Lần này người vận hành tự chọn, không theo gợi ý.” |
 | 14 | Hộp “Kết thúc buổi live lúc 29:40?” | “Kết thúc live.” |
 | 15 | Tổng kết + “Điều chưa biết” | “Tổng kết ghi lại gợi ý nào được nhận, bỏ qua, tự làm. Và quan trọng nhất: điều chưa biết. Ghim hoodie có làm tăng thêm giỏ không? Chưa biết; quan sát không phải nhân quả. Số đơn thật: chưa biết.” |
-| 16 | Hành trình dữ liệu: sáu bước trên Live Desk | “Đây là sáu việc của đề tài Data Driven Business, đặt đúng chỗ trên sản phẩm: thu thập, làm sạch, phân tích, khai thác insight, đề xuất giải pháp, và đánh giá hiệu quả.” |
+| 16 | Hành trình dữ liệu: bảng sáu bước bên phải, sáu số nhỏ trên Live Desk | “Đây là sáu việc của đề tài Data Driven Business, đặt đúng chỗ trên sản phẩm.” |
+| 16 + `→` ×6 | Mỗi lần `→` sáng một bước, khung đỏ bao đúng chỗ đó | 1 “Thu thập: bình luận, người xem đổ về.” 2 “Làm sạch: số điện thoại bị che.” 3 “Phân tích: đếm ý định trong 2 phút.” 4 “Khai thác insight: ba con số làm lý do.” 5 “Đề xuất: nên ghim gì.” 6 “Đánh giá: tổng kết, kể cả điều chưa biết.” |
 
 Nhịp tự chạy (`Space`) mất khoảng 95 giây. Nếu cần nhanh hơn, bấm `→` thay vì chờ.
 
@@ -60,6 +62,6 @@ Nhịp tự chạy (`Space`) mất khoảng 95 giây. Nếu cần nhanh hơn, b�
 ## 4. Kế hoạch B
 
 1. **Máy trình chiếu không mở được trang**: mở `dist/index.html` trên laptop của nhóm, nối HDMI. Trang không cần mạng.
-2. **Không có laptop nào chạy được**: dùng ảnh trong `screens/` (2560×1440, đã đặt tên theo bước). Thứ tự chiếu: `01-setup-empty`, `01-setup-products`, `02-live-desk-low-confidence`, `02-live-desk-suggestion`, `02-live-desk-pinned`, `02-live-desk-flash-ready`, `02-live-desk-platform-condition`, `02-live-desk-two-pins`, `03-recap`, `04-data-journey`. Chèn sẵn các ảnh này vào cuối file slide nộp ngày 19/10.
+2. **Không có laptop nào chạy được**: dùng ảnh trong **`screens/presenter/`** (2560×1440, chụp ở chế độ trình chiếu, chữ to, không có thanh dưới; đây là bộ nên đưa vào slide). `screens/` có cùng các trạng thái kèm thanh điều khiển. Thứ tự chiếu: `01-setup-empty`, `01-setup-products`, `02-live-desk-low-confidence`, `02-live-desk-suggestion`, `02-live-desk-pinned`, `02-live-desk-flash-ready`, `02-live-desk-platform-condition`, `02-live-desk-two-pins`, `03-recap`, `04-data-journey`, `04-data-journey-stage-4`. Chèn sẵn các ảnh này vào cuối file slide nộp ngày 19/10.
 3. **Chữ hiển thị sai dấu**: font đã nhúng sẵn trong trang; nếu vẫn sai, trình duyệt quá cũ. Đổi sang Chrome hoặc Edge bản mới, hoặc dùng ảnh.
 4. **Lỡ bấm lung tung**: `R` về đầu, hoặc gõ số bước trong địa chỉ: `index.html?beat=6` mở thẳng bước 6.

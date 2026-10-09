@@ -99,11 +99,12 @@ Platform facts: the mockup invents none beyond the SIMULATED platform's own beha
 
 ## 7. Accessibility
 
-- WCAG AA contrast in both themes; axe-core reports 0 violations on 18 states × 2 themes × 2 viewports (`npm run verify`).
+- WCAG AA contrast in both themes; axe-core reports 0 violations on 19 states × 2 themes × 2 viewports (`npm run verify`).
 - Visible 2 px focus ring on every control; skip link; landmarks (`header`, `main`, `footer`, `nav`); one `h1` per screen.
 - Full keyboard: every control is reachable by Tab; dialogs trap focus, close on Esc and return focus; the story runs on `→`.
 - 44 px targets for buttons, mode switch and dock controls.
 - Charts are `role="img"` with a full-sentence summary; the recap table and intent counts carry the same numbers as text.
+- The data journey panel is a labelled `aside`. Each stage is a button (`aria-current="step"` when active), and badges are `aria-hidden` because the panel already says it in words.
 - `aria-live` only on the answer, the flash-sale row and the platform banner (`role="alert"`); never on the comment stream.
 - `prefers-reduced-motion` honoured fully.
 
@@ -113,21 +114,44 @@ Platform facts: the mockup invents none beyond the SIMULATED platform's own beha
 - **One pinned product at a time.** The story's unpin followed by a pin reads as "đổi ghim".
 - **A suggestion counts as "Nhận"** only if it had been on screen at least 5 s before the operator acted. Otherwise the action is "Tự làm" (the cargo switch in the story).
 - **Flash sale rule:** pinned ≥ 1 min, ≥ 10 add-to-cart in 2 min and rising, stock ≥ 10. The brief's "chưa đủ tín hiệu" shows the count, e.g. 6/10.
-- **The journey overlay** is shown on the richest moment of the story (04:00, the medium suggestion), so all six stages point at real content. Beat 16 rebuilds that moment.
+- **The data journey** is shown on the richest moment of the story (04:00, the medium suggestion), so all six stages point at real content. Beat 16 rebuilds that moment.
 - **"Đơn hàng: Chưa biết"** is a KPI on its own, rather than an omitted one.
 - **Mobile (390 px):** single column, answer first. Graceful, not designed to the same polish as the projector sizes.
 
-## 9. Self-assessment (after four review rounds)
+## 9. Review round 2 (reviewer feedback, 09/10)
+
+**Data journey, redesigned so nothing covers content.** The first version used floating callout cards over the desk; it was cluttered and covered the product list, confidence bar, Pin button and header.
+
+- **Panel:** the six stages are now one ordered panel that takes its **own layout column** (480 px at ≥1600, 360 below, 320 below 1440). The Live Desk reflows beside it, and its grid follows the width of its own area (`@container stage`), not the viewport's. `verify.mjs` checks that the panel never overlaps the desk.
+- **Each stage row:** a 40 px number, the stage name at 20 px, one short sentence at 16 px, and "Ở đâu:" naming the element it points to.
+- **Badges:** six 28 px numbered badges sit **inside** the real elements, in the layout: the "Bình luận" heading, the "đã che" line, the intent label, the confidence line, the answer title, and next to "Kết thúc live". They take their own space and never sit on top of text.
+- **Dim:** the page dims slightly (`--scrim-soft`, 16% light, 36% dark), with clear windows over the six elements.
+- **Ring:** hovering, focusing or stepping a stage (`→` / `←` while the journey is open, or `↑` / `↓`) puts a 3 px red ring on its element and turns its badge and panel number red. `→` past stage 6 continues the story; `Esc` closes.
+- **Short screens:** at heights ≤ 940 px the panel compacts so all six stages fit without scrolling. At 1280×720 every badge is still on screen.
+
+**Presenter mode (P) for slides and the back of the hall.**
+
+- **Type scale:** `:root[data-presenter="1"]` raises the scale: 12→14, 13→14, 14→16, 16→18, 20→22. At 1920×1080 no text is under 14 px, and running text (comments, ledes, table cells, journey sentences, chart caption) is at least 16 px. `verify.mjs` measures every visible text node on six screens to check this; the drawn phone is excluded because it is a picture of a phone.
+- **Chrome:** presenter mode hides the bottom bar and the "Đã lưu" status. "Dữ liệu mẫu" moves into the header, so sample data stays labelled.
+- **Exports:** a second PNG set is in `screens/presenter/` (2560×1440, both themes), via `npm run shots:presenter`.
+
+**Polish.**
+
+- **Chart axis:** the Live Desk chart's axis now fits the elapsed time, rounded up to the next half minute, with 3–7 ticks chosen from the width. The empty right half is gone, and the last minute's bar is clipped at "now".
+- **Host phone:** it shows a drawn mock video frame (a host holding up a garment in front of a clothes rack; flat shapes, not a photo), three chat lines on dark pills, and a pinned-product card ("Đang ghim", name, price, "Xem"). Text is about 13–14 px, and the phone is larger (max 560 px tall).
+- **Suggestion tag:** "Trợ lý gợi ý, chưa ghim" has its own line with 8 px below it, so it no longer crowds the product name.
+
+## 10. Self-assessment (after round 2: three more screenshot rounds)
 
 | Criterion | Score | What would make it a 5 |
 |---|---|---|
 | First-glance clarity | 4 | Run a 10-second test with three people who have never seen LiveLift, and fix whatever they misread. |
-| Hierarchy | 4 | The phone preview's dark mass still pulls the eye at 1920; a lighter host frame would calm it. |
+| Hierarchy | 4 | The phone preview now has real content, but its dark frame still pulls the eye at 1920. Test a lighter studio wall. |
 | Spacing rhythm | 4 | At 1280×720 the desk compresses to 12 px gaps and the chart to about 130 px tall; a dedicated short-screen layout would help. |
 | Typography | 4 | Hand-tune kerning of the 40/56 px numerals, and verify stacked tone marks (ẩ, ổ) on the projector itself. |
 | Colour and contrast | 4 | The dark theme's pinned row (red tint) is a little heavy; test on the actual UIT projector. |
 | Motion quality | 4 | Profile the 60× clock on a low-end laptop and confirm 60 fps; add a shared-element move from suggestion to pinned row. |
 | Honesty of labels | 5 | — |
 | State coverage | 4 | Design a real CSV error state (bad row, duplicate name) for when CSV parsing exists. |
-| Story flow | 4 | Rehearse with a stopwatch and trim beats that run over 6 s. |
-| Polish | 4 | A second pass on the 390 px layout, and a lighter "Khung hình người dẫn" placeholder. |
+| Story flow | 4 | Rehearse with a stopwatch; the journey adds six → presses after beat 16 if you step through every stage. |
+| Polish | 4 | A second pass on the 390 px layout. The drawn host has no face details by design; a designer could give the frame more character. |

@@ -71,10 +71,52 @@ Four screenshot rounds at 1920×1080, 1440×900 and 1280×720, in both themes; e
 
 Self-scores (1–5): clarity 4, hierarchy 4, spacing 4, typography 4, colour and contrast 4, motion 4, honesty 5, states 4, story 4, polish 4. `DESIGN.md` §9 says what each needs to reach 5.
 
+## Review round 2 (09/10): what changed
+
+1. **The data journey no longer covers anything.**
+   - **Panel:** the six stages are one ordered panel in its own layout column, and the desk reflows beside it (container queries on the stage).
+   - **Each stage:** number, name, one sentence, and "Ở đâu:" naming its element.
+   - **Badges:** six numbered badges sit inside the real elements, in the layout.
+   - **Ring:** the page dims slightly; hovering, focusing or stepping a stage (`→` / `↓`) rings its element in red.
+   - Screens: `04-data-journey-*` and `04-data-journey-stage-4-*`.
+2. **Presenter mode is slide-ready.**
+   - **Type:** it raises the type scale (no text under 14 px, running text at least 16 px, at 1920×1080), and `verify.mjs` checks this.
+   - **Chrome:** it hides the bottom bar and "Đã lưu", and keeps "Dữ liệu mẫu" in the header.
+   - **Exports:** a second set of 38 PNGs at 2560×1440 is in `screens/presenter/` (`npm run shots:presenter`).
+3. **Polish:**
+   - The Live Desk chart's axis fits the elapsed time.
+   - The host phone shows a drawn studio frame, readable chat lines and a full pinned-product card.
+   - The "Trợ lý gợi ý, chưa ghim" tag has its own line.
+4. **Screenshot loop:** three more rounds at 1920×1080, 1440×900 and 1280×720.
+   - At 1440 with the panel open, the desk fell to two columns and the comment badges went off-screen. It now keeps three narrow columns down to a 940 px desk.
+   - The dock overlapped itself beside the panel; it now spans the full width.
+   - Panel stages were clipped at 900 px height; the panel now compacts on short screens.
+   - A viewport rule broke product rows at 1280.
+   - Stage sentences broke awkwardly, and a stray ring-light shape appeared in the phone frame.
+
+Final verification for round 2 (same build as the committed `dist/` and both screen sets):
+
+```
+npm run typecheck    -> clean
+npm run check:story  -> all story checks passed
+npm run build        -> dist/index.html 323 KB, dist/style-tiles.html 196 KB
+npm run verify       -> 19/19 checks passed
+  axe-core, 19 states x 2 themes x 2 viewports, zero violations
+  story end to end with ArrowRight only, network blocked (0 external requests), no console errors
+  journey: panel beside the desk (no overlap), six badges in place, → / ↓ step stages with a ring
+  presenter mode: no text under 14 px, body text at least 16 px (phone mock excluded)
+  reduced motion: story completes, no looping or timed animation left
+  390 px: no horizontal scroll; first paint 116 ms; CLS 0.0001; dist 519 KB
+npm run shots            -> 39 PNG in screens/
+npm run shots:presenter  -> 38 PNG in screens/presenter/
+```
+
 ## Not done, or unsure
 
 - **Not checked on real hardware:** the UIT projector, a low-end laptop at 60 fps (only first paint and CLS were measured headless), Safari and Firefox (only Chromium was run).
 - **The 390 px layout** is "graceful", not polished to projector standard; axe was not run at 390 px.
+- **The journey at 1280×720** works (all badges on screen), but the desk is dense there and the chart is small. It is designed for 1920×1080 first.
+- **The presenter type check** treats prices, ticks, chips and badges as labels (14 px minimum) and sentences as body text (16 px minimum). The drawn phone screen is excluded: its text is about 13 px at 1920.
 - **CSV parsing** is not implemented: import always loads the sample pack, and the screen says so.
 - **"Đã lưu"** is design intent only (stated in the UI drawer and in `DESIGN.md`). There is no database.
 - **The flash-sale and switch thresholds** (10 add-to-cart, stock 10, margin 4, 3-minute cooldown) are my design choices, not platform facts. They are listed in "Về dữ liệu này".
