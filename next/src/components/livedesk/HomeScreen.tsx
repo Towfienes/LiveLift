@@ -2,40 +2,85 @@
 
 import React from "react";
 import Link from "next/link";
-import { StandardShell } from "@/components/shell";
-import { TruthPanel } from "@/components/onboarding/HomeOnboarding";
-import { useStartFlow } from "@/lib/livedesk/hooks";
-import { useLabPreferences } from "@/components/platform/lab/useLabPreferences";
-import { DeskFrame, DeskPanel } from "./DeskFrame";
-import { deskCopy } from "./copy";
+import { useCurrentLive, useLiveRecap, useStartFlow } from "@/lib/livedesk/hooks";
+import { IconCheck } from "./icons";
+import { duration } from "./i18n";
+import { Shell, useShell } from "./Shell";
+import { SimTag } from "./ui";
+
+type StepState = "done" | "active" | "todo";
+
+function HomeBody() {
+  const { c, lang } = useShell();
+  const { view } = useStartFlow();
+  const live = useCurrentLive();
+  const recap = useLiveRecap(live?.id ?? "");
+  const synced = view.products.filter((p) => p.sync.state === "synced").length;
+  const running = live?.mode === "live";
+  const states: StepState[] = [
+    view.connected ? "done" : "active",
+    !view.connected ? "todo" : synced > 0 ? "done" : "active",
+    running || live?.mode === "ended" ? "done" : synced > 0 ? "active" : "todo",
+    running ? "active" : live?.mode === "ended" ? "done" : "todo",
+  ];
+  const deskHref = live ? `/desk/${encodeURIComponent(live.id)}` : null;
+  const next = running && deskHref ? { label: c.nextDesk, href: deskHref, cta: c.openDesk }
+    : !view.connected ? { label: c.nextConnect, href: "/start", cta: c.openStart }
+    : synced === 0 ? { label: c.nextImport, href: "/start", cta: c.openStart }
+    : live?.mode === "ended" && deskHref ? { label: c.nextRecap, href: `${deskHref}/recap`, cta: c.openRecap }
+    : { label: c.nextStart, href: "/start", cta: c.openStart };
+  const stateWord = (s: StepState): string => (s === "done" ? c.flowDone : s === "active" ? c.flowNow : c.flowLater);
+  return (
+    <div className="home">
+      <div className="home-intro">
+        <h1>{c.homeTitle}</h1>
+        <p className="lede">{c.homeLede}</p>
+      </div>
+      <section className="home-flow" aria-labelledby="flow-h" data-testid="home-flow">
+        <h2 id="flow-h" className="label">{c.flowLabel}</h2>
+        <ol className="flow">
+          {c.flow.map((title, i) => (
+            <li key={title} className={`flow-step is-${states[i]}`}>
+              <span className={`step-n is-${states[i]}`} aria-hidden="true">{states[i] === "done" ? <IconCheck size={18} /> : i + 1}</span>
+              <div>
+                <h3>{title}<span className="sr-only">: {stateWord(states[i])}</span></h3>
+                <p>{c.flowText[i]}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div className="home-status">
+          <dl className="status-list" aria-label={c.statusLabel}>
+            <div><dt>{c.connectTitle}</dt><dd>{view.connected ? c.connected : c.notConnected}</dd></div>
+            <div><dt>{c.productsTitle}</dt><dd>{c.productsCount(view.products.length, synced)}</dd></div>
+            {live && recap && <div><dt>{c.desk}</dt><dd>{running ? c.liveRunning(duration(recap.durationSec, lang)) : c.liveEnded(duration(recap.durationSec, lang))}</dd></div>}
+          </dl>
+          <div className="home-next">
+            <p className="label">{c.nextLabel}</p>
+            <p className="home-next-text">{next.label}</p>
+            <Link href={next.href} className="btn btn-primary btn-lg" data-testid="home-next">{next.cta}</Link>
+          </div>
+        </div>
+      </section>
+      <section className="truth" aria-labelledby="truth-h" data-testid="truth-panel">
+        <h2 id="truth-h">{c.truthTitle}</h2>
+        <dl>
+          {c.truth.map((t, i) => (
+            <div key={t.term}>
+              <dt>{i === 0 ? <SimTag>{t.term}</SimTag> : t.term}</dt>
+              <dd>{t.text}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    </div>
+  );
+}
 
 export function HomeScreen() {
-  const { view } = useStartFlow();
-  const { lang, setLang } = useLabPreferences();
-  const c = deskCopy[lang];
-  const next = !view.connected ? c.nextConnect : view.products.some(product => product.sync.state === "synced") ? c.nextStart : c.nextImport;
   return (
-    <StandardShell>
-      <DeskFrame title="home" lang={lang} setLang={setLang}>
-        <p className="text-[18px] text-[var(--text-muted)] mb-6">{c.intro}</p>
-        <div className="grid gap-4 md:grid-cols-3" data-testid="home-flow">
-          <DeskPanel title={c.connect}>
-            <p className="text-[var(--simulated)]">{view.platformLabel}</p>
-            <p className="mt-2">{view.connected ? c.connected : c.disconnected}</p>
-          </DeskPanel>
-          <DeskPanel title={c.products}>
-            <p className="text-[32px] tabular-nums">{view.products.length}</p>
-          </DeskPanel>
-          <DeskPanel title={c.next}>
-            <p>{next}</p>
-            <Link href="/start" className="mt-3 inline-flex min-h-[44px] items-center px-4 rounded-[8px] font-medium bg-[var(--accent-lime)] text-[var(--accent-lime-text)]">{c.start}</Link>
-          </DeskPanel>
-        </div>
-        <ol className="flex flex-wrap gap-3 my-6 text-[var(--text-muted)]" data-testid="loop-guide" aria-label={c.intro}>
-          <li>1 · {c.connect}</li><li>2 · {c.import}</li><li>3 · {c.startLive}</li><li>4 · {c.desk}</li>
-        </ol>
-        <TruthPanel />
-      </DeskFrame>
-    </StandardShell>
+    <Shell screen="home">
+      <HomeBody />
+    </Shell>
   );
 }
