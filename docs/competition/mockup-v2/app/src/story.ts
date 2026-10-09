@@ -40,10 +40,7 @@ export const BEATS: Beat[] = [
   {
     title: "Bắt đầu live: 120 người xem",
     hold: 4500,
-    run: () => {
-      startLive();
-      later(750, () => clockTo(20, 900));
-    },
+    run: startLive,
   },
   { title: "Bình luận đầu tiên, gợi ý độ tin cậy thấp", hold: 6000, run: () => (desk(), clockTo(120, 2600)) },
   { title: "Thêm tín hiệu: độ tin cậy trung bình", hold: 7000, run: () => (desk(), clockTo(240, 2600)) },

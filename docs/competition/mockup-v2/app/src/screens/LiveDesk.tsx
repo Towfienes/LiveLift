@@ -190,7 +190,9 @@ function Answer({ world }: { world: World }) {
         </h2>
         <p class="answer-lede">Chế độ Quan sát chỉ mô tả điều đã xảy ra. Trợ lý không gợi ý.</p>
         <Reasons s={top} />
-        <ConfidenceLine s={top} level={top.mentions >= 20 ? "high" : top.mentions >= 8 ? "medium" : "low"} />
+        <p class="confidence">
+          Cỡ mẫu: <span class="num">{top.mentions}</span> bình luận nhắc tới sản phẩm trong 2 phút. Đây là mô tả, không phải gợi ý.
+        </p>
       </>
     ) : (
       <>
@@ -473,7 +475,13 @@ function ChartPanel({ world }: { world: World }) {
         <h2 id="chart-h">Người xem và thêm giỏ</h2>
         <SimTag quiet>SIMULATED</SimTag>
       </div>
-      {loading ? <Skeleton h={220} r={10} /> : <LiveChart world={world} />}
+      {loading ? (
+        <div class="chart">
+          <Skeleton h={10_000} r={10} />
+        </div>
+      ) : (
+        <LiveChart world={world} />
+      )}
       <p class="chart-note">Vạch dọc là lúc bạn ghim. Chúng cho biết khi nào, không chứng minh vì sao số thay đổi.</p>
     </section>
   );

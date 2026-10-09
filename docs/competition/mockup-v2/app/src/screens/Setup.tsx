@@ -1,7 +1,7 @@
 // Chuẩn bị: three steps, one primary action at a time. Connect (SIMULATED), products (CSV or
 // sample pack; each row goes queued → syncing → on the SIMULATED platform), start live.
 
-import { PRODUCTS, type ProductId } from "../data";
+import { PRODUCTS, SAMPLE_CSV, type ProductId } from "../data";
 import { fmtPrice } from "../format";
 import { IconCheck, IconLink, IconUpload } from "../icons";
 import { connect, importProducts, setState, setupReady, startLive, useSampleCsv, useStore, type RowStatus } from "../store";
@@ -170,6 +170,9 @@ export function Setup() {
                 <p class="note-warn">
                   <b>Túi vải tote</b>: giá và tồn kho chưa nhập. LiveLift để trống, không coi là 0. Vẫn bắt đầu live được; thêm giá trước khi ghim sản phẩm này.
                 </p>
+              )}
+              {s.rows.length > 0 && s.csv.trim() !== SAMPLE_CSV && (
+                <p class="step-note">Mockup này luôn nạp bộ sản phẩm mẫu, kể cả khi bạn dán CSV khác. Bản thật đọc đúng CSV của bạn.</p>
               )}
             </div>
           )}

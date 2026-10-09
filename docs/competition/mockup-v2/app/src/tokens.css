@@ -84,9 +84,10 @@
   --chart-area: rgba(23, 26, 33, 0.06);
   --chart-bar: #8a92a3;
   --chart-grid: #e6e9ee;
-  --band-a: rgba(214, 31, 69, 0.09);
-  --band-b: rgba(90, 63, 196, 0.1);
-  --band-c: rgba(23, 128, 74, 0.1);
+  /* pinned-product bands: neutral on purpose; violet means SIMULATED, red means LIVE */
+  --band-a: rgba(23, 26, 33, 0.045);
+  --band-b: rgba(23, 26, 33, 0.085);
+  --band-c: rgba(23, 26, 33, 0.04);
 
   --shadow: 0 1px 2px rgba(23, 26, 33, 0.04), 0 12px 32px rgba(23, 26, 33, 0.08);
   --scrim: rgba(23, 26, 33, 0.42);
@@ -128,9 +129,9 @@
     --chart-area: rgba(238, 240, 244, 0.07);
     --chart-bar: #7d8696;
     --chart-grid: #2b313d;
-    --band-a: rgba(255, 84, 112, 0.13);
-    --band-b: rgba(185, 168, 255, 0.13);
-    --band-c: rgba(95, 211, 154, 0.12);
+    --band-a: rgba(238, 240, 244, 0.05);
+    --band-b: rgba(238, 240, 244, 0.09);
+    --band-c: rgba(238, 240, 244, 0.04);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.35);
     --scrim: rgba(8, 10, 14, 0.62);
     --scrim-strong: rgba(8, 10, 14, 0.74);
@@ -171,9 +172,9 @@
   --chart-area: rgba(238, 240, 244, 0.07);
   --chart-bar: #7d8696;
   --chart-grid: #2b313d;
-  --band-a: rgba(255, 84, 112, 0.13);
-  --band-b: rgba(185, 168, 255, 0.13);
-  --band-c: rgba(95, 211, 154, 0.12);
+  --band-a: rgba(238, 240, 244, 0.05);
+  --band-b: rgba(238, 240, 244, 0.09);
+  --band-c: rgba(238, 240, 244, 0.04);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.35);
   --scrim: rgba(8, 10, 14, 0.62);
   --scrim-strong: rgba(8, 10, 14, 0.74);
