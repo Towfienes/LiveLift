@@ -149,11 +149,11 @@ describe("Routes, language and honesty", () => {
     expect(links.map(link => link.getAttribute("href"))).toEqual(["/legacy/home", "/sessions", "/products", "/insights", "/simulator", "/integrations", "/live/new"]);
   });
 
-  it("the header links Home, Start, Live Desk, Recap and Legacy, and offers only what exists", () => {
+  it("the header links Start, Live Desk and Recap only, and offers only what exists", () => {
     currentLive = { id: "my live", mode: "live" };
     render(<StartPage />);
     const header = within(screen.getByTestId("desk-nav"));
-    expect(header.getAllByRole("link").map(link => link.getAttribute("href"))).toEqual(["/", "/start", "/desk/my%20live", "/legacy"]);
+    expect(header.getAllByRole("link").map(link => link.getAttribute("href"))).toEqual(["/start", "/desk/my%20live"]);
     expect(screen.getByTestId("nav-recap")).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByTestId("nav-recap")).toHaveTextContent("Tổng kết có sau khi bạn kết thúc live");
     cleanup();
@@ -538,16 +538,11 @@ describe("Desk interactions", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("Experiment is locked with an honest reason; Observe only describes", () => {
+  it("the desk has no mode switch: the assistant always suggests and the header carries no locked mode", () => {
     renderDesk();
-    const lock = screen.getByTestId("desk-mode-experiment");
-    expect(lock).toHaveAttribute("aria-disabled", "true");
-    fireEvent.click(lock);
-    expect(screen.getByTestId("desk-lock-note")).toHaveTextContent("không kết luận nhân quả");
-    fireEvent.click(screen.getByTestId("desk-mode-observe"));
-    expect(screen.queryByTestId("desk-accept-s1")).toBeNull();
-    expect(screen.queryByText("Trợ lý gợi ý, chưa ghim")).toBeNull();
-    expect(screen.getByTestId("desk-copilot")).toHaveTextContent("Trợ lý vẫn đọc tín hiệu nhưng không hiện gợi ý");
+    expect(screen.queryByTestId("desk-mode-experiment")).toBeNull();
+    expect(screen.queryByTestId("desk-mode-observe")).toBeNull();
+    expect(screen.getByTestId("desk-copilot")).toBeInTheDocument();
   });
 
   it("flash sale: not enough signals says why, a proposed one can be run or dismissed", () => {

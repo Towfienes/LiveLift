@@ -143,11 +143,9 @@ function Nav({ screen, c }: { screen: DeskScreen; c: DeskCopy }) {
   const deskHref = live ? `/desk/${encodeURIComponent(live.id)}` : null;
   const recapHref = live?.mode === "ended" ? `/desk/${encodeURIComponent(live.id)}/recap` : null;
   const items: { id: DeskScreen; n: number | null; label: string; href: string | null; off?: string }[] = [
-    { id: "home", n: null, label: c.home, href: "/" },
     { id: "start", n: 1, label: c.start, href: "/start" },
     { id: "desk", n: 2, label: c.desk, href: deskHref, off: c.navDeskOff },
     { id: "recap", n: 3, label: c.recap, href: recapHref, off: c.navRecapOff },
-    { id: "legacy", n: null, label: c.legacy, href: "/legacy" },
   ];
   return (
     <nav className="trail" aria-label={c.navLabel} data-testid="desk-nav">
@@ -173,11 +171,9 @@ function Nav({ screen, c }: { screen: DeskScreen; c: DeskCopy }) {
   );
 }
 
-export function Shell({ screen, children, headerModes, headerStatus, headerEnd, dockStart, dockCenter, dockEnd, onSpace, modalOpen = false }: {
+export function Shell({ screen, children, headerStatus, headerEnd, dockStart, dockCenter, dockEnd, onSpace, modalOpen = false }: {
   screen: DeskScreen;
   children: React.ReactNode;
-  /** Desk only: the assistant's mode switch, beside the navigation. */
-  headerModes?: React.ReactNode;
   /** Desk only: LIVE status. */
   headerStatus?: React.ReactNode;
   /** Desk only: End live. */
@@ -242,12 +238,11 @@ export function Shell({ screen, children, headerModes, headerStatus, headerEnd, 
     <Ctx.Provider value={ctx}>
       <div className={`ld screen-${screen}${presenter ? " is-presenter" : ""}${journey ? " is-journey" : ""}`} data-theme={theme}
         data-presenter={presenter ? "1" : "0"} lang={lang} data-testid="livedesk-frame" data-screen={screen}>
-        <header className={`hdr${headerModes ? " has-modes" : ""}`}>
+        <header className="hdr">
           <div className="hdr-brand">
             <Link href="/" className="wordmark" aria-label={`LiveLift, ${c.home}`}>Live<span className="wordmark-lift">Lift</span></Link>
           </div>
           <Nav screen={screen} c={c} />
-          {headerModes}
           <div className="hdr-spacer" />
           {headerStatus}
           <SimTag><span className="stamp-long">{c.stamp}</span><span className="stamp-short">SIMULATED</span></SimTag>

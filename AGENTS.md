@@ -18,7 +18,7 @@ npm run typecheck && npm run lint && npm test
 npm run build          # for any UI change
 ```
 
-Baseline on 2026-10-08: **65 test files, 1,095 passed, 57 skipped**, typecheck and lint clean. A change may add tests; it may not remove or weaken one.
+Baseline on 2026-10-09: **88 test files, 1,409 passed, 57 skipped**, typecheck and lint clean. A change may add tests; it may not remove or weaken one.
 Paste the summary line of each command in your report. Do not claim a result you did not see.
 
 ## Non-negotiable: the evidence model

@@ -47,20 +47,21 @@ All screens live in `next/src/components/livedesk/`; the routes are thin pages. 
    button names the effect. A suggestion is never drawn as a pin: dashed chip while proposed, the taped card only
    once the SIMULATED platform shows the product. After acceptance the answer says “Đã nhận, chờ nền tảng hiện”
    or “Đã nhận, nền tảng đã hiện (SIMULATED)”: accepted and performed stay apart.
-7. **Header.** Logo (the Home link), links Trang chủ · 1 Bắt đầu · 2 Live Desk · 3 Tổng kết · Bản cũ, then on
-   the desk the mode switch, LIVE status, the SIMULATED stamp, the journey toggle and End live. Links that do not
-   exist yet (no live, no recap) are shown disabled with the reason. Below 1600 px the desk header sheds the Home
-   and Legacy links (the logo still goes Home), the viewer count and the journey label; below 1440 the stamp
-   shortens to “SIMULATED”. The stamp is never hidden (the mockup hid it below 1280). Language, theme, keys and
-   “Về dữ liệu này” sit in the quiet bottom bar with the clock, as in the mockup.
+7. **Header (simplified in WP8).** Logo (the Home link), then three steps: 1 Bắt đầu · 2 Live Desk · 3 Tổng kết;
+   on the desk also the LIVE status, the SIMULATED stamp, the journey toggle and End live. Links that do not exist
+   yet (no live, no recap) are shown disabled with the reason. The old screens are one quiet link at the foot of
+   Home, not a header item. Below 1600 px the desk header sheds the viewer count and the journey label; below
+   1440 the stamp shortens to “SIMULATED”. The stamp is never hidden. Language, theme, keys and “Về dữ liệu này”
+   sit in the quiet bottom bar with the clock.
 8. **Clock controls in the bottom bar**: virtual time, Chạy, Dừng, 1× 5× 15× 60×, +30 giây, +1 phút, +5 phút,
    Đặt lại. The run fingerprint sits at the left of the bar.
 9. **End live asks first** (“Kết thúc buổi live lúc 06:52?”). Confirming ends the live on the SIMULATED platform
    and opens the recap once the logic reports the live ended. If the platform refuses, the desk stays and the
    banner says why.
-10. **Modes.** *Quan sát* only hides suggestions and describes the last two minutes by intent; the Copilot keeps
-    reading signals (said on screen). *Thí nghiệm* is locked: this version has no experiment mode, and the
-    reason says it needs sessions of 90+ minutes and an approved test design.
+10. **No mode switch (removed in WP8).** The first build had Quan sát / Đề xuất / Thí nghiệm in the header. The team
+    judged it noise: the assistant now always suggests, and a suggestion is only ever a suggestion. The experiment
+    mode does not exist in this version; the recap says so under “Điều chưa biết” (causation needs a switchback
+    session, not observation).
 11. **Platform condition rehearsal.** The drawer can put SIMULATED Shopee into “Hết hạn quyền truy cập”, “Giới
     hạn tần suất” or “Lỗi máy chủ” and clear it again, through an additive hook over the logic's existing
     `setPlatformFault`. LiveLift reads again after the operator's next successful call; the drawer says so.

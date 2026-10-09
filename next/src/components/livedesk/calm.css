@@ -1756,7 +1756,7 @@
   display: grid;
 }
 .ld .step {
-  padding: var(--s-24) 0;
+  padding: var(--s-16) 0;
   border-top: 1px solid var(--line);
 }
 .ld .step:first-child {
@@ -2902,6 +2902,9 @@
     flex-direction: column;
     align-items: flex-start;
   }
+  .ld .flash-main {
+    flex: 0 0 auto;
+  }
   .ld .live-time + .live-sep,
   .ld .live-viewers {
     display: none;
@@ -3637,4 +3640,13 @@
     opacity: 0;
     transform: translateY(-6px);
   }
+}
+
+/* WP8: the old screens are one quiet link at the foot of Home, not a header item. */
+.ld .home-legacy { margin: var(--s-6, 24px) 0 0; font-size: 14px; }
+.ld .home-legacy a { color: var(--ink-3, inherit); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
+
+/* WP8: on a projector the 300 weight thins out; presenter mode reads at 400. */
+.ld.is-presenter {
+  --w-light: 400;
 }

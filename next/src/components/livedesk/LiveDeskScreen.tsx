@@ -10,7 +10,7 @@ import type {
 } from "@/lib/livedesk/types";
 import type { DeskCopy } from "./copy";
 import { DeskChart } from "./DeskChart";
-import { IconAlert, IconBolt, IconInfo, IconLock, IconPause, IconPin, IconPlay, IconShield, IconSkip, IconUnpin } from "./icons";
+import { IconAlert, IconBolt, IconInfo, IconPause, IconPin, IconPlay, IconShield, IconSkip, IconUnpin } from "./icons";
 import { INTENT_ORDER, clock, headline, num, readSignal, tAiStatus, tAssumption, tBanner, type ReadSignal } from "./i18n";
 import { Phone } from "./Phone";
 import type { DeskLang } from "./prefs";
@@ -25,8 +25,6 @@ import { Button, Meter, Num, SimTag, useFlip } from "./ui";
  * platform shows the product.
  */
 
-type Mode = "observe" | "suggest";
-
 const SKIPS = [30, 60, 300] as const;
 
 /** The suggestion the screen leads with: the newest proposed one of each kind. */
@@ -37,28 +35,6 @@ function proposed(view: LiveDeskViewModel, kind: CopilotSuggestion["kind"]): Cop
 const productName = (view: LiveDeskViewModel, id: string): string => view.products.find((p) => p.id === id)?.name ?? id;
 
 // ---- header pieces ----------------------------------------------------------------------------------------------
-
-function ModeSwitch({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
-  const { c } = useShell();
-  const [note, setNote] = useState(false);
-  return (
-    <div className="modes" role="group" aria-label={c.modesLabel}>
-      <button type="button" className="mode" aria-pressed={mode === "observe"} onClick={() => setMode("observe")} data-testid="desk-mode-observe">{c.observe}</button>
-      <button type="button" className="mode" aria-pressed={mode === "suggest"} onClick={() => setMode("suggest")} data-testid="desk-mode-suggest">{c.suggest}</button>
-      <button type="button" className="mode is-locked" aria-disabled="true" aria-expanded={note} aria-controls="lock-note" onClick={() => setNote(!note)} data-testid="desk-mode-experiment">
-        <IconLock size={16} />
-        {c.experiment}
-      </button>
-      {note && (
-        <div className="popover" id="lock-note" role="note" data-testid="desk-lock-note">
-          <p className="popover-title">{c.lockTitle}</p>
-          <p>{c.lockBody}</p>
-          <Button size="sm" onClick={() => setNote(false)}>{c.lockOk}</Button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function LiveStatus({ view }: { view: LiveDeskViewModel }) {
   const { c, lang } = useShell();
@@ -212,13 +188,13 @@ function LastOutcome({ view }: { view: LiveDeskViewModel }) {
   );
 }
 
-function Answer({ view, actions, mode, recap }: { view: LiveDeskViewModel; actions: LiveDeskActions; mode: Mode; recap: RecapViewModel | null }) {
+function Answer({ view, actions, recap }: { view: LiveDeskViewModel; actions: LiveDeskActions; recap: RecapViewModel | null }) {
   const { c, lang } = useShell();
   const next = proposed(view, "show_next");
   const showing = view.products.find((p) => p.id === view.showingProductId) ?? null;
   const since = showing && recap ? [...recap.bands].reverse().find((b) => b.productId === showing.id)?.fromSec ?? null : null;
   const flash = proposed(view, "flash_sale");
-  const announce = view.mode === "live" && mode === "suggest"
+  const announce = view.mode === "live"
     ? [next, flash].filter((s): s is CopilotSuggestion => s !== null).map((s) => `SIMULATED. ${headline(s, productName(view, s.productId), lang)}. ${c.state[s.state]}.`).join(" ")
     : "";
   let body: React.ReactNode;
@@ -228,21 +204,6 @@ function Answer({ view, actions, mode, recap }: { view: LiveDeskViewModel; actio
         <h2 className="answer-title" data-journey="5"><JBadge n={5} />{c.endedTitle}</h2>
         <p className="answer-lede" data-journey="4"><JBadge n={4} />{c.endedLede}</p>
         <LastOutcome view={view} />
-      </div>
-    );
-  } else if (mode === "observe") {
-    body = (
-      <div className="answer-body" key="observe">
-        <h2 className="answer-title" data-journey="5"><JBadge n={5} />{c.observeTitle}</h2>
-        <p className="answer-lede">{c.observeLede}</p>
-        <div className="why" data-journey="4">
-          <dl className="reasons">
-            {(["ask_price", "ask_size", "ready_to_buy"] as const).map((k) => (
-              <div key={k}><dt>{c.intent[k]}</dt><dd><Num value={view.intentCounts[k]} /></dd></div>
-            ))}
-          </dl>
-          <p className="confidence"><JBadge n={4} />{c.intentsLabel}</p>
-        </div>
       </div>
     );
   } else if (next) {
@@ -274,20 +235,19 @@ function Answer({ view, actions, mode, recap }: { view: LiveDeskViewModel; actio
   return (
     <section className="panel answer" aria-labelledby="answer-h" data-testid="desk-copilot">
       <p className="answer-kicker" id="answer-h">
-        {mode === "observe" ? c.kickerObserve : c.kicker}
+        {c.kicker}
         <SimTag quiet>{c.simDataTag}</SimTag>
       </p>
       {body}
       <p className="sr-only" role="status" aria-atomic="true" data-testid="desk-announce">{announce}</p>
-      <Flash view={view} actions={actions} mode={mode} primaryTaken={next !== null && next.confidence !== "low"} />
+      <Flash view={view} actions={actions} primaryTaken={next !== null && next.confidence !== "low"} />
     </section>
   );
 }
 
-function Flash({ view, actions, mode, primaryTaken }: { view: LiveDeskViewModel; actions: LiveDeskActions; mode: Mode; primaryTaken: boolean }) {
+function Flash({ view, actions, primaryTaken }: { view: LiveDeskViewModel; actions: LiveDeskActions; primaryTaken: boolean }) {
   const { c, lang } = useShell();
   if (view.mode === "ended") return null;
-  if (mode === "observe") return <div className="flash"><IconBolt size={18} /><p>{c.flashObserve}</p></div>;
   const ready = proposed(view, "flash_sale");
   if (ready) {
     const signals = ready.signals.map((x) => readSignal(x, lang));
@@ -467,10 +427,10 @@ function ClockControls({ view, actions }: { view: LiveDeskViewModel; actions: Li
 
 // ---- screen -------------------------------------------------------------------------------------------------------
 
-function DeskBody({ liveId, view, actions, mode, recap }: { liveId: string; view: LiveDeskViewModel; actions: LiveDeskActions; mode: Mode; recap: RecapViewModel | null }) {
+function DeskBody({ liveId, view, actions, recap }: { liveId: string; view: LiveDeskViewModel; actions: LiveDeskActions; recap: RecapViewModel | null }) {
   const { c, lang } = useShell();
   const next = proposed(view, "show_next");
-  const suggested = mode === "suggest" && view.mode === "live" && next ? next.productId : null;
+  const suggested = view.mode === "live" && next ? next.productId : null;
   const chart = {
     elapsedSec: recap?.durationSec ?? 0,
     viewers: view.charts.viewers.points,
@@ -504,7 +464,7 @@ function DeskBody({ liveId, view, actions, mode, recap }: { liveId: string; view
           <Phone view={view} c={c} lang={lang} />
         </div>
         <div className="col col-center">
-          <Answer view={view} actions={actions} mode={mode} recap={recap} />
+          <Answer view={view} actions={actions} recap={recap} />
           <section className="panel chart-panel" aria-labelledby="chart-h" data-testid="desk-chart">
             <div className="panel-head">
               <h2 id="chart-h">{c.chartTitle}</h2>
@@ -567,7 +527,6 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
   const recap = useLiveRecap(liveId);
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [mode, setMode] = useState<Mode>("suggest");
   const [about, setAbout] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -584,7 +543,6 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
     <Shell
       screen="desk"
       modalOpen={about || confirm}
-      headerModes={<ModeSwitch mode={mode} setMode={setMode} />}
       headerStatus={<LiveStatus view={view} />}
       headerEnd={<EndControl view={view} liveId={liveId} onEnd={() => setConfirm(true)} />}
       dockStart={<span className="dock-print">{"· "}<DeskFingerprint view={view} /></span>}
@@ -592,7 +550,7 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
       dockEnd={<AboutButton onOpen={() => setAbout(true)} />}
       onSpace={live ? () => (view.clock.running ? actions.onPause() : actions.onRun()) : undefined}
     >
-      <DeskBody liveId={liveId} view={view} actions={actions} mode={mode} recap={recap} />
+      <DeskBody liveId={liveId} view={view} actions={actions} recap={recap} />
       {about && <AboutDrawer view={view} liveId={liveId} onClose={() => setAbout(false)} />}
       {confirm && live && (
         <ConfirmEnd view={view} onCancel={() => setConfirm(false)} onConfirm={() => { setConfirm(false); setEnding(true); actions.onEndLive(); }} />
