@@ -11,6 +11,7 @@ import { useRemoteState } from "@/lib/store/hooks";
 export interface StandardShellProps {
   activeSessionId?: string | null;
   activeSessionTitle?: string | null;
+  deskLiveId?: string | null;
   children: React.ReactNode;
 }
 
@@ -35,12 +36,25 @@ const MORE_NAV: NavItem[] = [
   { href: "/integrations", label: "Integrations", icon: "ri-plug-line" },
 ];
 
+const DESK_NAV: NavItem[] = [
+  { href: "/", label: "Home", icon: "ri-home-5-line" },
+  { href: "/start", label: "Start", icon: "ri-play-line", tone: "simulated" },
+];
+const DESK_MORE_NAV: NavItem[] = [
+  { href: "/integrations", label: "Integrations", icon: "ri-plug-line" },
+  { href: "/legacy", label: "Legacy", icon: "ri-archive-line" },
+];
+
 export const StandardShell: React.FC<StandardShellProps> = ({
   activeSessionId = null,
   activeSessionTitle = null,
+  deskLiveId = null,
   children,
 }) => {
   const pathname = usePathname();
+  const deskFlow = pathname === "/" || pathname === "/start" || pathname?.startsWith("/desk/") || pathname === "/legacy" || pathname === "/integrations";
+  const workNav = deskFlow ? [...DESK_NAV, ...(deskLiveId ? [{ href: `/desk/${encodeURIComponent(deskLiveId)}`, label: "Desk", icon: "ri-dashboard-line", tone: "simulated" as const }] : [])] : WORK_NAV;
+  const moreNav = deskFlow ? DESK_MORE_NAV : MORE_NAV;
   // Where a REAL room is in use its connection status takes the place of the "This device" note (same space, no wider header).
   const roomInUse = useRemoteState().active;
   const [open, setOpen] = useState(false);
@@ -120,10 +134,10 @@ export const StandardShell: React.FC<StandardShellProps> = ({
           >
             {/* Primary navigation: the work loop, then rehearse and connect */}
             <nav className="flex flex-col lg:flex-row lg:items-center gap-1 lg:ml-3" aria-label="Main Navigation">
-              {WORK_NAV.map(renderLink)}
+              {workNav.map(renderLink)}
               <span className="hidden lg:block mx-1.5 h-6 w-px bg-[#2A303A]" aria-hidden="true" />
               <span className="lg:hidden mt-2 mb-0.5 px-3.5 text-[13px] font-semibold tracking-[1.4px] uppercase text-[#9AA5B5]" aria-hidden="true">Rehearse and connect</span>
-              {MORE_NAV.map(renderLink)}
+              {moreNav.map(renderLink)}
             </nav>
 
             {/* Active session return + who is signed in */}
