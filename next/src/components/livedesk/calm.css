@@ -3618,3 +3618,23 @@
     gap: var(--s-12);
   }
 }
+/* The pinned card drops into place and its tape settles a beat later (transform and opacity only).
+   The tilt uses the separate `rotate` property, so the drop never fights it. */
+.ld .product.is-pinned {
+  animation: pin-drop var(--t-slow) var(--ease) both;
+}
+.ld .product.is-pinned::before {
+  animation: tape-settle var(--t-slow) var(--ease) var(--t-fast) both;
+}
+@keyframes pin-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+@keyframes tape-settle {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
