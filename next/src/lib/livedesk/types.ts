@@ -154,3 +154,73 @@ export interface LiveDeskActions {
   onDismissSuggestion: (suggestionId: string) => void;
   onEndLive: () => void;
 }
+
+// ---- Recap and timeline (WP7, additive) -----------------------------------------------------------------------
+
+/**
+ * What became of each line in the recap table. A recommendation is not an acceptance, and an acceptance is not a
+ * performed action: `accepted` is the operator's click, `performed` needs the platform to show it done.
+ */
+export type RecapOutcome = "open" | "no_response" | "accepted" | "performed" | "dismissed" | "self" | "host";
+
+/** A pin or unpin, with the product it concerns. */
+export interface DeskTimelineMark {
+  atSec: number;
+  kind: DeskMarkerKind;
+  productId: string;
+  productName: string;
+}
+
+/** A stretch of the live during which one product was on show. */
+export interface DeskPinBand {
+  productId: string;
+  productName: string;
+  fromSec: number;
+  toSec: number;
+  /** The operator pinned it from the desk, or the host pinned it in the app (provider observed, SIMULATED). */
+  by: "operator" | "host";
+}
+
+export interface RecapRow {
+  /** When the suggestion was made, or when the pin or unpin happened. */
+  atSec: number;
+  action: "show_next" | "flash_sale" | "pin" | "unpin";
+  productId: string;
+  productName: string;
+  outcome: RecapOutcome;
+  /** What a suggestion rested on; null for a pin or unpin nobody suggested. */
+  suggestion: Pick<CopilotSuggestion, "id" | "signals" | "sampleSize" | "confidence" | "source"> | null;
+  /** For an accepted show_next: the second its pin was made. null when not known. */
+  actedAtSec: number | null;
+}
+
+export interface RecapViewModel {
+  liveId: string;
+  mode: DeskMode;
+  title: string;
+  platformLabel: string;
+  durationSec: number;
+  /** The highest sampled viewer count; null before the first sample. Samples are `viewerSampleSec` apart. */
+  peakViewers: number | null;
+  viewerSampleSec: number;
+  viewerPoints: { atSec: number; value: number }[];
+  /** Add-to-carts per minute for the product on show; null for a minute with no product on show (missing, not zero). */
+  cartsPerMinute: Array<number | null>;
+  /** Their sum over the minutes with a product on show; null when nothing was ever on show. */
+  cartsOnShow: number | null;
+  operatorPins: number;
+  hostPins: number;
+  marks: DeskTimelineMark[];
+  bands: DeskPinBand[];
+  rows: RecapRow[];
+  /** Comments per intent over the last two minutes that were played. */
+  intentCounts: Record<CommentIntent, number>;
+  /** The desk keeps only recent comments: how many it still holds, how many were masked, and from which second. */
+  commentsHeld: { count: number; masked: number; fromSec: number | null };
+  /** Products whose price or stock was not entered. */
+  missing: { id: string; name: string; price: boolean; stock: boolean }[];
+  fingerprint: string | null;
+}
+
+/** A condition the SIMULATED platform can be put into from the assumptions drawer, to rehearse it. */
+export type DeskPlatformFault = "token_expired" | "rate_limited" | "server_error";
