@@ -3812,3 +3812,27 @@
     padding-top: 0;
   }
 }
+
+/* Start: the imported list has a fixed height and scrolls inside, with its header row pinned */
+.ld .ptable-scroll {
+  width: 100%;
+  max-height: min(420px, 55vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-bottom: 1px solid var(--line);
+}
+.ld .ptable-scroll .ptable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg);
+}
+.ld .ptable-scroll:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .ld .ptable-scroll {
+    max-height: min(480px, 60vh);
+  }
+}

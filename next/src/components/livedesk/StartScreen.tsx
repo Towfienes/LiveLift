@@ -25,40 +25,43 @@ function StepHead({ n, title, state, summary }: { n: number; title: string; stat
 
 function ProductTable({ products, onRemove, locked }: { products: DeskProduct[]; onRemove: (id: string) => void; locked: boolean }) {
   const { c } = useShell();
+  // A long list scrolls inside its own box, so Start live stays in reach; the header row stays on top while it scrolls.
   return (
-    <table className="ptable" data-testid="start-products">
-      <caption className="sr-only">{c.tableCaption}</caption>
-      <thead>
-        <tr>
-          <th scope="col">{c.colProduct}</th>
-          <th scope="col" className="r">{c.colPrice}</th>
-          <th scope="col" className="r">{c.colStock}</th>
-          <th scope="col">{c.colStatus} <SimTag quiet>SIMULATED</SimTag></th>
-          <th scope="col"><span className="sr-only">{c.colAction}</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        {products.map((p) => (
-          <tr key={p.id} className={`prow is-${p.sync.state}`} data-testid={`desk-product-${p.id}`}>
-            <th scope="row">
-              {p.name}
-              {p.sync.detail !== null && <span className="sync-detail">{c.platformSaid}: <code>{p.sync.detail}</code></span>}
-            </th>
-            <td className="r num" data-label={c.colPrice}>{p.priceLabel ?? <span className="missing">{c.missing}</span>}</td>
-            <td className="r num" data-label={c.colStock}>{p.stock ?? <span className="missing">{c.missing}</span>}</td>
-            <td>
-              <span className={`status is-${p.sync.state}`}>
-                {p.sync.state === "synced" && <IconCheck size={16} />}
-                {c.sync[p.sync.state]}
-              </span>
-            </td>
-            <td className="r">
-              <Button size="sm" variant="quiet" aria-label={`${c.remove} ${p.name}`} onClick={() => onRemove(p.id)} disabled={locked}>{c.remove}</Button>
-            </td>
+    <div className="ptable-scroll" tabIndex={0} role="region" aria-label={c.tableCaption}>
+      <table className="ptable" data-testid="start-products">
+        <caption className="sr-only">{c.tableCaption}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{c.colProduct}</th>
+            <th scope="col" className="r">{c.colPrice}</th>
+            <th scope="col" className="r">{c.colStock}</th>
+            <th scope="col">{c.colStatus} <SimTag quiet>SIMULATED</SimTag></th>
+            <th scope="col"><span className="sr-only">{c.colAction}</span></th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {products.map((p) => (
+            <tr key={p.id} className={`prow is-${p.sync.state}`} data-testid={`desk-product-${p.id}`}>
+              <th scope="row">
+                {p.name}
+                {p.sync.detail !== null && <span className="sync-detail">{c.platformSaid}: <code>{p.sync.detail}</code></span>}
+              </th>
+              <td className="r num" data-label={c.colPrice}>{p.priceLabel ?? <span className="missing">{c.missing}</span>}</td>
+              <td className="r num" data-label={c.colStock}>{p.stock ?? <span className="missing">{c.missing}</span>}</td>
+              <td>
+                <span className={`status is-${p.sync.state}`}>
+                  {p.sync.state === "synced" && <IconCheck size={16} />}
+                  {c.sync[p.sync.state]}
+                </span>
+              </td>
+              <td className="r">
+                <Button size="sm" variant="quiet" aria-label={`${c.remove} ${p.name}`} onClick={() => onRemove(p.id)} disabled={locked}>{c.remove}</Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
