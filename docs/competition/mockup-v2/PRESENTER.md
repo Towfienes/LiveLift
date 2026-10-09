@@ -9,7 +9,9 @@ Mockup chạy hoàn toàn trong một trang, không cần mạng, không cần m
 3. Bấm **F11** để toàn màn hình, rồi **P** để vào chế độ trình chiếu: ẩn thanh dưới, ẩn “Đã lưu”, và **chữ to hơn** (chữ thường từ 16 px, nhãn nhỏ từ 14 px) để đọc được từ cuối hội trường.
 4. Bấm **R** để chắc chắn đang ở bước 0. Màn hình chuẩn để chiếu là 1920×1080; 1440×900 và 1280×720 cũng hiển thị đủ.
 
-Kiểm tra trước giờ báo cáo: bấm `→` vài lần, rồi `R` để quay về. Nếu chữ tiếng Việt có dấu hiển thị đúng và nút đỏ “Kết nối SIMULATED Shopee Live” hiện ra, máy đã sẵn sàng.
+Kiểm tra trước giờ báo cáo: bấm `→` vài lần, rồi `R` để quay về. Nếu chữ tiếng Việt có dấu hiển thị đúng (so với `screens/00-font-render-test.png`: “Nên ghim tiếp: Quần cargo, ếệạữ ởầ”) và nút đỏ gạch “Kết nối SIMULATED Shopee Live” hiện ra, máy đã sẵn sàng.
+
+Giao diện (từ 09/10): **Calm Studio** do nhóm chọn. Nền kem, chữ nâu mực, nút chính đỏ gạch, góc vuông. Sản phẩm đang ghim là tấm thẻ giấy nghiêng có băng dính; SIMULATED là con dấu viền tím nghiêng. Chỉ ba thứ nghiêng: thẻ đang ghim, con dấu, điện thoại người dẫn.
 
 ## 2. Phím tắt
 
@@ -21,7 +23,7 @@ Kiểm tra trước giờ báo cáo: bấm `→` vài lần, rồi `R` để qua
 | `1` `2` `3` | Chuẩn bị / Live Desk / Tổng kết |
 | `J` | Bật, tắt Hành trình dữ liệu |
 | `↑` `↓` | Khi Hành trình dữ liệu đang mở: chọn bước 1 đến 6 (khung đỏ hiện trên đúng chỗ) |
-| `T` | Giao diện sáng hoặc tối (máy chiếu: để sáng) |
+| `T` | Giao diện sáng (nền kem) hoặc tối (nâu mực ấm, cho người live buổi tối). Máy chiếu: để sáng |
 | `P` | Chế độ trình chiếu: ẩn thanh dưới và đồng hồ |
 | `?` | Hiện danh sách phím |
 | `Esc` | Đóng lớp đang mở |

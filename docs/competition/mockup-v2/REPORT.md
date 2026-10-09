@@ -111,11 +111,54 @@ npm run shots            -> 39 PNG in screens/
 npm run shots:presenter  -> 38 PNG in screens/presenter/
 ```
 
+## Review round 3 (09/10): re-skin to "Calm Studio with tape pin"
+
+The base branch `claude/youthful-galileo-92o0nz` (team's style reference in `docs/competition/mockup-vibe/`) was merged into this branch with a normal merge; no history was rewritten. Only the art direction changed; everything else was re-verified.
+
+- **Look:** warm cream ground, brown ink, a brick-red CTA, square corners, an ink rule between regions and a light rule between rows, 300-weight titles and numerals (56 px at 1920), and tracked caps region labels.
+- **Signature:**
+  - The pinned product is a −0.8° paper card with kraft tape.
+  - SIMULATED is a −1.5° violet outline stamp.
+  - The host phone is +1.2°.
+  - Nothing else tilts; the tilts use the CSS `rotate` property, so the FLIP list animation can't cancel them.
+- **No data is hatched, never zero:** chart gaps, the "Đơn hàng: Chưa biết" KPI, and the loading skeletons.
+- **Host phone:** it grows into the space under the product list (the empty gap is gone). It shows a drawn warm studio frame, two chat lines on a dark scrim, and the pinned-product card.
+- **Dark theme:** warm brown-ink ground, cream text, the same brick accent.
+- **Fonts:** Be Vietnam Pro 300/400/500/600 is inlined with its Vietnamese subset. The new render test is in `verify.mjs`, and `screens/00-font-render-test.png` shows "Nên ghim tiếp: Quần cargo, ếệạữ ởầ" at 300/400/500. I opened it, and every tone mark is correct.
+- **Screenshot loop:** three rounds at 1920×1080, 1440×900 and 1280×720 in both themes. Fixed along the way:
+  - The phone text was too small (now about 13 px).
+  - Two stacked caps labels sat over the comment counters.
+  - "Chuẩn bị buổi live" broke onto two lines.
+  - At 1280 the mode tabs wrapped and the product rows were cramped.
+  - The font test captured empty space.
+- **Style tiles:** updated to record that the team chose Calm Studio.
+
+Final verification for round 3 (same build as the committed `dist/` and all screens):
+
+```
+npm run typecheck    -> clean
+npm run check:story  -> all story checks passed
+npm run build        -> dist/index.html 384 KB, dist/style-tiles.html 259 KB
+npm run verify       -> 20/20 checks passed
+  axe-core, 19 states x 2 themes x 2 viewports, zero violations
+  story end to end with ArrowRight only, network blocked (0 external requests), no console errors
+  keyboard: Tab + Enter pins; J, Esc, ?, T, P, 1, 3, R, Space
+  journey: panel beside the desk, six badges, stepping rings
+  presenter mode: no text under 14 px, body text at least 16 px
+  Vietnamese render test at 300/400/500: fonts.check true, 9 faces loaded, no fallback
+  reduced motion: story completes, no looping or timed animation left
+  390 px: no horizontal scroll; first paint 80 ms; CLS 0.0002; dist 643 KB
+npm run shots            -> 39 PNG in screens/
+npm run shots:presenter  -> 38 PNG in screens/presenter/ (2560x1440)
+```
+
 ## Not done, or unsure
 
 - **Not checked on real hardware:** the UIT projector, a low-end laptop at 60 fps (only first paint and CLS were measured headless), Safari and Firefox (only Chromium was run).
 - **The 390 px layout** is "graceful", not polished to projector standard; axe was not run at 390 px.
 - **The journey at 1280×720** works (all badges on screen), but the desk is dense there and the chart is small. It is designed for 1920×1080 first.
+- **Weight-300 text** (the team's choice) has not been seen on the UIT projector. Presenter mode raises sizes, but light weights on cream are the main legibility risk.
+- **The host phone at 1280×720** has no room for the drawn frame, so it shows the compact strip (LIVE, viewers, pinned card) instead. The full frame shows at 1440×900 and 1920×1080.
 - **The presenter type check** treats prices, ticks, chips and badges as labels (14 px minimum) and sentences as body text (16 px minimum). The drawn phone screen is excluded: its text is about 13 px at 1920.
 - **CSV parsing** is not implemented: import always loads the sample pack, and the screen says so.
 - **"Đã lưu"** is design intent only (stated in the UI drawer and in `DESIGN.md`). There is no database.

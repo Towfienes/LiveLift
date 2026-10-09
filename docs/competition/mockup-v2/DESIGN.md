@@ -4,19 +4,21 @@ Clickable mockup for AISC'26 round 2 (22/10/2026). Scripted sample data, no back
 Open `dist/index.html` (or `npx serve dist`). Source in `app/`, key states in `screens/`.
 The direction was chosen from `dist/style-tiles.html` (`screens/00-style-tiles.png`).
 
-## 1. Direction: Soft Commerce (light), with Control Room as the dark theme
+## 1. Direction: Calm Studio with tape pin (team's choice, round 3), warm dark theme
 
-Three tiles were built with the same content (the suggestion card, its reasons, confidence, a SIMULATED tag):
-Calm Studio (warm paper, editorial), Control Room (graphite, one bright accent), Soft Commerce (cool light, rounded, one red).
+Round 1 built three tiles (Calm Studio, Control Room, Soft Commerce); I chose Soft Commerce, and rounds 1–2 shipped it. **In round 3 (09/10) the team chose Calm Studio instead**, adding one idea from their Atelier test: the pinned product is a slightly tilted paper card held by kraft tape (`docs/competition/mockup-vibe/STYLE-CALM-TAPE.md`, reference `calm-desk.png`). The team disliked the cool-grey look. The whole mockup was re-skinned; behaviour, story, keys and honesty rules are unchanged. The style-tiles page now records this choice.
 
-**Chosen: Soft Commerce.** Why, in five lines:
-1. The judge's taste is "thân thiện, sạch, đẹp ngon"; Soft Commerce is the only tile that reads friendly without reading childish.
-2. Light, cool-tinted neutrals survive a hall projector and print well on slides and the poster; graphite and paper do not.
-3. One red signal colour ("đang phát") is reserved for LIVE and the primary action, so the eye goes straight to the answer and the pin button.
-4. Rounded radii (10/14/20) and soft chips fit Vietnamese live-commerce vernacular; Calm Studio looks like a magazine, not a tool.
-5. Control Room is kept as the dark theme, because operators who sell at night do want a dark desk.
+What defines the direction:
+1. **Ground and ink:** warm cream ground `#F6F3EE`, brown ink `#2A2522`, one brick-red action `#9E3B2B`.
+2. **Square and ruled:** square corners everywhere (only the host phone is rounded). No cards: an ink rule separates regions, a light rule `#D8D0C4` separates rows.
+3. **Light numerals:** titles and big numbers at weight 300 (56 px at 1920); text at 400; emphasis at 500. Tracked small caps label each region.
+4. **The tilt signature:** only three things tilt. The pinned card is −0.8° with kraft tape, the SIMULATED stamp is a −1.5° outline, and the host phone is +1.2°. Everything else is straight.
+5. **No-data hatching:** regions without data use diagonal hatching (chart gaps, "Đơn hàng: Chưa biết", loading skeletons), never zero.
+6. **Warm dark theme:** deep brown-ink ground `#1F1A17`, cream text `#F3ECE1`, the same brick accent (lightened to `#EC8A72` only where brick is used as text, for contrast).
 
 ## 2. Design plan, and what I changed after checking it against the brief
+
+*Historical (rounds 1–2, Soft Commerce). The layout, hierarchy and the five focal elements still hold; colour, shape and type now follow §1, §3 and §10.*
 
 | | Plan | Revised after review |
 |---|---|---|
@@ -48,22 +50,24 @@ Content is left-aligned throughout. Only the empty states and modals are centred
 
 ## 3. Tokens (`app/src/tokens.css`)
 
-Every colour, type, space, radius and motion value is a CSS custom property. Light is the default; dark is set with `data-theme="dark"` (key `T`).
+Every colour, type, space, radius, tilt and motion value is a CSS custom property. Light is the default; dark is set with `data-theme="dark"` (key `T`).
 
 | Group | Values |
 |---|---|
-| Type | Be Vietnam Pro, self-hosted as inlined woff2 (Latin, Latin-ext and Vietnamese subsets; weights 400/500/600). Scale 12/13/14/16/20/28/40/56. Tabular lining figures everywhere (`font-variant-numeric`). Display tracking −0.025em. |
+| Type | Be Vietnam Pro, self-hosted as inlined woff2 (Latin, Latin-ext and **Vietnamese** subsets; weights 300/400/500/600). Scale 12/13/14/16/20/28/40/56; weight 300 for titles and numerals. Tabular lining figures everywhere. A render test checks the self-hosted face draws "Nên ghim tiếp: Quần cargo, ếệạữ ởầ" (`screens/00-font-render-test.png`). |
 | Space | 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 on an 8 px grid. |
-| Radius | 10 (buttons, small), 14 (chips, popovers), 20 (panels). |
-| Neutrals (light) | bg `#F3F4F7`, surface `#FCFCFD`, surface-2 `#EEF0F4`, line `#E1E4EA`, ink `#171A21`, ink-2 `#4A5060`, ink-3 `#5F6676`. Never pure black or white. |
-| Neutrals (dark) | bg `#15181E`, surface `#1C2028`, ink `#EEF0F4`, ink-2 `#B9BFCA`, ink-3 `#959DAB`. |
-| Signal (LIVE + primary only) | `#D61F45` light, `#FF5470` dark. |
-| SIMULATED | violet `#5A3FC4` / `#B9A8FF` with soft fill; used for nothing else. |
-| Status | ok `#136C3E`, warn `#8F5200`, bad `#B42323` (dark: `#5FD39A`, `#F2B65A`, `#FF8A80`). |
-| Elevation | Hairline borders; one shadow level, used only on the answer card, the active setup step and overlays. |
-| Motion | 120 / 200 / 320 ms, `cubic-bezier(.2,.8,.2,1)`. |
+| Radius | 0 everywhere; the phone is 26 px. |
+| Light | bg `#F6F3EE`, paper (pinned card) `#FBF7EF`, chip `#EAE3D8`, light rule `#D8D0C4`, ink rule `#2A2522`, ink `#2A2522`, ink-2 `#5A5047`, ink-3 `#6E6359`, kraft `#C9B48A` at 80%. |
+| Dark | bg `#1F1A17`, paper `#2E2722`, chip `#332B25`, light rule `#463C34`, ink rule and text `#F3ECE1` / `#E9E0D2`, ink-2 `#CDC2B3`, ink-3 `#AD9F8E`. |
+| Brick (LIVE + the one primary action) | `#9E3B2B` (dark `#A8432F`; as text `#EC8A72`). Chart bars use it too. |
+| SIMULATED | violet `#4F3D86` (dark `#C4B5FF`), as a rotated outline stamp, or a straight violet word inside running text. Used for nothing else. |
+| Status | ok `#3D6B4F`, amber `#7F5300` (missing values, confidence); intent chips: hỏi giá brick-tint, chốt đơn amber-tint, others chip. |
+| Tilt | card −0.8°, stamp −1.5°, phone +1.2°, set with the CSS `rotate` property so the FLIP list animation (which uses `transform`) cannot cancel it. |
+| Elevation | Rules only. One paper shadow on the pinned card; one soft shadow on the phone and on overlays. |
 
 ## 4. Motion rules
+
+The three tilts (card, stamp, phone) are static angles, not motion.
 
 - Only `transform` and `opacity` animate (plus colour on hover and press).
 - New comments slide in 8 px; numbers tick in 320 ms; the answer enters with a lift and a 0.985→1 scale when its meaning changes.
@@ -75,7 +79,7 @@ Every colour, type, space, radius and motion value is a CSS custom property. Lig
 
 | Rule | In the UI |
 |---|---|
-| SIMULATED platform | Violet tag on the products panel (pin state), comments, chart, answer ("dữ liệu SIMULATED"), the phone caption, setup step 1, the setup table status, the banner, and the dock. Nothing says "kết nối Shopee", "đồng bộ với Shopee" or "confirmed by Shopee"; `verify.mjs` scans the build for these. |
+| SIMULATED platform | A rotated violet stamp "SIMULATED SHOPEE LIVE" in the header and on setup; a stamp on the phone caption; violet "SIMULATED" on the products pin state, comments, chart, answer ("dữ liệu SIMULATED"), the setup table status and the banner. Nothing says "kết nối Shopee", "đồng bộ với Shopee" or "confirmed by Shopee"; `verify.mjs` scans the build for these. |
 | Missing ≠ zero | Tote shows "Giá, tồn kho chưa nhập" and "Chưa nhập", never 0. Viewers during the platform condition show "chưa rõ". The chart draws a hatched "Không có dữ liệu" gap, not zeros; the recap lists that gap under "Điều chưa biết". Orders are "Chưa biết". |
 | Recommendation ≠ acceptance ≠ performed | Product row: dashed "Trợ lý gợi ý, chưa ghim" chip (proposal), then "Đang gửi lệnh ghim…" (attempt), then solid "ĐANG GHIM · SIMULATED" once the simulated platform shows it (performed). Recap table: Nhận / Bỏ qua / Tự làm / Không phản hồi. |
 | Operator reported ≠ platform observed | During "Hết hạn quyền truy cập" the pin button becomes "Ghi tay", and the pinned row says "bạn ghi tay", not SIMULATED. |
@@ -141,7 +145,20 @@ Platform facts: the mockup invents none beyond the SIMULATED platform's own beha
 - **Host phone:** it shows a drawn mock video frame (a host holding up a garment in front of a clothes rack; flat shapes, not a photo), three chat lines on dark pills, and a pinned-product card ("Đang ghim", name, price, "Xem"). Text is about 13–14 px, and the phone is larger (max 560 px tall).
 - **Suggestion tag:** "Trợ lý gợi ý, chưa ghim" has its own line with 8 px below it, so it no longer crowds the product name.
 
-## 10. Self-assessment (after round 2: three more screenshot rounds)
+## 10. Review round 3 (09/10): re-skin to Calm Studio with tape pin
+
+- **Scope:** art direction only. Round-2 behaviour (journey panel and badges, presenter type scale and exports, fitted chart axis, phone content, suggestion tag) is kept and re-verified.
+- **Structure:** panels lost their boxes. The desk is three ruled columns: tracked caps labels, an ink rule under each region title, light rules between rows.
+- **Answer:** a 56 px weight-300 line; reasons as 56 px light numerals between an ink and a light rule; the brick CTA; "Bỏ qua" as an underlined link.
+- **Products:** rows without thumbnails; solid ink "Ghim", outline "Bỏ ghim" (as in the team's reference); the pinned row becomes the taped paper card.
+- **Comments:** four counter cells with light numerals; intent chips tinted brick (hỏi giá) and amber (chốt đơn). The "Ý định…" caption only appears in the journey, where it carries badge 3.
+- **Host phone:** it fills the space under the product list (no empty gap) and is tilted. It shows a drawn warm studio frame (rack, host holding a brick-red garment), **two** chat lines on a dark scrim, and the pinned-product card. Text inside is about 13 px at 1920.
+- **Chart:** ink line, brick bars, dashed ink pin markers with plain text labels, hatched gaps.
+- **Header:** wordmark "Live**Lift**" with Lift in brick; underline tabs for modes; the SIMULATED stamp; outline "Hành trình dữ liệu"; solid ink "Kết thúc live".
+- **Setup and recap:** ruled steps and square step numbers; light 56 px titles and KPIs; the hatched "Đơn hàng: Chưa biết"; a dashed "Điều chưa biết" box.
+- **Fonts:** weight 300 added to the inlined font, and the Vietnamese render test added (`verify.mjs`, PNG in `screens/`).
+
+## 11. Self-assessment (after round 3: three more screenshot rounds)
 
 | Criterion | Score | What would make it a 5 |
 |---|---|---|
@@ -149,7 +166,7 @@ Platform facts: the mockup invents none beyond the SIMULATED platform's own beha
 | Hierarchy | 4 | The phone preview now has real content, but its dark frame still pulls the eye at 1920. Test a lighter studio wall. |
 | Spacing rhythm | 4 | At 1280×720 the desk compresses to 12 px gaps and the chart to about 130 px tall; a dedicated short-screen layout would help. |
 | Typography | 4 | Hand-tune kerning of the 40/56 px numerals, and verify stacked tone marks (ẩ, ổ) on the projector itself. |
-| Colour and contrast | 4 | The dark theme's pinned row (red tint) is a little heavy; test on the actual UIT projector. |
+| Colour and contrast | 4 | Weight-300 text on cream must be checked on the actual UIT projector; presenter mode raises the sizes, but the light weight is a risk the team accepted. |
 | Motion quality | 4 | Profile the 60× clock on a low-end laptop and confirm 60 fps; add a shared-element move from suggestion to pinned row. |
 | Honesty of labels | 5 | — |
 | State coverage | 4 | Design a real CSV error state (bad row, duplicate name) for when CSV parsing exists. |
