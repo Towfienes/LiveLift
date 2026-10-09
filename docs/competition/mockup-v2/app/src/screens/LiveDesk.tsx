@@ -99,7 +99,7 @@ function ProductList({ world, suggested }: { world: World; suggested: ProductId 
               ) : (
                 <Button
                   size="sm"
-                  variant="secondary"
+                  variant={manual ? "secondary" : "ink"}
                   icon={<IconPin size={18} />}
                   disabled={ended || !!sending}
                   onClick={() => pin(p.id, "list")}
@@ -410,9 +410,9 @@ function Comments({ world }: { world: World }) {
       </div>
       <div class="intents" data-journey="3">
         <p class="intents-label">
-          <JBadge n={3} />Ý định trong 2 phút qua, bấm để lọc
+          <JBadge n={3} />Ý định trong 2 phút
         </p>
-        <div class="intent-grid" role="group" aria-label="Lọc bình luận theo ý định">
+        <div class="intent-grid" role="group" aria-label="Ý định trong 2 phút qua; bấm một ô để lọc bình luận">
           {(Object.keys(INTENT_LABEL) as Intent[]).map((k) => {
             const Icon = INTENT_ICON[k];
             return (

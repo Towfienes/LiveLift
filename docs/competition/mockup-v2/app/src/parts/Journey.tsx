@@ -87,12 +87,12 @@ export function JourneyScrim() {
         <mask id="journey-mask">
           <rect width={vp.w} height={vp.h} fill="white" />
           {Object.entries(boxes).map(([n, b]) => (
-            <rect key={n} x={b.x} y={b.y} width={b.w} height={b.h} rx="14" fill="black" />
+            <rect key={n} x={b.x} y={b.y} width={b.w} height={b.h} rx="0" fill="black" />
           ))}
         </mask>
       </defs>
       <rect width={vp.w} height={vp.h} fill="var(--scrim-soft)" mask="url(#journey-mask)" />
-      {active && <rect key={stage} class="journey-ring" x={active.x} y={active.y} width={active.w} height={active.h} rx="14" />}
+      {active && <rect key={stage} class="journey-ring" x={active.x} y={active.y} width={active.w} height={active.h} rx="0" />}
     </svg>
   );
 }

@@ -96,9 +96,9 @@ export function LiveChart({ world, variant = "live" }: { world: World; variant?:
       {size.w > 0 && (
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary}>
           <defs>
-            <pattern id={`hatch-${variant}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <rect width="6" height="6" fill="var(--surface-2)" />
-              <path d="M0 0v6" stroke="var(--line-strong)" stroke-width="1.5" />
+            <pattern id={`hatch-${variant}`} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="8" height="8" fill="var(--bg)" />
+              <path d="M0 0v8" stroke="var(--hatch)" stroke-width="1" />
             </pattern>
           </defs>
 
@@ -199,12 +199,9 @@ export function LiveChart({ world, variant = "live" }: { world: World; variant?:
               return (
               <g key={`m${m.t}${m.product}`} class="marker">
                 <line x1={x(m.t)} x2={x(m.t)} y1={topY - 4} y2={botY + botH} />
-                <g class="marker-pill" transform={`translate(${px + 4}, ${topY - 26})`}>
-                  <rect x={-4} y={0} width={pillW} height="20" rx="10" />
-                  <text x={6} y={14}>
-                    Ghim {productById(m.product).short}
-                  </text>
-                </g>
+                <text class="marker-label" x={px + 4} y={topY - 10}>
+                  Ghim {productById(m.product).short}
+                </text>
               </g>
               );
             })}

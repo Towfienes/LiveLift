@@ -1,8 +1,9 @@
-/* LiveLift design tokens. Every colour, type, spacing, radius and motion value lives here.
-   Light ("Soft Commerce") is the default; dark borrows the "Control Room" tile. */
+/* LiveLift design tokens: "Calm Studio with tape pin" (team's choice, round 3).
+   Warm cream ground, brown ink, brick-red action, square corners, hairline rules.
+   Light is the default; the warm dark theme is for evening operators. */
 
 :root {
-  /* type */
+  /* type: Be Vietnam Pro, self-hosted with its Vietnamese subset */
   --font: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
   --fs-12: 12px;
   --fs-13: 13px;
@@ -12,14 +13,16 @@
   --fs-28: 28px;
   --fs-40: 40px;
   --fs-56: 56px;
+  --w-light: 300; /* titles and big numerals */
   --w-regular: 400;
-  --w-medium: 500;
-  --w-strong: 600;
-  --lh-tight: 1.15;
+  --w-medium: 500; /* emphasis */
+  --w-strong: 600; /* tags and stamps only */
+  --lh-tight: 1.08;
   --lh-snug: 1.3;
   --lh-body: 1.5;
   --track-display: -0.025em;
-  --track-title: -0.012em;
+  --track-title: -0.01em;
+  --track-label: 0.1em;
 
   /* space: 8 px grid */
   --s-4: 4px;
@@ -31,11 +34,12 @@
   --s-48: 48px;
   --s-64: 64px;
 
-  /* radii */
-  --r-10: 10px;
-  --r-14: 14px;
-  --r-20: 20px;
-  --r-pill: 999px;
+  /* square corners everywhere; only the host phone is rounded */
+  --r-10: 0;
+  --r-14: 0;
+  --r-20: 0;
+  --r-pill: 0;
+  --r-phone: 26px;
 
   /* motion */
   --t-fast: 120ms;
@@ -44,146 +48,122 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* sizes */
-  --header-h: 64px;
-  --journey-w: 480px;
+  --header-h: 72px;
   --dock-h: 48px;
   --target: 44px;
+  --journey-w: 480px;
 
-  /* light theme */
+  /* the three tilted objects (nothing else tilts) */
+  --tilt-card: -0.8deg;
+  --tilt-stamp: -1.5deg;
+  --tilt-phone: 1.2deg;
+
+  /* light theme: Calm Studio */
   color-scheme: light;
-  --bg: #f3f4f7;
-  --surface: #fcfcfd;
-  --surface-2: #eef0f4;
-  --surface-3: #e6e9ee;
-  --line: #e1e4ea;
-  --line-strong: #cdd2db;
-  --ink: #171a21;
-  --ink-2: #4a5060;
-  --ink-3: #5f6676;
-  --ink-inverse: #fcfcfd;
-  --focus: #2457d6;
+  --bg: #f6f3ee;
+  --surface: #f6f3ee;
+  --surface-2: #eae3d8; /* chip */
+  --surface-3: #e2d9cb;
+  --paper: #fbf7ef; /* the pinned card */
+  --line: #d8d0c4; /* light rule between rows */
+  --line-strong: #2a2522; /* ink rule between regions */
+  --ink: #2a2522;
+  --ink-2: #5a5047;
+  --ink-3: #6e6359;
+  --ink-inverse: #f6f3ee;
+  --focus: #2a2522;
 
-  --signal: #d61f45;
-  --signal-ink: #ffffff;
-  --signal-press: #b8173a;
-  --signal-soft: #fdecef;
-  --signal-text: #b8173a;
+  --signal: #9e3b2b; /* brick: LIVE and the one primary action */
+  --signal-ink: #fff9f2;
+  --signal-press: #873022;
+  --signal-soft: #f0d9d0;
+  --signal-text: #9e3b2b;
 
-  --sim: #5a3fc4;
-  --sim-soft: #eeeafd;
-  --sim-line: #d6cdfb;
+  --kraft: rgba(201, 180, 138, 0.8);
 
-  --ok: #136c3e;
-  --ok-soft: #e5f4ec;
-  --warn: #8f5200;
-  --warn-soft: #fdf1df;
-  --warn-line: #f1d3a5;
-  --bad: #b42323;
-  --bad-soft: #fbe9e9;
+  --sim: #4f3d86;
+  --sim-soft: #e7e0f2;
+  --sim-line: #4f3d86;
 
-  --chart-line: #171a21;
-  --chart-area: rgba(23, 26, 33, 0.06);
-  --chart-bar: #8a92a3;
-  --chart-grid: #e6e9ee;
-  /* pinned-product bands: neutral on purpose; violet means SIMULATED, red means LIVE */
-  --band-a: rgba(23, 26, 33, 0.045);
-  --band-b: rgba(23, 26, 33, 0.085);
-  --band-c: rgba(23, 26, 33, 0.04);
+  --ok: #3d6b4f;
+  --ok-soft: #dde6d8;
+  --warn: #7f5300;
+  --warn-soft: #f1e6cc;
+  --warn-line: #c9ad75;
+  --bad: #9e3b2b;
+  --bad-soft: #f0d9d0;
 
-  --shadow: 0 1px 2px rgba(23, 26, 33, 0.04), 0 12px 32px rgba(23, 26, 33, 0.08);
-  --scrim: rgba(23, 26, 33, 0.42);
-  --scrim-strong: rgba(23, 26, 33, 0.6);
-  --scrim-soft: rgba(23, 26, 33, 0.16);
-  --phone-screen: #2a2f38;
-  --phone-frame: #171a21;
+  --chip-price: #f0d9d0;
+  --chip-price-ink: #8c3324;
+  --chip-order: #e8e0c8;
+  --chip-order-ink: #6f4800;
+
+  --chart-line: #2a2522;
+  --chart-area: rgba(42, 37, 34, 0.05);
+  --chart-bar: #9e3b2b;
+  --chart-grid: #d8d0c4;
+  --hatch: #cfc5b6;
+  --band-a: rgba(42, 37, 34, 0.045);
+  --band-b: rgba(42, 37, 34, 0.085);
+  --band-c: rgba(42, 37, 34, 0.03);
+
+  --shadow: 0 1px 1px rgba(42, 37, 34, 0.08), 0 8px 22px rgba(42, 37, 34, 0.12);
+  --shadow-paper: 0 1px 1px rgba(42, 37, 34, 0.08), 0 6px 14px rgba(42, 37, 34, 0.1);
+  --scrim: rgba(42, 37, 34, 0.4);
+  --scrim-strong: rgba(42, 37, 34, 0.6);
+  --scrim-soft: rgba(42, 37, 34, 0.14);
+  --phone-frame: #2a2522;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #15181e;
-    --surface: #1c2028;
-    --surface-2: #232833;
-    --surface-3: #2b313d;
-    --line: #2e3440;
-    --line-strong: #3d4552;
-    --ink: #eef0f4;
-    --ink-2: #b9bfca;
-    --ink-3: #959dab;
-    --ink-inverse: #15181e;
-    --focus: #8fb0ff;
-    --signal: #ff5470;
-    --signal-ink: #15181e;
-    --signal-press: #ff7a8f;
-    --signal-soft: #3a1d26;
-    --signal-text: #ff8296;
-    --sim: #b9a8ff;
-    --sim-soft: #2c2650;
-    --sim-line: #463c80;
-    --ok: #5fd39a;
-    --ok-soft: #173326;
-    --warn: #f2b65a;
-    --warn-soft: #3a2c15;
-    --warn-line: #5c4520;
-    --bad: #ff8a80;
-    --bad-soft: #3d1f1f;
-    --chart-line: #eef0f4;
-    --chart-area: rgba(238, 240, 244, 0.07);
-    --chart-bar: #7d8696;
-    --chart-grid: #2b313d;
-    --band-a: rgba(238, 240, 244, 0.05);
-    --band-b: rgba(238, 240, 244, 0.09);
-    --band-c: rgba(238, 240, 244, 0.04);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.35);
-    --scrim: rgba(8, 10, 14, 0.62);
-    --scrim-strong: rgba(8, 10, 14, 0.74);
-    --scrim-soft: rgba(8, 10, 14, 0.36);
-    --phone-screen: #2a2f38;
-    --phone-frame: #0e1014;
-  }
-}
-
+/* warm dark theme: deep brown-ink ground, cream text, the same brick accent */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #15181e;
-  --surface: #1c2028;
-  --surface-2: #232833;
-  --surface-3: #2b313d;
-  --line: #2e3440;
-  --line-strong: #3d4552;
-  --ink: #eef0f4;
-  --ink-2: #b9bfca;
-  --ink-3: #959dab;
-  --ink-inverse: #15181e;
-  --focus: #8fb0ff;
-  --signal: #ff5470;
-  --signal-ink: #15181e;
-  --signal-press: #ff7a8f;
-  --signal-soft: #3a1d26;
-  --signal-text: #ff8296;
-  --sim: #b9a8ff;
-  --sim-soft: #2c2650;
-  --sim-line: #463c80;
-  --ok: #5fd39a;
-  --ok-soft: #173326;
-  --warn: #f2b65a;
-  --warn-soft: #3a2c15;
-  --warn-line: #5c4520;
-  --bad: #ff8a80;
-  --bad-soft: #3d1f1f;
-  --chart-line: #eef0f4;
-  --chart-area: rgba(238, 240, 244, 0.07);
-  --chart-bar: #7d8696;
-  --chart-grid: #2b313d;
-  --band-a: rgba(238, 240, 244, 0.05);
-  --band-b: rgba(238, 240, 244, 0.09);
-  --band-c: rgba(238, 240, 244, 0.04);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.35);
-  --scrim: rgba(8, 10, 14, 0.62);
-  --scrim-strong: rgba(8, 10, 14, 0.74);
-  --scrim-soft: rgba(8, 10, 14, 0.36);
-  --phone-screen: #2a2f38;
-  --phone-frame: #0e1014;
+  --bg: #1f1a17;
+  --surface: #1f1a17;
+  --surface-2: #332b25;
+  --surface-3: #3d342d;
+  --paper: #2e2722;
+  --line: #463c34;
+  --line-strong: #e9e0d2;
+  --ink: #f3ece1;
+  --ink-2: #cdc2b3;
+  --ink-3: #ad9f8e;
+  --ink-inverse: #1f1a17;
+  --focus: #f3ece1;
+  --signal: #a8432f;
+  --signal-ink: #fff9f2;
+  --signal-press: #b84f39;
+  --signal-soft: #4a2a22;
+  --signal-text: #ec8a72;
+  --kraft: rgba(170, 146, 102, 0.75);
+  --sim: #c4b5ff;
+  --sim-soft: #2f2847;
+  --sim-line: #c4b5ff;
+  --ok: #9fcbaa;
+  --ok-soft: #26352b;
+  --warn: #e6b866;
+  --warn-soft: #3b2f1c;
+  --warn-line: #6b5530;
+  --bad: #ec8a72;
+  --bad-soft: #4a2a22;
+  --chip-price: #4a2a22;
+  --chip-price-ink: #f2a593;
+  --chip-order: #3b2f1c;
+  --chip-order-ink: #ebc27a;
+  --chart-line: #f3ece1;
+  --chart-area: rgba(243, 236, 225, 0.06);
+  --chart-bar: #c45a42;
+  --chart-grid: #3d342d;
+  --hatch: #5a4e44;
+  --band-a: rgba(243, 236, 225, 0.05);
+  --band-b: rgba(243, 236, 225, 0.09);
+  --band-c: rgba(243, 236, 225, 0.03);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 26px rgba(0, 0, 0, 0.45);
+  --shadow-paper: 0 1px 2px rgba(0, 0, 0, 0.45), 0 8px 18px rgba(0, 0, 0, 0.4);
+  --scrim: rgba(10, 8, 6, 0.6);
+  --scrim-strong: rgba(10, 8, 6, 0.74);
+  --scrim-soft: rgba(10, 8, 6, 0.34);
+  --phone-frame: #0f0c0a;
 }
 
 /* Presenter mode (key P) is for the projector and for slide exports: no small type.

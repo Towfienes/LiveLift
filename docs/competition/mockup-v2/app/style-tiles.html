@@ -34,14 +34,14 @@ h1{font-size:28px;font-weight:600;letter-spacing:-.01em}
 .meter{display:flex;gap:4px}.meter i{width:24px;height:6px;border-radius:3px;background:currentColor;opacity:.25}.meter i.on{opacity:1}
 .note{font-size:13px;line-height:1.55;margin-top:auto}
 /* A: Calm Studio */
-.a{background:#F6F3EE;color:#2A2522}
+.a{background:#F6F3EE;color:#2A2522;box-shadow:0 0 0 2px #9E3B2B}
 .a h2,.a .t,.a .h,.a .big{font-weight:400}
 .a .card{border-top:1px solid #2A2522;border-bottom:1px solid #D8D0C4;padding:24px 0}
 .a .btn{background:#9E3B2B;color:#FFF9F2;border-radius:0}
 .a .ghost{background:transparent;color:#2A2522;text-decoration:underline}
 .a .chip{background:#EAE3D8;color:#5A5047;border-radius:0}
 .a .sim{background:#E7E0F2;color:#4F3D86}
-.a .verdict{background:#EAE3D8;color:#5A5047}
+.a .verdict{background:#9E3B2B;color:#FFF9F2}
 .a .meter{color:#8A5A00}
 /* B: Control Room */
 .b{background:#16191F;color:#E8EBF0;border-color:#2B303A}
@@ -55,7 +55,7 @@ h1{font-size:28px;font-weight:600;letter-spacing:-.01em}
 .b .verdict{background:#2B303A;color:#D9DDE4}
 .b .meter{color:#F0B44C}
 /* C: Soft Commerce (chosen) */
-.c{background:#F3F4F7;color:#171A21;box-shadow:0 0 0 2px #D61F45}
+.c{background:#F3F4F7;color:#171A21}
 .c h2,.c .t,.c .h,.c .big{font-weight:600}
 .c .card{background:#FCFCFD;border:1px solid #E1E4EA;border-radius:20px;box-shadow:0 1px 2px rgba(23,26,33,.04),0 12px 32px rgba(23,26,33,.07)}
 .c .btn{background:#D61F45;color:#fff;border-radius:14px}
@@ -63,17 +63,17 @@ h1{font-size:28px;font-weight:600;letter-spacing:-.01em}
 .c .chip{background:#EEF0F4;color:#4A5060}
 .c .sim{background:#EEEAFD;color:#5A3FC4}
 .c .why,.c .nums span,.c .k,.c p{color:#4A5060}
-.c .verdict{background:#D61F45;color:#fff}
+.c .verdict{background:#EEF0F4;color:#4A5060}
 .c .meter{color:#A15C00}
 </style>
 </head>
 <body>
 <h1>LiveLift: ba hướng thẩm mỹ</h1>
-<p class="lede">Cùng một nội dung (gợi ý ghim, lý do, độ tin cậy, nhãn SIMULATED) đặt vào ba hướng. Hướng thứ ba được chọn làm giao diện sáng mặc định; giao diện tối mượn tinh thần của hướng thứ hai. Mọi con số ở đây là dữ liệu mẫu.</p>
+<p class="lede">Cùng một nội dung (gợi ý ghim, lý do, độ tin cậy, nhãn SIMULATED) đặt vào ba hướng. Vòng 3 (09/10): nhóm chọn Calm Studio, thêm thẻ sản phẩm đang ghim nghiêng có băng dính kraft và con dấu SIMULATED; giao diện tối là nâu mực ấm. Mọi con số ở đây là dữ liệu mẫu.</p>
 <div class="grid">
 
 <section class="tile a">
-  <header><h2>Calm Studio</h2><span class="verdict">Không chọn</span></header>
+  <header><h2>Calm Studio</h2><span class="verdict">Nhóm chọn (vòng 3), thêm thẻ ghim băng dính</span></header>
   <div class="sw">
     <div style="background:#F6F3EE;border:1px solid #D8D0C4">nền</div>
     <div style="background:#EAE3D8">bề mặt</div>
@@ -91,7 +91,7 @@ h1{font-size:28px;font-weight:600;letter-spacing:-.01em}
     <div class="row"><button class="btn">Ghim Áo hoodie zip</button><button class="btn ghost">Bỏ qua</button></div>
     <div class="row"><span class="chip">hỏi giá</span><span class="chip">chốt đơn</span><span class="chip sim">SIMULATED Shopee Live</span></div>
   </div>
-  <p class="note">Vì sao không chọn: trông giống một tạp chí hơn một công cụ dùng trong lúc live. Nền giấy ấm cũng là lựa chọn quen tay, không gắn gì với livestream bán hàng.</p>
+  <p class="note">Vì sao nhóm chọn: ấm, bình tĩnh, ít rối mắt; số lớn nét mảnh đọc rõ. Đi kèm điểm nhận diện riêng: thẻ đang ghim nghiêng có băng dính kraft và con dấu SIMULATED. Lo ngại cũ (chữ mảnh trên máy chiếu) được xử lý bằng chế độ trình chiếu chữ to.</p>
 </section>
 
 <section class="tile b">
@@ -117,7 +117,7 @@ h1{font-size:28px;font-weight:600;letter-spacing:-.01em}
 </section>
 
 <section class="tile c">
-  <header><h2>Soft Commerce</h2><span class="verdict">Chọn</span></header>
+  <header><h2>Soft Commerce</h2><span class="verdict">Bản vòng 1–2, nhóm không chọn</span></header>
   <div class="sw">
     <div style="background:#F3F4F7;border:1px solid #E1E4EA">nền</div>
     <div style="background:#FCFCFD;border:1px solid #E1E4EA">bề mặt</div>
@@ -135,7 +135,7 @@ h1{font-size:28px;font-weight:600;letter-spacing:-.01em}
     <div class="row"><button class="btn">Ghim Áo hoodie zip</button><button class="btn ghost">Bỏ qua</button></div>
     <div class="row"><span class="chip">hỏi giá</span><span class="chip">chốt đơn</span><span class="chip sim">SIMULATED Shopee Live</span></div>
   </div>
-  <p class="note">Vì sao chọn: đúng gu “thân thiện, sạch, đẹp ngon”, hợp máy chiếu, và chỉ một màu tín hiệu nên thứ bậc rõ: mắt đi thẳng tới câu trả lời và nút ghim.</p>
+  <p class="note">Dùng ở vòng 1–2. Nhóm không chọn: xám lạnh, giống một bảng điều khiển phổ thông, thiếu nét riêng.</p>
 </section>
 </div>
 </body>

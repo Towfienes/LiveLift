@@ -11,7 +11,6 @@ import {
   IconKeyboard,
   IconLink,
   IconLock,
-  IconLogo,
   IconMoon,
   IconPause,
   IconPlay,
@@ -143,12 +142,14 @@ export function Header() {
   return (
     <header class="hdr">
       <div class="hdr-brand">
-        <IconLogo />
-        <span class="wordmark">LiveLift</span>
+        <span class="wordmark">
+          Live<span class="wordmark-lift">Lift</span>
+        </span>
       </div>
       {screen === "desk" ? <ModeSwitch /> : <Trail />}
       <div class="hdr-spacer" />
       {started && screen === "desk" && <LiveStatus />}
+      <SimTag>SIMULATED Shopee Live</SimTag>
       {/* presenter mode drops status chrome but keeps the sample-data label visible */}
       {presenter ? <SampleTag /> : <Saved />}
       <button
@@ -237,7 +238,6 @@ export function Dock() {
     <footer class="dock">
       <div class="dock-group">
         <SampleTag />
-        <SimTag>SIMULATED Shopee Live</SimTag>
       </div>
       <div class="dock-group story" role="group" aria-label="Kịch bản trình bày">
         <button type="button" class="dock-btn icon-only" aria-label="Bước trước" onClick={prev} disabled={beat === 0}>

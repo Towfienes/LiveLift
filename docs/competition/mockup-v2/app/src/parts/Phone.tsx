@@ -5,42 +5,38 @@
 import { fmtClock, fmtNum, fmtPrice } from "../format";
 import { activeOutage, pinAt, productById, visibleComments, viewersNow, type World } from "../engine";
 import { IconEye } from "../icons";
+import { SimTag } from "../ui";
 
-/** A flat, drawn studio frame: wall, clothes rack, a host holding up a garment. */
+/** A flat, drawn studio frame in warm tones: clothes rack, the host holding up a garment. */
 function VideoFrame() {
   return (
     <svg class="phone-video" viewBox="0 0 180 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
       <defs>
-        <radialGradient id="pv-light" cx="50%" cy="28%" r="70%">
-          <stop offset="0" stop-color="#5b5f66" />
-          <stop offset="1" stop-color="#2b2f36" />
-        </radialGradient>
+        <linearGradient id="pv-wall" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#d9cdbb" />
+          <stop offset="0.58" stop-color="#b9a98f" />
+          <stop offset="1" stop-color="#8d7c63" />
+        </linearGradient>
       </defs>
-      <rect width="180" height="320" fill="url(#pv-light)" />
-      <rect y="250" width="180" height="70" fill="#24272d" />
-      {/* clothes rack */}
-      <line x1="8" y1="70" x2="172" y2="70" stroke="#8b9099" stroke-width="2" />
+      <rect width="180" height="320" fill="url(#pv-wall)" />
+      <line x1="6" y1="40" x2="174" y2="40" stroke="#6f6252" stroke-width="2" />
       {[
-        [18, "#7d8a7a"],
-        [40, "#a48f78"],
-        [128, "#6f7f95"],
-        [150, "#b5a58f"],
-        [168, "#8a7a8c"],
+        [10, "#8a9a7b"],
+        [52, "#c08a6a"],
+        [94, "#7d8aa5"],
+        [136, "#b8a06a"],
       ].map(([x, c]) => (
         <g key={x as number}>
-          <path d={`M${x} 70 v4`} stroke="#8b9099" stroke-width="1.5" />
-          <path d={`M${(x as number) - 9} 82 l9 -8 l9 8 l-2 52 h-14 z`} fill={c as string} opacity="0.9" />
+          <path d={`M${(x as number) + 16} 40 v4`} stroke="#6f6252" stroke-width="1.5" />
+          <rect x={x as number} y={44} width={34} height={52} fill={c as string} />
         </g>
       ))}
-      {/* host */}
-      <ellipse cx="90" cy="112" rx="21" ry="24" fill="#c9a58c" />
-      <path d="M69 104 q0 -30 21 -30 q22 0 21 30 q-4 -14 -21 -14 q-17 0 -21 14 z" fill="#2a2321" />
-      <path d="M44 250 q2 -86 46 -96 q44 10 46 96 z" fill="#3d4654" />
-      {/* the garment held up to camera */}
-      <path d="M60 172 l18 -14 h24 l18 14 l-8 12 l-8 -5 v44 h-28 v-44 l-8 5 z" fill="#d7dbe2" />
-      <path d="M90 158 v20" stroke="#aeb4bf" stroke-width="1.5" />
-      <ellipse cx="62" cy="178" rx="7" ry="6" fill="#c9a58c" />
-      <ellipse cx="118" cy="178" rx="7" ry="6" fill="#c9a58c" />
+      <ellipse cx="90" cy="120" rx="20" ry="24" fill="#e8cdb4" />
+      <path d="M71 112 q0 -28 19 -28 q20 0 19 28 q-4 -12 -19 -12 q-15 0 -19 12 z" fill="#4a3a2e" />
+      <path d="M46 320 v-120 q0 -46 44 -52 q44 6 44 52 v120 z" fill="#f5efe4" />
+      <path d="M62 186 l16 -12 h24 l16 12 l-7 11 l-7 -4 v40 h-28 v-40 l-7 4 z" fill="#9e3b2b" opacity="0.92" />
+      <ellipse cx="64" cy="192" rx="7" ry="6" fill="#e8cdb4" />
+      <ellipse cx="116" cy="192" rx="7" ry="6" fill="#e8cdb4" />
     </svg>
   );
 }
@@ -50,12 +46,12 @@ export function Phone({ world, sending }: { world: World; sending: string | null
   const product = pin ? productById(pin.product) : null;
   const blind = !!activeOutage(world);
   const viewers = viewersNow(world);
-  const recent = visibleComments(world).slice(-3);
+  const recent = visibleComments(world).slice(-2);
   return (
     <figure class="phone-wrap">
       <figcaption class="phone-caption">
-        <span class="sim-dot" aria-hidden="true" />
-        Điện thoại người dẫn, SIMULATED Shopee Live
+        <span>Điện thoại người dẫn</span>
+        <SimTag>SIMULATED</SimTag>
       </figcaption>
       <div class="phone" role="img" aria-label={product ? `Xem trước: đang ghim ${product.name}` : "Xem trước: chưa ghim sản phẩm nào"}>
         <div class="phone-screen">
