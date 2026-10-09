@@ -3590,3 +3590,31 @@
     display: flex;
   }
 }
+/* Browser surfaces belong to the palette too: selection, caret, scrollbars. */
+.ld ::selection {
+  background: var(--signal-soft);
+  color: var(--ink);
+}
+.ld textarea {
+  caret-color: var(--signal);
+}
+.ld,
+.ld * {
+  scrollbar-color: var(--line) transparent;
+}
+/* SIMULATED stays in the header at every width (the mockup hid its stamp below 1280 px). */
+@media (max-width: 1279px) {
+  .ld .hdr .sim-tag {
+    display: inline-flex;
+  }
+}
+@media (max-width: 640px) {
+  .ld .ptable td[data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--ink-2);
+    font-weight: var(--w-regular);
+  }
+  .ld .hdr {
+    gap: var(--s-12);
+  }
+}

@@ -44,8 +44,8 @@ function ProductTable({ products, onRemove, locked }: { products: DeskProduct[];
               {p.name}
               {p.sync.detail !== null && <span className="sync-detail">{c.platformSaid}: <code>{p.sync.detail}</code></span>}
             </th>
-            <td className="r num">{p.priceLabel ?? <span className="missing">{c.missing}</span>}</td>
-            <td className="r num">{p.stock ?? <span className="missing">{c.missing}</span>}</td>
+            <td className="r num" data-label={c.colPrice}>{p.priceLabel ?? <span className="missing">{c.missing}</span>}</td>
+            <td className="r num" data-label={c.colStock}>{p.stock ?? <span className="missing">{c.missing}</span>}</td>
             <td>
               <span className={`status is-${p.sync.state}`}>
                 {p.sync.state === "synced" && <IconCheck size={16} />}

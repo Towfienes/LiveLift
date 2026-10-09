@@ -578,7 +578,7 @@ describe("Recap", () => {
   it("an unknown add-to-cart total is shown as unknown", async () => {
     recapView!.cartsOnShow = null;
     await renderRecap();
-    expect(screen.getByTestId("recap-kpis")).toHaveTextContent("Thêm giỏ, sản phẩm đang ghimChưa biết");
+    expect(screen.getByTestId("recap-kpis")).toHaveTextContent("Thêm giỏ khi có ghimChưa biết");
   });
 
   it("the table separates accepted, dismissed, your own and no response, and never calls accepted performed", async () => {
