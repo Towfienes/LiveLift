@@ -7,10 +7,11 @@ browser: nothing talks to Shopee. Design decisions: [`DESIGN-NOTES.md`](DESIGN-N
 
 ## Run it
 
-From the repository root, with Node 22:
+From the repository root, with Node 22 and `cd next && npm ci` done once:
 
 ```sh
-./start-livelift-demo        # builds if needed, checks itself, prints PASS and opens the Home
+./start-livelift-demo        # starts the app on :3130, checks it, prints PASS and opens the Home
+./stop-livelift-demo         # stops it
 ```
 
 Or for development, from `next/`: `npm ci && npm run dev`, then open <http://localhost:3130/>.
