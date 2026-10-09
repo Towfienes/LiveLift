@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { hydrateRoot } from "react-dom/client";
@@ -56,6 +58,19 @@ describe("Live Desk routes and honesty", () => {
     else startView.products = [];
     render(<HomePage />);
     expect(screen.getByTestId("home-flow")).toHaveTextContent(step === "connect" ? "Connect the simulated platform" : "Import your products");
+  });
+
+  it("the demo launcher's health check still recognises this Home", () => {
+    // ./start-livelift-demo decides the app is up by looking for these markers in the Home's HTML. If Home changes
+    // and the launcher does not, a running app is reported as failed and shut down.
+    const launcher = fs.readFileSync(path.resolve(process.cwd(), "../scripts/competition/launcher.mjs"), "utf8");
+    const check = launcher.split("\n").find(line => line.includes("const appOk")) ?? "";
+    const html = renderToString(<HomePage />);
+    const markers = [...check.matchAll(/includes\('((?:[^'\\]|\\.)*)'\)/g)].map(m => m[1].replace(/\\"/g, '"'));
+    expect(markers.length).toBeGreaterThan(0);
+    const present = markers.filter(marker => html.includes(marker));
+    expect(present).toContain('data-testid="home-flow"');
+    expect(present).toContain('data-testid="truth-panel"');
   });
 
   it("Legacy links to the old Home and the six old destinations at their original URLs", () => {
