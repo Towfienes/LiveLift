@@ -76,8 +76,21 @@ export function loadAiConfig(env: AiEnv = process.env): AiConfigResult {
   return { ok: true, issues: [], config: { baseUrl, apiKey, model, timeoutMs, maxOutputTokens, jsonMode: jsonRaw !== "off" } };
 }
 
+/** Which wire format the model speaks (see providers.ts). Unset means OpenAI-compatible; anything unknown is an issue. */
+export const PROVIDER_ENV = "LIVELIFT_AI_PROVIDER";
+export const PROVIDER_KINDS = ["openai_compatible", "anthropic", "gemini"] as const;
+export type AiProviderKind = (typeof PROVIDER_KINDS)[number];
+
+export function loadProviderKind(env: AiEnv = process.env): AiProviderKind | null {
+  const raw = env[PROVIDER_ENV]?.trim().toLowerCase();
+  if (raw === undefined || raw === "") return "openai_compatible";
+  return (PROVIDER_KINDS as readonly string[]).includes(raw) ? (raw as AiProviderKind) : null;
+}
+
 /** What the browser may know: whether the Copilot can run, and with which model. Never a key, URL or value. */
 export function aiStatus(env: AiEnv = process.env): AiStatusView {
   const result = loadAiConfig(env);
-  return result.ok ? { state: "ready", model: result.config.model, configIssues: [] } : { state: "not_configured", model: null, configIssues: result.issues };
+  const kindOk = loadProviderKind(env) !== null;
+  if (result.ok && kindOk) return { state: "ready", model: result.config.model, configIssues: [] };
+  return { state: "not_configured", model: null, configIssues: [...(result.ok ? [] : result.issues), ...(kindOk ? [] : [PROVIDER_ENV])] };
 }
