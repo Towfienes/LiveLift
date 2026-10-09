@@ -12,21 +12,14 @@ import { Button, SimTag } from "./ui";
 
 type StepState = "todo" | "active" | "done";
 
-/**
- * Start: a navy progress column that says where the live stands, beside one work surface that holds only the step in
- * progress. Start live sits at the foot of the surface at every step, with what is still missing beside it.
- */
-
-function ProgressStep({ n, title, state, status }: { n: number; title: string; state: StepState; status: string }) {
+function StepHead({ n, title, state, summary }: { n: number; title: string; state: StepState; summary?: string | null }) {
   const { c } = useShell();
   return (
-    <li className={`prep-step is-${state}`} aria-current={state === "active" ? "step" : undefined}>
-      <span className="prep-mark" aria-hidden="true">{state === "done" ? <IconCheck size={16} /> : n}</span>
-      <span className="prep-text">
-        <span className="prep-title"><span className="sr-only">{c.stepWord} {n}: </span>{title}<span className="sr-only">, {state === "done" ? c.stepDone : state === "active" ? c.stepActive : c.stepTodo}</span></span>
-        <span className="prep-status">{status}</span>
-      </span>
-    </li>
+    <div className="step-head">
+      <span className={`step-n is-${state}`} aria-hidden="true">{state === "done" ? <IconCheck size={18} /> : n}</span>
+      <h2><span className="sr-only">{c.stepWord} {n}: </span>{title}<span className="sr-only">, {state === "done" ? c.stepDone : state === "active" ? c.stepActive : c.stepTodo}</span></h2>
+      {summary && <p className="step-summary">{summary}</p>}
+    </div>
   );
 }
 
@@ -69,31 +62,22 @@ function ProductTable({ products, onRemove, locked }: { products: DeskProduct[];
   );
 }
 
-/** First import: the sample pack is the one primary action until the operator types a list of their own. */
-function ImportForm({ connected, first }: { connected: boolean; first: boolean }) {
+function ImportForm({ connected }: { connected: boolean }) {
   const { c } = useShell();
   const { actions } = useStartFlow();
   const [text, setText] = useState("");
-  const typed = text.trim() !== "";
-  const reason = !connected ? c.connectFirst : !typed ? c.pasteFirst : null;
-  const sample = (
-    <Button variant={first && !typed ? "primary" : "secondary"} size="lg" disabled={!connected} onClick={() => actions.onImportSamplePack()} data-testid="start-sample">
-      {c.sampleBtn}
-    </Button>
-  );
+  const reason = !connected ? c.connectFirst : !text.trim() ? c.pasteFirst : null;
   return (
     <div className="import-form">
-      {first && <div className="import-sample">{sample}<p className="import-or">{c.orPaste}</p></div>}
-      <div className="field">
-        <label className="field-label" htmlFor="product-paste">{c.paste}</label>
-        <span className="field-hint" id="paste-hint">{c.pasteHint}</span>
-        <textarea id="product-paste" rows={5} value={text} spellCheck={false} disabled={!connected} aria-describedby="paste-hint import-reason"
+      <label className="field" htmlFor="product-paste">
+        <span className="field-label">{c.paste}</span>
+        <textarea id="product-paste" rows={5} value={text} spellCheck={false} disabled={!connected} aria-describedby="import-reason"
           placeholder={"HD-01, Áo hoodie zip, 199000 VND, 24\nCT-03, Túi vải tote, , "} onChange={(e) => setText(e.target.value)} />
-      </div>
+      </label>
       <div className="row">
-        <Button variant={typed ? "primary" : "secondary"} size="lg" icon={<IconUpload />} disabled={reason !== null}
+        <Button variant={text.trim() ? "primary" : "secondary"} size="lg" icon={<IconUpload />} disabled={reason !== null}
           onClick={() => actions.onImportText(text)} aria-describedby="import-reason" data-testid="start-import">{c.importBtn}</Button>
-        {!first && sample}
+        <Button variant="quiet" size="lg" disabled={!connected} onClick={() => actions.onImportSamplePack()} data-testid="start-sample">{c.sampleBtn}</Button>
       </div>
       <p id="import-reason" className="step-note">{reason}</p>
     </div>
@@ -111,7 +95,7 @@ function StartBody() {
   const running = live?.mode === "live";
   const step1: StepState = view.connected ? "done" : "active";
   const step2: StepState = !view.connected ? "todo" : synced > 0 ? "done" : "active";
-  const step3: StepState = running ? "done" : view.startBlockedReason === null ? "active" : "todo";
+  const step3: StepState = view.startBlockedReason === null ? "active" : running ? "done" : "todo";
   const blocked = tStartBlocked(view.startBlockedReason, lang);
   const note = tImportNote(view.importNote, lang);
   const start = (): void => {
@@ -120,76 +104,67 @@ function StartBody() {
     if (id !== null) router.push(`/desk/${encodeURIComponent(id)}`);
   };
   return (
-    <div className="setup prep-layout" data-testid="start-flow">
-      <aside className="prep" aria-labelledby="prep-h">
-        <h1 id="prep-h">{c.startTitle}</h1>
-        <p className="prep-lede">{c.startLede}</p>
-        <ol className="prep-steps">
-          <ProgressStep n={1} title={c.connectTitle} state={step1} status={view.connected ? c.connected : c.notConnected} />
-          <ProgressStep n={2} title={c.productsTitle} state={step2}
-            status={!view.connected ? c.connectFirst : view.products.length ? c.productsSummary(view.products.length, synced, missing.length) : c.emptyProducts} />
-          <ProgressStep n={3} title={c.startLiveTitle} state={step3} status={running ? c.liveOpen : step3 === "active" ? c.readyToStart : c.stepTodo} />
-        </ol>
-        <div className="prep-sim">
+    <div className="setup" data-testid="start-flow">
+      <div className="setup-intro">
+        <h1>{c.startTitle}</h1>
+        <p className="lede">{c.startLede}</p>
+        <div className="sim-note">
           <SimTag>{c.stamp}</SimTag>
-          <details className="prep-why">
-            <summary>{c.whySim}</summary>
-            <p>{c.simNote}</p>
-          </details>
+          <p>{c.simNote}</p>
         </div>
-      </aside>
-
-      <section className="work" aria-labelledby="work-h">
-        {!view.connected ? (
-          <div className="work-step" key="connect" data-testid="start-connect-panel">
-            <h2 id="work-h">{c.connectTitle}</h2>
-            <p className="work-lede">{c.connectBody}</p>
-            <Button variant="primary" size="lg" icon={<IconLink />} onClick={() => actions.onConnect()} data-testid="start-connect">{c.connectBtn}</Button>
-          </div>
-        ) : (
-          <div className="work-step" key={view.products.length ? "products" : "add"} data-testid="start-import-panel">
-            {view.products.length === 0 ? (
-              <>
-                <h2 id="work-h">{c.addProductsTitle}</h2>
-                <p className="work-lede">{c.addProductsLede}</p>
-                <ImportForm connected={view.connected} first />
-              </>
-            ) : (
-              <>
-                <h2 id="work-h">{c.productsTitle}</h2>
-                <p className="work-lede">{c.productsSummary(view.products.length, synced, missing.length)}</p>
-                <ProductTable products={view.products} onRemove={actions.onRemoveProduct} locked={running} />
-                {missing.map((p) => (
-                  <p key={p.id} className="note-warn">{c.missingNote(p.name, c.missingWhat(p.priceLabel === null, p.stock === null))}</p>
-                ))}
-                <details className="more">
-                  <summary>{c.addMore}</summary>
-                  <ImportForm connected={view.connected} first={false} />
-                </details>
-              </>
+      </div>
+      <ol className="steps">
+        <li className={`step is-${step1}`} data-testid="start-connect-panel">
+          <StepHead n={1} title={c.connectTitle} state={step1} summary={view.connected ? c.connected : null} />
+          <div className="step-body">
+            {!view.connected && <p>{c.connectBody}</p>}
+            {!view.connected && (
+              <Button variant="primary" size="lg" icon={<IconLink />} onClick={() => actions.onConnect()} data-testid="start-connect">{c.connectBtn}</Button>
             )}
-            <p role="status" className="step-note">{note}</p>
           </div>
-        )}
-
-        <div className="work-foot" data-testid="start-live-panel">
-          <div className="work-foot-text">
-            {view.startBlockedReason !== null ? (
-              <>
-                <p className="foot-label">{c.stillNeeded}</p>
-                <p id="start-reason" className="foot-reason">{blocked}</p>
-              </>
-            ) : (
-              <p id="start-reason" className="foot-reason is-ready">{c.startBody}</p>
-            )}
+        </li>
+        <li className={`step is-${step2}`} data-testid="start-import-panel">
+          <StepHead n={2} title={c.productsTitle} state={step2}
+            summary={view.products.length ? c.productsSummary(view.products.length, synced, missing.length) : !view.connected ? c.connectFirst : null} />
+          {view.connected && (
+            <div className="step-body">
+              {view.products.length === 0 ? (
+                <>
+                  <div className="empty-inline">
+                    <p className="empty-title">{c.emptyProducts}</p>
+                    <p>{c.emptyProductsHelp}</p>
+                  </div>
+                  <ImportForm connected={view.connected} />
+                </>
+              ) : (
+                <>
+                  <ProductTable products={view.products} onRemove={actions.onRemoveProduct} locked={running} />
+                  {missing.map((p) => (
+                    <p key={p.id} className="note-warn">{c.missingNote(p.name, c.missingWhat(p.priceLabel === null, p.stock === null))}</p>
+                  ))}
+                  <details className="more">
+                    <summary>{c.addMore}</summary>
+                    <ImportForm connected={view.connected} />
+                  </details>
+                </>
+              )}
+              <p role="status" className="step-note">{note}</p>
+            </div>
+          )}
+        </li>
+        <li className={`step is-${step3}`} data-testid="start-live-panel">
+          <StepHead n={3} title={c.startLiveTitle} state={step3} />
+          <div className="step-body">
+            {view.startBlockedReason === null && <p>{c.startBody}</p>}
+            <div className="row">
+              <Button variant="primary" size="lg" onClick={start} disabled={view.startBlockedReason !== null} aria-describedby="start-reason" data-testid="start-live">{c.startBtn}</Button>
+              {running && live && <Link className="btn btn-secondary btn-lg" href={`/desk/${encodeURIComponent(live.id)}`}>{c.openDesk}</Link>}
+            </div>
+            <p id="start-reason" className="step-note">{blocked}</p>
             <p role="status" className="step-note is-warn">{startFailed ? c.startFailed : null}</p>
           </div>
-          <div className="row">
-            {running && live && <Link className="btn btn-secondary btn-lg" href={`/desk/${encodeURIComponent(live.id)}`}>{c.openDesk}</Link>}
-            <Button variant="primary" size="lg" onClick={start} disabled={view.startBlockedReason !== null} aria-describedby="start-reason" data-testid="start-live">{c.startBtn}</Button>
-          </div>
-        </div>
-      </section>
+        </li>
+      </ol>
     </div>
   );
 }
