@@ -28,7 +28,8 @@ function niceMax(v: number, steps: number[]): number {
 export function LiveChart({ world, variant = "live" }: { world: World; variant?: "live" | "recap" }) {
   const [ref, size] = useWidth<HTMLDivElement>();
   const end = world.t;
-  const domain = variant === "recap" ? Math.max(60, end) : Math.max(600, Math.ceil(end / 60) * 60);
+  // The axis fits the time that has elapsed (rounded up to the next half minute): no empty future.
+  const domain = variant === "recap" ? Math.max(60, end) : Math.max(120, Math.ceil(end / 30) * 30);
   const W = Math.max(280, size.w);
   const H = Math.max(120, size.h);
   const pad = { l: 40, r: 52, t: variant === "recap" ? 30 : 34, b: 26 };
@@ -70,9 +71,10 @@ export function LiveChart({ world, variant = "live" }: { world: World; variant?:
   });
 
   const last = [...series].reverse().find((p) => p.v !== null);
-  const xTickStep = domain <= 600 ? 120 : domain <= 1200 ? 300 : 300;
+  const maxTicks = Math.max(3, Math.floor(plotW / 110));
+  const xTickStep = [30, 60, 120, 300, 600].find((s) => domain / s <= maxTicks) ?? 600;
   const xTicks: number[] = [];
-  for (let t = 0; t <= domain; t += xTickStep) xTicks.push(t);
+  for (let t = 0; t <= domain + 0.5; t += xTickStep) xTicks.push(t);
   const vTicks = topH > 90 ? [0, vMax / 2, vMax] : [0, vMax];
   const bTicks = botH > 60 ? [0, bMax / 2, bMax] : [0, bMax];
 
@@ -134,7 +136,7 @@ export function LiveChart({ world, variant = "live" }: { world: World; variant?:
             </g>
           ))}
           {xTicks.map((t) => (
-            <text key={`x${t}`} x={x(t)} y={H - 6} class="tick" text-anchor={t === 0 ? "start" : "middle"}>
+            <text key={`x${t}`} x={x(t)} y={H - 6} class="tick" text-anchor={t === 0 ? "start" : t + xTickStep > domain ? "end" : "middle"}>
               {fmtClock(t)}
             </text>
           ))}
@@ -146,13 +148,6 @@ export function LiveChart({ world, variant = "live" }: { world: World; variant?:
           <text x={pad.l} y={botY - 8} class="series-title">
             Lượt thêm giỏ mỗi phút
           </text>
-
-          {/* not yet happened */}
-          {variant === "live" && x(end) < pad.l + plotW - 4 && (
-            <g>
-              <rect x={x(end)} y={topY} width={pad.l + plotW - x(end)} height={botY + botH - topY} class="future" />
-            </g>
-          )}
 
           {/* gaps: no data, not zero */}
           {gaps.map((g) => (
@@ -176,7 +171,15 @@ export function LiveChart({ world, variant = "live" }: { world: World; variant?:
 
           {bars.map((b) =>
             b.v === null || b.v === 0 ? null : (
-              <rect key={`bar${b.t}`} x={x(b.t) + 2} y={yB(b.v)} width={barW} height={botY + botH - yB(b.v)} rx="2" class="bar" />
+              <rect
+                key={`bar${b.t}`}
+                x={x(b.t) + 2}
+                y={yB(b.v)}
+                width={Math.max(2, Math.min(barW, x(Math.min(end, b.t + 60)) - x(b.t) - 4))}
+                height={botY + botH - yB(b.v)}
+                rx="2"
+                class="bar"
+              />
             ),
           )}
 
