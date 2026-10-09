@@ -3650,3 +3650,30 @@
 .ld.is-presenter {
   --w-light: 400;
 }
+
+/* WP8: the logo mark beside the wordmark. Colours follow the theme tokens. */
+.ld .wordmark {
+  gap: 8px;
+}
+.ld .logo-mark {
+  flex: none;
+}
+.ld .lm-back,
+.ld .lm-card {
+  stroke: var(--ink);
+}
+.ld .lm-card {
+  fill: var(--paper);
+}
+.ld .lm-photo {
+  fill: var(--surface-2);
+}
+.ld .lm-live {
+  fill: var(--signal);
+}
+.ld .lm-bar {
+  fill: var(--ink);
+}
+.ld .lm-tape {
+  fill: var(--kraft);
+}
