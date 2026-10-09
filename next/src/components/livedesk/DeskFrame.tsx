@@ -13,8 +13,8 @@ export function DeskFrame({ title, children, lang, setLang }: { title: keyof typ
           <h1 className="text-[30px] font-medium tracking-tight">{deskCopy[lang][title]}</h1>
         </div>
         <div role="group" aria-label="Language" className="flex gap-1">
-          <Button size="sm" aria-pressed={lang === "en"} onClick={() => setLang("en")} data-testid="desk-lang-en">EN</Button>
-          <Button size="sm" aria-pressed={lang === "vi"} onClick={() => setLang("vi")} data-testid="desk-lang-vi">VI</Button>
+          <Button size="sm" className="min-w-[44px]" aria-pressed={lang === "en"} onClick={() => setLang("en")} data-testid="desk-lang-en">EN</Button>
+          <Button size="sm" className="min-w-[44px]" aria-pressed={lang === "vi"} onClick={() => setLang("vi")} data-testid="desk-lang-vi">VI</Button>
         </div>
       </div>
       {children}

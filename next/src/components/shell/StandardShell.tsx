@@ -11,6 +11,7 @@ import { useRemoteState } from "@/lib/store/hooks";
 export interface StandardShellProps {
   activeSessionId?: string | null;
   activeSessionTitle?: string | null;
+  deskLiveId?: string | null;
   children: React.ReactNode;
 }
 
@@ -47,11 +48,12 @@ const DESK_MORE_NAV: NavItem[] = [
 export const StandardShell: React.FC<StandardShellProps> = ({
   activeSessionId = null,
   activeSessionTitle = null,
+  deskLiveId = null,
   children,
 }) => {
   const pathname = usePathname();
   const deskFlow = pathname === "/" || pathname === "/start" || pathname?.startsWith("/desk/") || pathname === "/legacy" || pathname === "/integrations";
-  const workNav = deskFlow ? [...DESK_NAV, ...(pathname?.startsWith("/desk/") ? [{ href: pathname, label: "Desk", icon: "ri-dashboard-line", tone: "simulated" as const }] : [])] : WORK_NAV;
+  const workNav = deskFlow ? [...DESK_NAV, ...(deskLiveId ? [{ href: `/desk/${encodeURIComponent(deskLiveId)}`, label: "Desk", icon: "ri-dashboard-line", tone: "simulated" as const }] : [])] : WORK_NAV;
   const moreNav = deskFlow ? DESK_MORE_NAV : MORE_NAV;
   // Where a REAL room is in use its connection status takes the place of the "This device" note (same space, no wider header).
   const roomInUse = useRemoteState().active;

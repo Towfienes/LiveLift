@@ -31,7 +31,7 @@ export function StartScreen() {
             <DeskPanel title={`1 · ${c.connect}`} testId="start-connect-panel">
               <p className="text-[var(--simulated)]">{view.platformLabel}</p>
               <p className="mt-1 mb-3">{view.connected ? c.connected : c.disconnected}</p>
-              <Button onClick={actions.onConnect} disabled={view.connected} data-testid="start-connect">{c.connect}</Button>
+              <Button onClick={() => actions.onConnect()} disabled={view.connected} data-testid="start-connect">{c.connect}</Button>
             </DeskPanel>
             <DeskPanel title={`2 · ${c.import}`} testId="start-import-panel">
               <label htmlFor="product-paste" className="block mb-2 font-medium">{c.paste}</label>
@@ -40,7 +40,7 @@ export function StartScreen() {
               <p id="import-help" className="text-[14px] text-[var(--text-muted)] mt-2">{c.importHelp}</p>
               <div className="flex flex-wrap gap-2 mt-3">
                 <Button onClick={() => actions.onImportText(text)} disabled={importReason !== null} aria-describedby="import-reason" data-testid="start-import">{c.importText}</Button>
-                <Button onClick={actions.onImportSamplePack} disabled={!view.connected} data-testid="start-sample">{c.sample}</Button>
+                <Button onClick={() => actions.onImportSamplePack()} disabled={!view.connected} data-testid="start-sample">{c.sample}</Button>
               </div>
               <p id="import-reason" className="text-[14px] text-[var(--text-muted)] mt-2">{importReason}</p>
               <p role="status" className="mt-2 text-[14px]">{view.importNote}</p>

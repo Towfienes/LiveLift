@@ -64,5 +64,3 @@ export const deskCopy = {
     create: "Tạo", createHelp: "Thiết lập buổi ban đầu với lịch trình dự kiến.",
   },
 };
-
-export type DeskCopy = typeof deskCopy.en;

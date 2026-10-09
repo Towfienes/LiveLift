@@ -15,7 +15,8 @@ export function toHostPreview(view: LiveDeskViewModel): HostAppViewModel {
     mode: view.mode,
     title: view.title,
     sessionId: null,
-    viewers: view.viewers,
+    // The phone's ended screen calls this a peak; the desk contract has no peak metric.
+    viewers: view.mode === "ended" ? null : view.viewers,
     elapsedLabel: view.clock.elapsedLabel,
     bag: view.products.filter(product => product.sync.state === "synced").map((product, index) => ({
       // Display-only ids: the desk contract exposes no platform item ids or host actions.

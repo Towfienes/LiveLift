@@ -1,6 +1,8 @@
 import React from "react";
+import { renderToString } from "react-dom/server";
+import { hydrateRoot } from "react-dom/client";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { fixtureDeskView, fixtureStartView } from "@/lib/livedesk/fixtures";
 import type { LiveDeskViewModel, StartViewModel, LiveDeskActions, StartActions } from "@/lib/livedesk/types";
 
@@ -73,9 +75,11 @@ describe("Live Desk routes and honesty", () => {
 
   it("unknown lives offer Start without inventing a rehearsal", () => {
     deskView = null;
+    nav.path = "/desk/unknown";
     render(<LiveDeskScreen liveId="unknown" />);
     expect(screen.getByTestId("desk-not-found")).toHaveTextContent("Live not found");
     expect(screen.queryByTestId("live-desk")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Desk" })).toBeNull();
   });
 
   it.each([HomePage, StartPage, LegacyPage])("new screens and navigation contain no forbidden claims or Create LIVE", Page => {
@@ -96,7 +100,7 @@ describe("Start actions and blocked reasons", () => {
     fireEvent.click(screen.getByTestId("start-import"));
     expect(startActions.onImportText).toHaveBeenCalledExactlyOnceWith(text);
     fireEvent.click(screen.getByTestId("start-sample"));
-    expect(startActions.onImportSamplePack).toHaveBeenCalledOnce();
+    expect(startActions.onImportSamplePack).toHaveBeenCalledExactlyOnceWith();
     fireEvent.click(screen.getByRole("button", { name: "Remove Canvas Tote" }));
     expect(startActions.onRemoveProduct).toHaveBeenCalledExactlyOnceWith("p3");
     expect(screen.getByTestId("desk-product-p3")).toHaveTextContent("Not entered");
@@ -109,7 +113,7 @@ describe("Start actions and blocked reasons", () => {
     render(<StartPage />);
     expect(screen.getByTestId("start-connect")).toBeEnabled();
     fireEvent.click(screen.getByTestId("start-connect"));
-    expect(startActions.onConnect).toHaveBeenCalledOnce();
+    expect(startActions.onConnect).toHaveBeenCalledExactlyOnceWith();
     for (const id of ["start-import", "start-sample", "start-live"]) expect(screen.getByTestId(id)).toBeDisabled();
     expect(screen.getByLabelText("Paste CSV or TSV")).toBeDisabled();
     expect(screen.getByText("Connect first")).toBeInTheDocument();
@@ -179,7 +183,7 @@ describe("Desk interactions", () => {
   it("calls all clock controls with the exact virtual values", () => {
     renderDesk();
     fireEvent.click(screen.getByTestId("desk-run"));
-    expect(deskActions.onRun).toHaveBeenCalledOnce();
+    expect(deskActions.onRun).toHaveBeenCalledExactlyOnceWith();
     expect(screen.getByTestId("desk-pause")).toBeDisabled();
     expect(within(screen.getByTestId("desk-speed")).getAllByRole("option").map(option => option.textContent)).toEqual(["1×", "5×", "15×", "60×"]);
     fireEvent.change(screen.getByTestId("desk-speed"), { target: { value: "60" } });
@@ -189,13 +193,13 @@ describe("Desk interactions", () => {
     expect(deskActions.onSkip).toHaveBeenNthCalledWith(2, 60);
     expect(deskActions.onSkip).toHaveBeenNthCalledWith(3, 300);
     fireEvent.click(screen.getByTestId("desk-reset"));
-    expect(deskActions.onReset).toHaveBeenCalledOnce();
+    expect(deskActions.onReset).toHaveBeenCalledExactlyOnceWith();
     cleanup();
     deskView!.clock.running = true;
     renderDesk();
     expect(screen.getByTestId("desk-run")).toBeDisabled();
     fireEvent.click(screen.getByTestId("desk-pause"));
-    expect(deskActions.onPause).toHaveBeenCalledOnce();
+    expect(deskActions.onPause).toHaveBeenCalledExactlyOnceWith();
   });
 
   it("accepts and dismisses by suggestion id without inventing performed state", () => {
@@ -248,6 +252,7 @@ describe("Desk interactions", () => {
     expect(screen.getAllByText("Markers show when you acted, not what caused a change")).toHaveLength(2);
     expect(screen.getAllByRole("img")).toHaveLength(2);
     expect(screen.getByTestId("desk-viewers-chart")).toHaveTextContent("Pinned Cargo Pants");
+    expect(within(screen.getByTestId("desk-cart-chart")).getByRole("heading")).toHaveTextContent("Add to cart per minute · Cargo Pants");
     expect(screen.getByTestId("desk-fingerprint")).toHaveTextContent("e8d00fb0");
     expect(container.textContent).not.toMatch(/synced with Shopee|connected to Shopee|confirmed by Shopee|Create LIVE/i);
   });
@@ -255,7 +260,7 @@ describe("Desk interactions", () => {
   it("End live calls the action and ended mode disables live controls but allows Reset", () => {
     renderDesk();
     fireEvent.click(screen.getByTestId("desk-end"));
-    expect(deskActions.onEndLive).toHaveBeenCalledOnce();
+    expect(deskActions.onEndLive).toHaveBeenCalledExactlyOnceWith();
     cleanup();
     deskView!.mode = "ended";
     renderDesk();
@@ -265,6 +270,19 @@ describe("Desk interactions", () => {
 });
 
 describe("Chart and phone display adapters", () => {
+  it("chart titles hydrate from server HTML without recovery", async () => {
+    const chart = <DeskChart title="Viewers" lang="en" testId="chart" chart={fixtureDeskView().charts.viewers} />;
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(chart);
+    document.body.appendChild(container);
+    const recover = vi.fn();
+    const root = hydrateRoot(container, chart, { onRecoverableError: recover });
+    await act(async () => {});
+    await act(async () => root.unmount());
+    container.remove();
+    expect(recover).not.toHaveBeenCalled();
+  });
+
   it("empty and zero charts have text alternatives and finite SVG coordinates", () => {
     const { container, rerender } = render(<DeskChart title="Viewers" lang="en" testId="chart" chart={{ title: "Viewers", unit: "viewers", points: [], markers: [], summary: "No observations" }} />);
     expect(screen.getByRole("img")).toHaveAccessibleName("Viewers · SIMULATED");
@@ -284,6 +302,7 @@ describe("Chart and phone display adapters", () => {
     expect(preview.bag[1].pinned).toBe(true);
     expect(preview.sessionId).toBeNull();
     expect(preview.promotion).toBeNull();
+    expect(toHostPreview({ ...view, mode: "ended" }).viewers).toBeNull();
     expect(preview.comments.map(comment => comment.id)).toEqual(["c1", "c2", "c3"]);
     render(<LiveDeskScreen liveId="demo" />);
     expect(screen.getByTestId("host-app").parentElement).toHaveAttribute("inert");

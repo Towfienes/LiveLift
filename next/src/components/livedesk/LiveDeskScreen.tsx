@@ -18,8 +18,9 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
   const { lang, setLang } = useLabPreferences();
   const c = deskCopy[lang];
   const live = view?.mode === "live";
+  const showingProduct = view?.products.find(product => product.id === view.showingProductId);
   return (
-    <StandardShell>
+    <StandardShell deskLiveId={view === null ? null : liveId}>
       <DeskFrame title="desk" lang={lang} setLang={setLang}>
         {view === null ? (
           <div data-testid="desk-not-found">
@@ -33,7 +34,7 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
                 <p className="text-[20px] font-medium break-words">{view.title}</p>
                 <p className="text-[14px] text-[var(--simulated)]">{view.platformLabel} · {c[view.mode]}</p>
               </div>
-              <Button variant="danger" disabled={!live} onClick={actions.onEndLive} data-testid="desk-end">{c.end}</Button>
+              <Button variant="danger" disabled={!live} onClick={() => actions.onEndLive()} data-testid="desk-end">{c.end}</Button>
             </div>
             <div role="status" aria-atomic="true" data-testid="desk-banner" className={view.banner ? `mb-4 rounded-[8px] border p-3 ${view.banner.tone === "danger" ? "text-[var(--signal-danger)] border-[var(--signal-danger-line)] bg-[var(--signal-danger-bg)]" : view.banner.tone === "warn" ? "text-[var(--signal-warn)] border-[var(--signal-warn-line)] bg-[var(--signal-warn-bg)]" : "text-[var(--simulated)] border-[var(--simulated-line)] bg-[var(--simulated-bg)]"}` : ""}>
               {view.banner && <>SIMULATED · {view.banner.text}</>}
@@ -41,8 +42,8 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
             <DeskPanel title={c.clock} className="mb-4" testId="desk-clock">
               <div className="flex flex-wrap items-center gap-3">
                 <p className="font-mono text-[22px] tabular-nums">{view.clock.virtualNowLabel}<span className="ml-3 text-[14px] text-[var(--text-muted)]">{c.elapsed} {view.clock.elapsedLabel}</span></p>
-                <Button onClick={actions.onRun} disabled={!live || view.clock.running} data-testid="desk-run">{c.run}</Button>
-                <Button onClick={actions.onPause} disabled={!live || !view.clock.running} data-testid="desk-pause">{c.pause}</Button>
+                <Button onClick={() => actions.onRun()} disabled={!live || view.clock.running} data-testid="desk-run">{c.run}</Button>
+                <Button onClick={() => actions.onPause()} disabled={!live || !view.clock.running} data-testid="desk-pause">{c.pause}</Button>
                 <label className="inline-flex items-center gap-2 text-[14px]">{c.speed}
                   <select value={view.clock.speed} onChange={event => actions.onSpeed(Number(event.target.value))} disabled={!live} data-testid="desk-speed"
                     className="min-h-[44px] rounded-[8px] bg-[var(--surface-l3)] border border-[var(--border-strong)] px-2">
@@ -51,7 +52,7 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {([{ seconds: 30, label: c.skip30 }, { seconds: 60, label: c.skip60 }, { seconds: 300, label: c.skip300 }]).map(skip => <Button key={skip.seconds} size="sm" onClick={() => actions.onSkip(skip.seconds)} disabled={!live} data-testid={`desk-skip-${skip.seconds}`}>{skip.label}</Button>)}
-                  <Button size="sm" onClick={actions.onReset} data-testid="desk-reset">{c.reset}</Button>
+                  <Button size="sm" onClick={() => actions.onReset()} data-testid="desk-reset">{c.reset}</Button>
                 </div>
               </div>
             </DeskPanel>
@@ -63,7 +64,7 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
               <div className="min-w-0 space-y-4">
                 <DeskPanel title={c.viewers} testId="desk-viewers"><p className="text-[32px] tabular-nums">{view.viewers ?? c.noViewers}</p></DeskPanel>
                 <DeskChart chart={view.charts.viewers} title={c.viewersChart} lang={lang} testId="desk-viewers-chart" />
-                <DeskChart chart={view.charts.addToCart} title={c.cartChart} lang={lang} testId="desk-cart-chart" />
+                <DeskChart chart={view.charts.addToCart} title={showingProduct ? `${c.cartChart} · ${showingProduct.name}` : c.cartChart} lang={lang} testId="desk-cart-chart" />
                 <DeskPanel title={c.comments} testId="desk-comments">
                   <h3 className="text-[14px] mb-2">{c.window}</h3>
                   <dl className="flex flex-wrap gap-2 mb-3">
