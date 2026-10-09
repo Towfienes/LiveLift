@@ -80,3 +80,17 @@ masking, intent classification and every button are real code running on that si
 `update_show_item` copies Shopee's published reference; unpin (`unpin_show_item`) is a guessed call and every
 other call is shape inferred. Confidence comes from sample size alone. Signals suggest; they never establish a
 cause. Nothing is stored outside this browser.
+
+## WP7 verification, 2026-10-09 (Node 22.23.3)
+
+- `npm run typecheck`, `npm run lint`: exit 0. `npm test`: **88 files passed; 1,409 passed, 57 skipped**
+  (baseline 87 files, 1,381 passed, 57 skipped). `npm run build`: compiled successfully.
+- `acceptance/livedesk-browser.mjs`: **PASS; 8 runs; 104 axe states; 0 failures**, axe-core 4.13.0, fingerprint
+  `886c9499` in every run at 1920×1080, 1440×900, 1280×720 and 390×844. axe left `color-contrast` incomplete on
+  tilted and SVG text; those pairs were checked by hand (lowest 5.28:1).
+- `acceptance/lab-browser.mjs`: **PASS; 357 passed, 0 failed; 84 axe states; 0 aborted**, `9d723008` in all six
+  journeys. Run from an execution copy whose only differences are an absolute import of `final-runtime.mjs` and a
+  short evidence directory: inside this worktree Chromium's singleton socket path is too long to start.
+- `./start-livelift-demo`: Rehearsal startup **PASS**, browser open request accepted, Home served in Vietnamese with
+  `home-flow`, `truth-panel` and `loop-guide`.
+- Not checked: a physical projector, a manual screen-reader pass, a low-end laptop at 60× speed.
