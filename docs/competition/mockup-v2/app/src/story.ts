@@ -30,7 +30,7 @@ export interface Beat {
   run: () => void;
 }
 
-const desk = () => setState({ screen: "desk", mode: "suggest", journey: false, confirmEnd: false });
+const desk = () => setState({ screen: "desk", mode: "suggest", journey: false, journeyStage: 0, confirmEnd: false });
 
 export const BEATS: Beat[] = [
   { title: "Chuẩn bị: chưa có sản phẩm", hold: 3500, run: () => undefined },
@@ -93,7 +93,7 @@ export const BEATS: Beat[] = [
     hold: 9000,
     run: () => {
       replayTo(6);
-      setState({ beat: BEATS.length - 1, journey: true });
+      setState({ beat: BEATS.length - 1, journey: true, journeyStage: 0 });
     },
   },
 ];
@@ -113,7 +113,18 @@ export function replayTo(n: number) {
   requestAnimationFrame(() => requestAnimationFrame(() => delete document.documentElement.dataset.instant));
 }
 
+/** While the data journey is open on the Live Desk, → and ← step through its six stages first. */
+function stepJourney(dir: 1 | -1): boolean {
+  const s = getState();
+  if (!s.journey || s.screen !== "desk" || !s.started) return false;
+  const n = s.journeyStage + dir;
+  if (n < 0 || n > 6) return false;
+  setState({ journeyStage: n });
+  return true;
+}
+
 export function next() {
+  if (stepJourney(1)) return;
   const s = getState();
   const n = s.beat + 1;
   if (n >= BEATS.length) {
@@ -128,6 +139,7 @@ export function next() {
 }
 
 export function prev() {
+  if (stepJourney(-1)) return;
   const s = getState();
   replayTo(Math.max(0, s.beat - 1));
   scheduleAuto();

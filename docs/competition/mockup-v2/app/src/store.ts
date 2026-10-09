@@ -13,6 +13,8 @@ export interface State {
   theme: "light" | "dark";
   presenter: boolean;
   journey: boolean;
+  /** stage highlighted in the data journey, 0 = none */
+  journeyStage: number;
   help: boolean;
   drawer: boolean;
   confirmEnd: boolean;
@@ -46,6 +48,7 @@ export const initialState = (): State => ({
   theme: "light",
   presenter: false,
   journey: false,
+  journeyStage: 0,
   help: false,
   drawer: false,
   confirmEnd: false,

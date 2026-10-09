@@ -45,6 +45,7 @@
 
   /* sizes */
   --header-h: 64px;
+  --journey-w: 480px;
   --dock-h: 48px;
   --target: 44px;
 
@@ -92,6 +93,7 @@
   --shadow: 0 1px 2px rgba(23, 26, 33, 0.04), 0 12px 32px rgba(23, 26, 33, 0.08);
   --scrim: rgba(23, 26, 33, 0.42);
   --scrim-strong: rgba(23, 26, 33, 0.6);
+  --scrim-soft: rgba(23, 26, 33, 0.16);
   --phone-screen: #2a2f38;
   --phone-frame: #171a21;
 }
@@ -135,6 +137,7 @@
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.35);
     --scrim: rgba(8, 10, 14, 0.62);
     --scrim-strong: rgba(8, 10, 14, 0.74);
+    --scrim-soft: rgba(8, 10, 14, 0.36);
     --phone-screen: #2a2f38;
     --phone-frame: #0e1014;
   }
@@ -178,8 +181,19 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.35);
   --scrim: rgba(8, 10, 14, 0.62);
   --scrim-strong: rgba(8, 10, 14, 0.74);
+  --scrim-soft: rgba(8, 10, 14, 0.36);
   --phone-screen: #2a2f38;
   --phone-frame: #0e1014;
+}
+
+/* Presenter mode (key P) is for the projector and for slide exports: no small type.
+   Body text is at least 16 px and the smallest labels at least 14 px at 1920x1080. */
+:root[data-presenter="1"] {
+  --fs-12: 14px;
+  --fs-13: 14px;
+  --fs-14: 16px;
+  --fs-16: 18px;
+  --fs-20: 22px;
 }
 
 @media (prefers-reduced-motion: reduce) {

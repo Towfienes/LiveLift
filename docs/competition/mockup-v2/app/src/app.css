@@ -93,17 +93,35 @@ h3 {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: var(--header-h) minmax(0, 1fr) var(--dock-h);
+  grid-template-areas: "header" "stage" "dock";
   height: 100vh;
   height: 100dvh;
   background: var(--bg);
 }
 .app.is-presenter {
   grid-template-rows: var(--header-h) minmax(0, 1fr);
+  grid-template-areas: "header" "stage";
+}
+/* The data journey takes its own column: the desk reflows beside it, nothing is covered. */
+.app.is-journey {
+  grid-template-columns: minmax(0, 1fr) var(--journey-w);
+  grid-template-areas: "header header" "stage panel" "dock dock";
+}
+.app.is-journey.is-presenter {
+  grid-template-areas: "header header" "stage panel";
+}
+.hdr {
+  grid-area: header;
 }
 .stage {
+  grid-area: stage;
   position: relative;
   min-height: 0;
   overflow: hidden;
+  container: stage / inline-size;
+}
+.dock {
+  grid-area: dock;
 }
 .screen-wrap {
   height: 100%;
@@ -448,6 +466,10 @@ h3 {
   box-shadow: none;
   font-weight: var(--w-medium);
 }
+.phone-caption .sim-dot {
+  margin-right: 6px;
+  vertical-align: 2px;
+}
 .sim-tag.is-quiet::before,
 .sim-dot {
   content: "";
@@ -623,7 +645,7 @@ h3 {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: clamp(328px, 22vw, 420px) minmax(0, 1fr) clamp(328px, 22vw, 440px);
+  grid-template-columns: clamp(328px, 22cqw, 420px) minmax(0, 1fr) clamp(328px, 22cqw, 440px);
   gap: var(--s-24);
 }
 .col {
@@ -728,7 +750,7 @@ h3 {
   column-gap: var(--s-8);
   white-space: nowrap;
   font-size: var(--fs-12);
-  margin-bottom: 2px;
+  margin-bottom: var(--s-4);
 }
 .pin-word {
   font-weight: var(--w-strong);
@@ -741,7 +763,9 @@ h3 {
 /* dashed = proposed, solid = performed: a suggestion never looks like a pin */
 .pin-state.is-suggested {
   display: inline-flex;
-  padding: 0 8px;
+  margin-bottom: var(--s-8);
+  padding: 2px 10px;
+  line-height: 1.4;
   border-radius: var(--r-pill);
   border: 1px dashed var(--signal);
   color: var(--signal-text);
@@ -767,6 +791,9 @@ h3 {
 .product-meta > span {
   white-space: nowrap;
 }
+.product-meta > .missing {
+  white-space: normal;
+}
 .dot-sep {
   width: 3px;
   height: 3px;
@@ -785,9 +812,8 @@ h3 {
   container-type: size;
 }
 .phone-caption {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: block;
+  text-wrap: balance;
   font-size: var(--fs-12);
   font-weight: var(--w-medium);
   color: var(--sim);
@@ -796,10 +822,10 @@ h3 {
 .phone {
   flex: 1;
   min-height: 0;
-  aspect-ratio: 9 / 18;
-  max-height: 460px;
-  padding: 6px;
-  border-radius: 28px;
+  aspect-ratio: 9 / 18.5;
+  max-height: 560px;
+  padding: 7px;
+  border-radius: 30px;
   background: var(--phone-frame);
   box-shadow: var(--shadow);
   container-type: inline-size;
@@ -807,91 +833,106 @@ h3 {
 .phone-screen {
   position: relative;
   height: 100%;
-  border-radius: 22px;
+  border-radius: 24px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(120% 70% at 50% 30%, #4a505c 0%, var(--phone-screen) 70%);
+  background: #2b2f36;
   color: #fff;
-  font-size: max(9px, 5.4cqw);
+  font-size: max(11px, 5.2cqw);
+  line-height: 1.3;
+}
+.phone-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.phone-top,
+.phone-chat,
+.phone-pin,
+.phone-spacer {
+  position: relative;
+}
+.phone-spacer {
+  flex: 1;
 }
 .phone-top {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8cqw 6cqw 0;
+  gap: 5px;
+  padding: 7cqw 5cqw 0;
 }
 .phone-live {
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
   background: #d61f45;
   font-weight: var(--w-strong);
-  font-size: 0.9em;
+  font-size: 0.85em;
+  letter-spacing: 0.04em;
 }
 .phone-viewers {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.45);
-  font-size: 0.9em;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 0.85em;
 }
 .phone-time {
   margin-left: auto;
-  font-size: 0.9em;
-  color: #e6e8ec;
-}
-.phone-host {
-  flex: 1;
-  display: grid;
-  place-items: center;
-  color: #c9cdd5;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.5);
   font-size: 0.85em;
 }
 .phone-chat {
   display: grid;
-  gap: 2px;
-  padding: 0 5cqw 4cqw;
-  font-size: 0.86em;
-  line-height: 1.35;
-  color: #f2f3f5;
+  gap: 4px;
+  justify-items: start;
+  padding: 0 4cqw 3cqw;
 }
 .phone-chat li {
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(10, 12, 16, 0.62);
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .phone-chat b {
-  color: #c9cdd5;
-  font-weight: var(--w-medium);
+  color: #ffd2da;
+  font-weight: var(--w-strong);
 }
 .phone-pin {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin: 0 4cqw 5cqw;
-  padding: 4cqw;
-  border-radius: 10px;
+  padding: 3.5cqw;
+  border-radius: 12px;
   background: #fcfcfd;
   color: #171a21;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   animation: rise var(--t-slow) var(--ease) both;
 }
 .phone-pin:not(.is-on) {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(10, 12, 16, 0.62);
   color: #f2f3f5;
   justify-content: center;
+  box-shadow: none;
 }
 .phone-thumb {
   display: grid;
   place-items: center;
-  width: 2.6em;
-  height: 2.6em;
-  border-radius: 6px;
+  width: 2.8em;
+  height: 2.8em;
+  border-radius: 8px;
   background: #eef0f4;
   font-weight: var(--w-strong);
-  font-size: 0.85em;
+  font-size: 0.9em;
   flex: none;
 }
 .phone-pin-text {
@@ -900,13 +941,28 @@ h3 {
   flex: 1;
   line-height: 1.25;
 }
+.phone-pin-flag {
+  font-size: 0.78em;
+  font-weight: var(--w-strong);
+  color: #b8173a;
+  letter-spacing: 0.02em;
+}
 .phone-pin-text b {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.phone-pin-text span {
-  color: #b8173a;
+.phone-price {
+  color: #4a5060;
+  font-weight: var(--w-medium);
+}
+.phone-cta {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #171a21;
+  color: #fcfcfd;
+  font-size: 0.85em;
   font-weight: var(--w-strong);
 }
 .phone-blind {
@@ -916,7 +972,7 @@ h3 {
   place-items: center;
   padding: 12cqw;
   text-align: center;
-  background: rgba(14, 16, 20, 0.78);
+  background: rgba(14, 16, 20, 0.8);
   font-weight: var(--w-medium);
 }
 @container (max-height: 300px) {
@@ -931,8 +987,9 @@ h3 {
     border-radius: 10px;
     font-size: 13px;
   }
-  .phone-host,
-  .phone-chat {
+  .phone-video,
+  .phone-chat,
+  .phone-spacer {
     display: none;
   }
   .phone-top {
@@ -1347,8 +1404,9 @@ h3 {
 }
 .cmt-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--s-8);
+  column-gap: var(--s-8);
   margin-bottom: 2px;
 }
 .cmt-handle {
@@ -2001,122 +2059,142 @@ kbd {
 }
 
 /* ---------- data journey ---------- */
-.journey {
+.journey-scrim {
   position: fixed;
   inset: 0;
-  z-index: 50;
-}
-.journey.is-list {
-  background: var(--scrim);
-  display: grid;
-  place-items: center;
-  padding: var(--s-16);
-  animation: fade var(--t-base) var(--ease) both;
-}
-.journey-scrim {
-  position: absolute;
-  inset: 0;
+  z-index: 30;
+  pointer-events: none;
   animation: fade var(--t-slow) var(--ease) both;
 }
 .journey-ring {
   fill: none;
   stroke: var(--signal);
-  stroke-width: 2.5;
-  animation: fade var(--t-slow) var(--ease) both;
+  stroke-width: 3;
+  animation: fade var(--t-base) var(--ease) both;
 }
-.journey-badge {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--signal);
-  color: var(--signal-ink);
-  font-weight: var(--w-strong);
-  box-shadow: 0 0 0 3px var(--surface);
-  animation: pop var(--t-slow) var(--ease) both;
-}
-.journey-callout {
-  position: absolute;
-  padding: var(--s-12) var(--s-16);
-  border-radius: var(--r-14);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  font-size: var(--fs-13);
-  color: var(--ink-2);
-  animation: rise var(--t-slow) var(--ease) both;
-}
-.journey-callout-title {
-  display: flex;
-  align-items: center;
-  gap: var(--s-8);
-  font-size: var(--fs-16);
-  font-weight: var(--w-strong);
-  color: var(--ink);
-  margin-bottom: 2px;
-}
-.journey-n {
+.jbadge {
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-right: var(--s-8);
   border-radius: 50%;
+  background: var(--ink);
+  color: var(--ink-inverse);
+  font-size: 15px;
+  font-weight: var(--w-strong);
+  letter-spacing: 0;
+  line-height: 1;
+  vertical-align: middle;
+  transition: background var(--t-base) var(--ease), transform var(--t-base) var(--ease);
+}
+.jbadge.is-active {
   background: var(--signal);
   color: var(--signal-ink);
-  font-size: var(--fs-13);
-  font-weight: var(--w-strong);
-  flex: none;
+  transform: scale(1.12);
 }
-.journey-legend {
-  position: absolute;
-  left: var(--s-24);
-  bottom: var(--s-24);
-  width: 380px;
-  padding: var(--s-24);
-  border-radius: var(--r-20);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  animation: rise var(--t-slow) var(--ease) 200ms both;
-}
-.is-list .journey-legend {
+.answer-title .jbadge {
   position: relative;
-  left: auto;
-  bottom: auto;
-  width: min(560px, 100%);
+  top: -0.12em;
 }
-.journey-legend-head {
-  display: flex;
-  justify-content: space-between;
+.jtarget {
+  display: inline-flex;
   align-items: center;
 }
-.journey-legend h2 {
-  font-size: var(--fs-20);
+.journey-panel {
+  grid-area: panel;
+  position: relative;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--s-24);
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  animation: sheet-in var(--t-slow) var(--ease) both;
+}
+.journey-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.journey-head h2 {
+  font-size: var(--fs-28);
+  letter-spacing: var(--track-title);
 }
 .journey-sub {
   color: var(--ink-2);
-  margin: 4px 0 var(--s-16);
+  font-size: var(--fs-16);
+  margin: var(--s-4) 0 var(--s-16);
 }
-.journey-legend ol {
+.journey-list {
   display: grid;
-  gap: var(--s-8);
+  gap: var(--s-4);
 }
-.journey-legend li {
-  display: flex;
+.journey-stage {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
   gap: var(--s-12);
-  align-items: flex-start;
+  width: 100%;
+  padding: var(--s-12);
+  border-radius: var(--r-14);
+  text-align: left;
+  transition: background var(--t-base) var(--ease);
 }
-.journey-legend li b {
-  display: block;
-}
-.journey-li-text {
-  display: block;
-  color: var(--ink-2);
-  font-size: var(--fs-13);
-}
-.journey-legend li.is-absent .journey-n {
+.journey-stage:hover,
+.journey-stage[aria-current="step"] {
   background: var(--surface-2);
+}
+.journey-stage[aria-current="step"] {
+  box-shadow: inset 3px 0 0 var(--signal);
+}
+.journey-n {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--ink-inverse);
+  font-size: var(--fs-20);
+  font-weight: var(--w-strong);
+}
+.journey-stage[aria-current="step"] .journey-n {
+  background: var(--signal);
+  color: var(--signal-ink);
+}
+.journey-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.journey-title {
+  font-size: var(--fs-20);
+  font-weight: var(--w-strong);
+  line-height: var(--lh-snug);
+}
+.journey-text {
+  font-size: var(--fs-16);
+  color: var(--ink);
+}
+.journey-where {
+  font-size: var(--fs-14);
   color: var(--ink-2);
+}
+.journey-hint {
+  margin-top: auto;
+  padding-top: var(--s-16);
+  font-size: var(--fs-14);
+  color: var(--ink-2);
+}
+/* the intents label carries badge 3, so it stays visible in the journey even on short screens */
+.is-journey .intents-label {
+  display: block !important;
+}
+.is-journey .answer-kicker .sim-tag {
+  margin-left: auto;
 }
 
 /* ---------- instant replays and reduced motion ---------- */
@@ -2152,7 +2230,62 @@ kbd {
 }
 
 /* ---------- responsive ---------- */
-@media (max-width: 1599px) {
+/* The desk follows the width of its own area (the stage), so it reflows correctly when the
+   data-journey panel takes a column. */
+@container stage (max-width: 1439px) {
+  .desk-grid {
+    grid-template-columns: 320px minmax(0, 1fr) 320px;
+  }
+}
+@container stage (max-width: 1179px) {
+  .desk-grid {
+    grid-template-columns: 250px minmax(0, 1fr) 272px;
+  }
+  .product-list .product {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .product .thumb,
+  .products .panel-note {
+    display: none;
+  }
+  .answer-title {
+    font-size: var(--fs-28);
+  }
+  .decide,
+  .conf-tail {
+    display: none;
+  }
+}
+@container stage (max-width: 939px) {
+  .desk {
+    height: auto;
+  }
+  .desk-grid {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+  .col-right {
+    grid-column: 1 / -1;
+  }
+  .comments {
+    max-height: 560px;
+  }
+  .chart-panel {
+    min-height: 300px;
+  }
+}
+@container stage (max-width: 860px) {
+  .desk-grid {
+    grid-template-columns: 1fr;
+  }
+  .col-center {
+    order: -1;
+  }
+  .phone-wrap {
+    height: 460px;
+    flex: none;
+  }
+}
+@container stage (max-width: 1599px) {
   .intent-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2168,6 +2301,23 @@ kbd {
   .product .btn .icon {
     display: none;
   }
+}
+:root[data-presenter="1"] .chart-note {
+  font-size: var(--fs-14);
+}
+:root[data-presenter="1"] .intent-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+:root[data-presenter="1"] .intent {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+}
+:root[data-presenter="1"] .intent-count {
+  font-size: var(--fs-20);
+}
+@media (max-width: 1599px) {
   .answer {
     padding: var(--s-24);
   }
@@ -2203,9 +2353,6 @@ kbd {
   }
   .dock .sim-tag {
     display: none;
-  }
-  .desk-grid {
-    grid-template-columns: 320px minmax(0, 1fr) 320px;
   }
   .decide {
     display: none;
@@ -2304,11 +2451,77 @@ kbd {
     display: none;
   }
 }
+@media (max-width: 1599px) {
+  :root {
+    --journey-w: 360px;
+  }
+}
+@media (max-width: 1439px) {
+  :root {
+    --journey-w: 320px;
+  }
+}
+/* short screens: the six stages must still fit without scrolling */
+@media (max-height: 940px) {
+  .journey-panel {
+    padding: var(--s-16) var(--s-16) var(--s-12);
+  }
+  .journey-head h2 {
+    font-size: var(--fs-20);
+  }
+  .journey-sub {
+    font-size: var(--fs-14);
+    margin-bottom: var(--s-8);
+  }
+  .journey-stage {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: var(--s-8);
+    padding: var(--s-8);
+  }
+  .journey-n {
+    width: 32px;
+    height: 32px;
+    font-size: var(--fs-16);
+  }
+  .journey-title {
+    font-size: var(--fs-16);
+  }
+  .journey-text {
+    font-size: var(--fs-14);
+  }
+  .journey-where {
+    font-size: var(--fs-13);
+  }
+  .journey-hint {
+    padding-top: var(--s-8);
+  }
+}
+@media (max-height: 760px) {
+  .journey-sub,
+  .journey-where,
+  .journey-hint {
+    display: none;
+  }
+  .journey-list {
+    gap: 0;
+  }
+}
 @media (max-width: 1023px) {
-  .app {
+  .app,
+  .app.is-journey {
     height: auto;
     min-height: 100vh;
-    grid-template-rows: auto 1fr auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas: "header" "panel" "stage" "dock";
+  }
+  .app.is-presenter,
+  .app.is-journey.is-presenter {
+    grid-template-areas: "header" "panel" "stage";
+  }
+  .journey-panel {
+    border-left: 0;
+    border-bottom: 1px solid var(--line);
   }
   .stage,
   .screen-wrap {
@@ -2322,25 +2535,6 @@ kbd {
   }
   .hdr-spacer {
     display: none;
-  }
-  .desk {
-    height: auto;
-  }
-  .desk-grid {
-    grid-template-columns: 1fr;
-  }
-  .col-center {
-    order: -1;
-  }
-  .comments {
-    max-height: 640px;
-  }
-  .phone-wrap {
-    height: 420px;
-    flex: none;
-  }
-  .chart-panel {
-    min-height: 320px;
   }
   .setup {
     grid-template-columns: 1fr;

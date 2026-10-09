@@ -24,6 +24,7 @@ import {
 import { reconnect, setPlaying, setState, skipMinute, useStore, worldOf, type Screen } from "../store";
 import { BEATS, jumpTo, next, prev, setAutoplay } from "../story";
 import { Num, SampleTag, SimTag } from "../ui";
+import { JBadge } from "./Journey";
 
 function ModeSwitch() {
   const mode = useStore((s) => s.mode);
@@ -138,6 +139,7 @@ export function Header() {
   const started = useStore((s) => s.started);
   const ended = useStore((s) => s.ended);
   const journey = useStore((s) => s.journey);
+  const presenter = useStore((s) => s.presenter);
   return (
     <header class="hdr">
       <div class="hdr-brand">
@@ -147,25 +149,30 @@ export function Header() {
       {screen === "desk" ? <ModeSwitch /> : <Trail />}
       <div class="hdr-spacer" />
       {started && screen === "desk" && <LiveStatus />}
-      <Saved />
+      {/* presenter mode drops status chrome but keeps the sample-data label visible */}
+      {presenter ? <SampleTag /> : <Saved />}
       <button
         type="button"
         class="btn btn-secondary btn-md journey-toggle"
         aria-pressed={journey}
-        onClick={() => setState({ journey: !journey, screen: started ? "desk" : screen, lockNote: false })}
+        onClick={() => setState({ journey: !journey, journeyStage: 0, screen: started ? "desk" : screen, lockNote: false })}
       >
         <IconRoute />
         <span>Hành trình dữ liệu</span>
       </button>
-      {screen === "desk" && started && !ended && (
-        <button type="button" class="btn btn-ink btn-md" data-journey="6" onClick={() => setState({ confirmEnd: true })}>
-          <span>Kết thúc live</span>
-        </button>
-      )}
-      {screen === "desk" && ended && (
-        <button type="button" class="btn btn-ink btn-md" data-journey="6" onClick={() => setState({ screen: "recap", journey: false })}>
-          <span>Xem tổng kết</span>
-        </button>
+      {screen === "desk" && started && (
+        <span class="jtarget" data-journey="6">
+          <JBadge n={6} />
+          {ended ? (
+            <button type="button" class="btn btn-ink btn-md" onClick={() => setState({ screen: "recap", journey: false })}>
+              <span>Xem tổng kết</span>
+            </button>
+          ) : (
+            <button type="button" class="btn btn-ink btn-md" onClick={() => setState({ confirmEnd: true })}>
+              <span>Kết thúc live</span>
+            </button>
+          )}
+        </span>
       )}
     </header>
   );

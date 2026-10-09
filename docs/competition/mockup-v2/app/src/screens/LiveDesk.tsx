@@ -35,6 +35,7 @@ import { Phone } from "../parts/Phone";
 import { PlatformBanner } from "../parts/Chrome";
 import { dismissFlash, dismissPin, pin, runFlash, setState, unpin, useStore, worldOf } from "../store";
 import { Button, Meter, Num, Skeleton, SimTag, useFlip } from "../ui";
+import { JBadge } from "../parts/Journey";
 
 const INTENT_ICON: Record<Intent, (p: { size?: number }) => preact.JSX.Element> = {
   price: IconTag,
@@ -120,7 +121,7 @@ function ProductList({ world, suggested }: { world: World; suggested: ProductId 
 function Reasons({ s }: { s: Signals }) {
   const p = productById(s.product);
   return (
-    <dl class="reasons" data-journey="4">
+    <dl class="reasons">
       <div>
         <dt>bình luận hỏi giá</dt>
         <dd>
@@ -146,6 +147,7 @@ function Reasons({ s }: { s: Signals }) {
 function ConfidenceLine({ s, level }: { s: Signals; level: "low" | "medium" | "high" }) {
   return (
     <p class="confidence">
+      <JBadge n={4} />
       <Meter level={level} />
       <span>
         <b>Độ tin cậy {CONFIDENCE_LABEL[level]}</b>, dựa trên <span class="num">{s.mentions}</span> bình luận
@@ -229,6 +231,7 @@ function Answer({ world }: { world: World }) {
     body = (
       <>
         <h2 class="answer-title" data-journey="5">
+          <JBadge n={5} />
           Nên ghim tiếp: <span class="answer-product">{p.name}</span>
         </h2>
         <p class="answer-lede">
@@ -236,8 +239,10 @@ function Answer({ world }: { world: World }) {
             ? `Mới có ${sug.signals.mentions} bình luận nhắc tới sản phẩm này. Tín hiệu cho thấy người xem bắt đầu quan tâm; cân nhắc trước khi ghim.`
             : "Tín hiệu 2 phút qua cho thấy người xem đang hỏi nhiều về sản phẩm này."}
         </p>
-        <Reasons s={sug.signals} />
-        <ConfidenceLine s={sug.signals} level={sug.confidence} />
+        <div class="why" data-journey="4">
+          <Reasons s={sug.signals} />
+          <ConfidenceLine s={sug.signals} level={sug.confidence} />
+        </div>
         <div class="answer-actions">
           <Button
             size="lg"
@@ -261,6 +266,7 @@ function Answer({ world }: { world: World }) {
     body = (
       <>
         <h2 class="answer-title" data-journey="5">
+          <JBadge n={5} />
           Giữ ghim <span class="answer-product">{p.name}</span>
         </h2>
         <p class="answer-lede">
@@ -272,8 +278,10 @@ function Answer({ world }: { world: World }) {
             </>
           )}
         </p>
-        <Reasons s={sug.signals} />
-        <ConfidenceLine s={sug.signals} level={sug.confidence} />
+        <div class="why" data-journey="4">
+          <Reasons s={sug.signals} />
+          <ConfidenceLine s={sug.signals} level={sug.confidence} />
+        </div>
       </>
     );
     key = `keep-${sug.product}` as typeof key;
@@ -392,13 +400,18 @@ function Comments({ world }: { world: World }) {
   const masked = all.filter((c) => c.masked).length;
   const blind = activeOutage(world);
   return (
-    <section class="panel comments" aria-labelledby="comments-h">
+    <section class="panel comments" aria-labelledby="comments-h" data-journey="1">
       <div class="panel-head">
-        <h2 id="comments-h">Bình luận</h2>
+        <h2 id="comments-h">
+          <JBadge n={1} />
+          Bình luận
+        </h2>
         <SimTag quiet>SIMULATED</SimTag>
       </div>
       <div class="intents" data-journey="3">
-        <p class="intents-label">Ý định trong 2 phút qua, bấm để lọc</p>
+        <p class="intents-label">
+          <JBadge n={3} />Ý định trong 2 phút qua, bấm để lọc
+        </p>
         <div class="intent-grid" role="group" aria-label="Lọc bình luận theo ý định">
           {(Object.keys(INTENT_LABEL) as Intent[]).map((k) => {
             const Icon = INTENT_ICON[k];
@@ -422,7 +435,7 @@ function Comments({ world }: { world: World }) {
           })}
         </div>
       </div>
-      <ol class="stream" data-journey="1" tabIndex={0} aria-label={filter ? `Bình luận: ${INTENT_LABEL[filter]}` : "Bình luận mới nhất trước"}>
+      <ol class="stream" tabIndex={0} aria-label={filter ? `Bình luận: ${INTENT_LABEL[filter]}` : "Bình luận mới nhất trước"}>
         {blind && (
           <li class="stream-note" key="blind">
             Không nhận bình luận từ {fmtClock(blind.from)}: LiveLift đã ngừng gọi nền tảng.
@@ -449,6 +462,7 @@ function Comments({ world }: { world: World }) {
         {shown.length === 0 && !blind && <li class="stream-note">Chưa có bình luận{filter ? " thuộc loại này" : ""}.</li>}
       </ol>
       <p class="privacy" data-journey="2">
+        <JBadge n={2} />
         <IconShield size={16} />
         <span>
           Số điện thoại được che trước khi hiển thị và trước khi lưu.{" "}

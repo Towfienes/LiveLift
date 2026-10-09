@@ -5,7 +5,7 @@ import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ConfirmEnd, DataDrawer, KeysHelp } from "./parts/Overlays";
 import { Dock, Header } from "./parts/Chrome";
-import { Journey } from "./parts/Journey";
+import { JourneyPanel, JourneyScrim } from "./parts/Journey";
 import { LiveDesk } from "./screens/LiveDesk";
 import { Recap } from "./screens/Recap";
 import { Setup } from "./screens/Setup";
@@ -48,15 +48,17 @@ function Screens() {
 
 function App() {
   const presenter = useStore((s) => s.presenter);
+  const journey = useStore((s) => s.journey);
   return (
-    <div class={`app${presenter ? " is-presenter" : ""}`}>
+    <div class={`app${presenter ? " is-presenter" : ""}${journey ? " is-journey" : ""}`}>
       <a class="skip" href="#main">
         Bỏ qua tới nội dung chính
       </a>
       <Header />
       <Screens />
+      <JourneyPanel />
       {!presenter && <Dock />}
-      <Journey />
+      <JourneyScrim />
       <DataDrawer />
       <KeysHelp />
       <ConfirmEnd />
@@ -81,6 +83,7 @@ window.addEventListener("keydown", (e) => {
   const k = e.key;
   if (k === "Escape") {
     if (s.lockNote) setState({ lockNote: false });
+    else if (s.journey && !anyModal(s)) setState({ journey: false, journeyStage: 0 });
     return;
   }
   // Story keys always work, so the presenter is never stuck behind a dialog.
@@ -117,8 +120,14 @@ window.addEventListener("keydown", (e) => {
     case "j":
     case "J":
       if (!s.journey && !s.started) {
-        setState({ journey: true });
-      } else setState({ journey: !s.journey, screen: s.started ? "desk" : s.screen, lockNote: false });
+        setState({ journey: true, journeyStage: 0 });
+      } else setState({ journey: !s.journey, journeyStage: 0, screen: s.started ? "desk" : s.screen, lockNote: false });
+      break;
+    case "ArrowDown":
+    case "ArrowUp":
+      if (!s.journey) return;
+      e.preventDefault();
+      setState({ journeyStage: Math.max(1, Math.min(6, s.journeyStage + (k === "ArrowDown" ? 1 : -1))) });
       break;
     case "1":
       setState({ screen: "setup", journey: false });
@@ -146,6 +155,9 @@ function applyRootFlags() {
   const root = document.documentElement;
   root.dataset.theme = s.theme;
   root.dataset.screen = s.screen;
+  // presenter mode raises the type scale (tokens.css) for slides and the back of the hall
+  if (s.presenter) root.dataset.presenter = "1";
+  else delete root.dataset.presenter;
 }
 subscribe(applyRootFlags);
 
