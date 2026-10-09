@@ -155,8 +155,12 @@ export function readSignal(signal: { label: string; value: string }, lang: DeskL
  * The suggestion's headline. The rules' headline is a fixed sentence about the product, so it is written in the
  * viewer's language here; a model's headline is its own wording and is shown as given.
  */
-export function headline(s: Pick<CopilotSuggestion, "kind" | "source" | "headline">, productName: string, lang: DeskLang): string {
+export function headline(
+  s: Pick<CopilotSuggestion, "kind" | "source" | "headline"> & Partial<Pick<CopilotSuggestion, "confidence">>, productName: string, lang: DeskLang,
+): string {
   if (s.source === "ai") return s.headline;
+  // A thin sample is said as interest, not as an instruction; the pin stays the operator's call.
+  if (s.kind === "show_next" && s.confidence === "low") return lang === "vi" ? `Có tín hiệu quan tâm tới ${productName}` : `Early interest in ${productName}`;
   if (s.kind === "show_next") return lang === "vi" ? `Nên ghim tiếp: ${productName}` : `Pin next: ${productName}`;
   return lang === "vi" ? `Nên chạy flash sale cho ${productName} trong 1 phút` : `Run a flash sale on ${productName} in the next minute`;
 }

@@ -114,6 +114,13 @@ describe("Routes, language and honesty", () => {
     expect(screen.getByTestId("truth-panel").textContent).not.toMatch(/Shopee/);
   });
 
+  it("Home puts the next step before the four steps, so a phone reaches it right after the intro", () => {
+    render(<HomePage />);
+    const next = screen.getByTestId("home-next");
+    expect(next.compareDocumentPosition(screen.getByTestId("loop-guide")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("loop-guide")).toHaveTextContent("Giá thiếu là thiếu, không phải 0");
+  });
+
   it("Home in English keeps the honesty panel's title", () => {
     english();
     render(<HomePage />);
@@ -410,6 +417,61 @@ describe("Desk interactions", () => {
     for (const text of ["Pin next: Zip Hoodie", "ask-price comments", "Confidence medium", "sample size 12 signals", "Source: rules"]) expect(panel).toHaveTextContent(text);
   });
 
+  it("a thin sample is said as interest, with its confidence right under the title, and the pin stays the operator's call", () => {
+    deskView!.copilot.suggestions[0].confidence = "low";
+    deskView!.copilot.suggestions[0].sampleSize = 3;
+    renderDesk();
+    const panel = screen.getByTestId("desk-copilot");
+    const title = within(panel).getByRole("heading", { level: 2 });
+    expect(title).toHaveTextContent("Có tín hiệu quan tâm tới Zip Hoodie");
+    expect(panel).not.toHaveTextContent("Nên ghim tiếp");
+    // The confidence line follows the title directly, before the lede and the numbers.
+    const confidence = screen.getByTestId("desk-confidence");
+    expect(confidence).toHaveTextContent("Độ tin cậy thấp");
+    expect(confidence).toHaveTextContent("cỡ mẫu 3 tín hiệu");
+    expect(title.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(confidence.compareDocumentPosition(within(panel).getByText(/Mới có 3 tín hiệu/)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("desk-announce")).toHaveTextContent("SIMULATED. Có tín hiệu quan tâm tới Zip Hoodie. Đề xuất.");
+    expect(screen.getByTestId("desk-accept-s1")).toHaveClass("btn-secondary");
+    cleanup();
+    forgetDeskPrefsForTests();
+    english();
+    renderDesk();
+    expect(within(screen.getByTestId("desk-copilot")).getByRole("heading", { level: 2 })).toHaveTextContent("Early interest in Zip Hoodie");
+  });
+
+  it("before the clock runs, the answer itself offers Run, and the header says the clock is paused", () => {
+    deskView!.copilot.suggestions = [];
+    deskView!.clock = { ...deskView!.clock, elapsedLabel: "00:00", running: false };
+    renderDesk();
+    expect(screen.getByTestId("desk-live-status")).toHaveTextContent("Đang tạm dừng");
+    const run = screen.getByTestId("desk-run-guide");
+    expect(within(screen.getByTestId("desk-copilot")).getByRole("heading", { level: 2 })).toHaveTextContent("Bấm Chạy để bắt đầu");
+    expect(run).toHaveTextContent("Chạy mô phỏng");
+    fireEvent.click(run);
+    expect(deskActions.onRun).toHaveBeenCalledExactlyOnceWith();
+    cleanup();
+    deskView!.clock = { ...deskView!.clock, running: true };
+    renderDesk();
+    expect(screen.getByTestId("desk-run-guide")).toBeDisabled();
+    expect(screen.queryByTestId("desk-paused")).toBeNull();
+  });
+
+  it("the clock bar keeps Run, Pause and the current speed; speeds, skips and Reset sit behind one disclosure", () => {
+    renderDesk();
+    const more = screen.getByTestId("desk-more");
+    expect(more.tagName).toBe("SUMMARY");
+    expect(more).toHaveTextContent("Tốc độ 15×");
+    const details = more.closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    for (const id of ["desk-speed-60", "desk-skip-30", "desk-skip-300", "desk-reset"]) expect(details).toContainElement(screen.getByTestId(id));
+    for (const id of ["desk-run", "desk-pause"]) expect(details).not.toContainElement(screen.getByTestId(id));
+    details.open = true;
+    fireEvent.keyDown(screen.getByTestId("desk-skip-60"), { key: "Escape" });
+    expect(details.open).toBe(false);
+    expect(document.activeElement).toBe(more);
+  });
+
   it.each(["accepted", "dismissed", "performed"] as const)("a %s suggestion offers no choice and says what became of it", state => {
     deskView!.copilot.suggestions[0].state = state;
     renderDesk();
@@ -438,8 +500,10 @@ describe("Desk interactions", () => {
     expect(banner).toHaveTextContent('Hết hạn quyền truy cập trên SIMULATED Live: "token expired"');
     expect(banner).toHaveTextContent("SIMULATED");
     expect(screen.getByTestId("desk-viewers")).toHaveTextContent("chưa rõ");
-    expect(screen.getByTestId("desk-fingerprint")).toHaveTextContent("Chưa có sự kiện");
+    // The run fingerprint is technical: it lives in "About this data", not in the clock bar.
+    expect(screen.queryByTestId("desk-fingerprint")).toBeNull();
     fireEvent.click(screen.getByTestId("desk-about-open"));
+    expect(screen.getByTestId("desk-fingerprint")).toHaveTextContent("Chưa có sự kiện");
     expect(screen.getByTestId("desk-ai-status")).toHaveTextContent("Mô hình AI không phản hồi, đang dùng luật (dữ liệu SIMULATED)");
   });
 

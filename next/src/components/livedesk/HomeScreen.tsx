@@ -37,6 +37,19 @@ function HomeBody() {
         <p className="lede">{c.homeLede}</p>
       </div>
       <section className="home-flow" aria-labelledby="flow-h" data-testid="home-flow">
+        {/* The next step comes first in reading order, so on a phone it sits right under the intro. */}
+        <div className="home-status">
+          <div className="home-next">
+            <p className="label">{c.nextLabel}</p>
+            <p className="home-next-text">{next.label}</p>
+            <Link href={next.href} className="btn btn-primary btn-lg" data-testid="home-next">{next.cta}</Link>
+          </div>
+          <dl className="status-list" aria-label={c.statusLabel}>
+            <div><dt>{c.connectTitle}</dt><dd>{view.connected ? c.connected : c.notConnected}</dd></div>
+            <div><dt>{c.productsTitle}</dt><dd>{c.productsCount(view.products.length, synced)}</dd></div>
+            {live && recap && <div><dt>{c.desk}</dt><dd>{running ? c.liveRunning(duration(recap.durationSec, lang)) : c.liveEnded(duration(recap.durationSec, lang))}</dd></div>}
+          </dl>
+        </div>
         <h2 id="flow-h" className="label">{c.flowLabel}</h2>
         <ol className="flow" data-testid="loop-guide">
           {c.flow.map((title, i) => (
@@ -49,18 +62,6 @@ function HomeBody() {
             </li>
           ))}
         </ol>
-        <div className="home-status">
-          <dl className="status-list" aria-label={c.statusLabel}>
-            <div><dt>{c.connectTitle}</dt><dd>{view.connected ? c.connected : c.notConnected}</dd></div>
-            <div><dt>{c.productsTitle}</dt><dd>{c.productsCount(view.products.length, synced)}</dd></div>
-            {live && recap && <div><dt>{c.desk}</dt><dd>{running ? c.liveRunning(duration(recap.durationSec, lang)) : c.liveEnded(duration(recap.durationSec, lang))}</dd></div>}
-          </dl>
-          <div className="home-next">
-            <p className="label">{c.nextLabel}</p>
-            <p className="home-next-text">{next.label}</p>
-            <Link href={next.href} className="btn btn-primary btn-lg" data-testid="home-next">{next.cta}</Link>
-          </div>
-        </div>
       </section>
       <section className="truth" aria-labelledby="truth-h" data-testid="truth-panel">
         <h2 id="truth-h">{c.truthTitle}</h2>

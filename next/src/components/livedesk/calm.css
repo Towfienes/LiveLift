@@ -2905,7 +2905,7 @@
   .ld .flash-main {
     flex: 0 0 auto;
   }
-  .ld .live-time + .live-sep,
+  .ld .live-time ~ .live-sep,
   .ld .live-viewers {
     display: none;
   }
@@ -3035,13 +3035,6 @@
   padding: 0 var(--s-8);
   color: var(--ink);
   font-weight: var(--w-medium);
-}
-.ld .dock-print {
-  color: var(--ink-2);
-  white-space: nowrap;
-}
-.ld .dock-print code {
-  color: var(--ink);
 }
 .ld .clock {
   border-right: 0;
@@ -3471,7 +3464,7 @@
   .ld .hdr.has-modes .nav-home,
   .ld .hdr.has-modes .nav-legacy,
   .ld .hdr.has-modes .live-viewers,
-  .ld .hdr.has-modes .live-time + .live-sep,
+  .ld .hdr.has-modes .live-time ~ .live-sep,
   .ld .clock-now {
     display: none;
   }
@@ -3551,7 +3544,7 @@
 .ld.is-presenter .hdr.has-modes .nav-home,
 .ld.is-presenter .hdr.has-modes .nav-legacy,
 .ld.is-presenter .hdr.has-modes .live-viewers,
-.ld.is-presenter .hdr.has-modes .live-time + .live-sep {
+.ld.is-presenter .hdr.has-modes .live-time ~ .live-sep {
   display: none;
 }
 .ld.is-presenter .journey-toggle span {
@@ -3649,4 +3642,173 @@
 /* WP8: on a projector the 300 weight thins out; presenter mode reads at 400. */
 .ld.is-presenter {
   --w-light: 400;
+}
+
+/* ---------- clock: Run, Pause and the current speed stay in reach; speeds, skips and reset sit behind one disclosure ---------- */
+.ld .clock-more {
+  position: relative;
+}
+.ld .clock-more > summary,
+.ld .fold > .fold-summary {
+  list-style: none;
+  cursor: pointer;
+}
+.ld .clock-more > summary::-webkit-details-marker,
+.ld .fold > .fold-summary::-webkit-details-marker {
+  display: none;
+}
+.ld .fold-chev {
+  transition: rotate var(--t-fast) var(--ease);
+}
+.ld .clock-more .fold-chev {
+  rotate: -90deg;
+}
+.ld .clock-more[open] > summary {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.ld .clock-more[open] .fold-chev {
+  rotate: 90deg;
+}
+.ld .clock-more-panel {
+  position: absolute;
+  bottom: calc(100% + var(--s-8));
+  left: 50%;
+  translate: -50% 0;
+  z-index: 40;
+  display: grid;
+  gap: var(--s-4);
+  width: max-content;
+  padding: var(--s-8);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow);
+}
+.ld .clock-more-panel .speed,
+.ld .clock-more-panel .skips {
+  display: flex;
+  flex-wrap: wrap;
+}
+.ld .clock-more-panel .skips {
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-4);
+}
+
+/* ---------- a secondary panel folded behind its title on a phone ---------- */
+.ld .fold > .fold-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  min-height: 44px;
+}
+.ld .fold > .fold-summary > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.ld .fold > .fold-summary .panel-head {
+  padding-bottom: 0;
+}
+.ld .fold[open] > .fold-summary {
+  margin-bottom: var(--s-12);
+}
+.ld .fold .fold-chev {
+  rotate: 90deg;
+  color: var(--ink-2);
+}
+.ld .fold[open] .fold-chev {
+  rotate: -90deg;
+}
+.ld details.chart-panel:not([open]) {
+  min-height: 0;
+}
+
+/* ---------- phones: the clock stays on screen; the three reasons sit in one row ---------- */
+@media (max-width: 1023px) {
+  .ld.screen-desk:not(.is-presenter) {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+  .ld.screen-desk .dock-middle {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 30;
+    justify-content: center;
+    padding: var(--s-4) var(--s-16) calc(var(--s-4) + env(safe-area-inset-bottom));
+    background: var(--bg);
+    border-top: 1px solid var(--line-strong);
+  }
+  .ld.screen-desk .clock-more-panel {
+    position: fixed;
+    left: var(--s-16);
+    right: var(--s-16);
+    bottom: calc(60px + env(safe-area-inset-bottom));
+    width: auto;
+    translate: none;
+  }
+}
+@media (max-width: 640px) {
+  .ld .reasons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ld .reasons > div {
+    padding: var(--s-12) var(--s-8) var(--s-12) 0;
+  }
+  .ld .reasons > div + div {
+    padding-left: var(--s-8);
+    border-top: 0;
+    border-left: 1px solid var(--line);
+  }
+  .ld .reasons dd {
+    font-size: var(--fs-28);
+  }
+  .ld .reasons dt {
+    font-size: var(--fs-13);
+  }
+  .ld.screen-desk .clock-now {
+    padding: 0 var(--s-4);
+  }
+  /* The SIMULATED host phone stays visible with its label, just shorter. */
+  .ld .phone-wrap {
+    height: 380px;
+  }
+}
+
+/* ---------- a stopped clock is said beside the time; LIVE alone would overstate it ---------- */
+.ld .live-status.is-paused .live-dot {
+  background: var(--ink-3);
+}
+.ld .live-status.is-paused .live-dot::after {
+  display: none;
+}
+.ld .paused-chip {
+  padding: 1px var(--s-8);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-2);
+  font-size: var(--fs-13);
+}
+/* A thin sample reads as a lead, not an order: smaller title, confidence directly under it. */
+.ld .answer-title.is-tentative {
+  font-size: var(--fs-40);
+}
+.ld .why > .confidence {
+  padding-bottom: var(--s-8);
+}
+@media (max-width: 640px) {
+  .ld .answer-title.is-tentative {
+    font-size: var(--fs-20);
+  }
+}
+
+/* ---------- Home: the next step leads on a phone; at desk width the steps come first, status and next below ---------- */
+@media (min-width: 641px) {
+  .ld .home-flow > .home-status {
+    order: 2;
+  }
+  .ld .home-status > .home-next {
+    order: 2;
+  }
+}
+@media (max-width: 640px) {
+  .ld .home-status {
+    padding-top: 0;
+  }
 }
