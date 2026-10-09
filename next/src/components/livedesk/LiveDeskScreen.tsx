@@ -70,7 +70,7 @@ export function LiveDeskScreen({ liveId }: { liveId: string }) {
                   <dl className="flex flex-wrap gap-2 mb-3">
                     {COMMENT_INTENTS.map(intent => <div key={intent} className="rounded-[6px] px-2 py-1 bg-[var(--surface-l3)] text-[13px]"><dt className="inline">{c[intent]}: </dt><dd className="inline tabular-nums">{view.intentCounts[intent]}</dd></div>)}
                   </dl>
-                  <ul aria-live="off" className="max-h-[320px] overflow-y-auto space-y-3">
+                  <ul aria-live="off" aria-label={c.comments} tabIndex={0} className="max-h-[320px] overflow-y-auto space-y-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-lime)]">
                     {view.comments.map(comment => <li key={comment.id} className="text-[14px] break-words" data-testid={`desk-comment-${comment.id}`}>
                       <p><span className="font-medium text-[var(--simulated)]">{comment.user}</span> <span className="text-[12px] text-[var(--text-muted)]">{comment.atSec} s · {c[comment.intent]}{comment.piiMasked ? ` · ${c.masked}` : ""}</span></p>
                       <p>{comment.text}</p>

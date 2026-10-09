@@ -38,6 +38,8 @@ async function journey(browser, runtime, viewport, run, axePath, report, output,
   const shot = name => page.screenshot({ path: path.join(output, `${label}-${name}.png`), fullPage: true });
   const audit = async state => {
     await page.addScriptTag({ path: axePath });
+    // Let colour transitions settle: axe would otherwise measure a button halfway between its enabled and disabled colours.
+    await page.waitForTimeout(500);
     const axe = await page.evaluate(() => window.axe.run(document));
     const violations = axe.violations.map(({ id, impact, nodes }) => ({ id, impact, nodes: nodes.map(({ target, failureSummary }) => ({ target, failureSummary })) }));
     report.axe.push({ label, state, violations, incomplete: axe.incomplete.map(({ id, nodes }) => ({ id, targets: nodes.map(node => node.target) })) });
