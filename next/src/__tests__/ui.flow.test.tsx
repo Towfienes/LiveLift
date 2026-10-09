@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => nav.search,
 }));
 
-import HomePage from "@/app/page";
+import HomePage from "@/app/legacy/home/page";
 import CreateLivePage from "@/app/live/new/page";
 import PreparePage from "@/app/live/[sessionId]/prepare/page";
 import OperatePage from "@/app/live/[sessionId]/operate/page";

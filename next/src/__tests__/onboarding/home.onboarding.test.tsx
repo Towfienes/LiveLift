@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import HomePage from "@/app/page";
+import HomePage from "@/app/legacy/home/page";
 import { sessionStore } from "@/lib/store/sessionStore";
 import { remoteRoomStore } from "@/lib/store/remoteRoomStore";
 import { authStore } from "@/lib/client/authStore";

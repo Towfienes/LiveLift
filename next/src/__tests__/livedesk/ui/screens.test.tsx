@@ -58,11 +58,11 @@ describe("Live Desk routes and honesty", () => {
     expect(screen.getByTestId("home-flow")).toHaveTextContent(step === "connect" ? "Connect the simulated platform" : "Import your products");
   });
 
-  it("Legacy links to the six old destinations at their original URLs", () => {
+  it("Legacy links to the old Home and the six old destinations at their original URLs", () => {
     nav.path = "/legacy";
     render(<LegacyPage />);
     const links = within(screen.getByTestId("legacy-links")).getAllByRole("link");
-    expect(links.map(link => link.getAttribute("href"))).toEqual(["/sessions", "/products", "/insights", "/simulator", "/integrations", "/live/new"]);
+    expect(links.map(link => link.getAttribute("href"))).toEqual(["/legacy/home", "/sessions", "/products", "/insights", "/simulator", "/integrations", "/live/new"]);
   });
 
   it("the async desk route passes the exact live id to the hook", async () => {

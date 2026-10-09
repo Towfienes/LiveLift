@@ -30,6 +30,7 @@ export const deskCopy = {
     simulator: "Simulator", simulatorHelp: "Rehearse the original run-of-show scenarios (SIMULATED).",
     integrations: "Integrations", integrationsHelp: "See platform capabilities and their evidence basis.",
     create: "Create", createHelp: "Set up an original show with a planned run of show.",
+    oldHome: "Original Home", oldHomeHelp: "The earlier Home: the plan-first loop, Create to Next LIVE.",
   },
   vi: {
     home: "Bàn điều hành Live", intro: "Kết nối nền tảng, nhập sản phẩm rồi bắt đầu buổi diễn tập live.",
@@ -62,5 +63,6 @@ export const deskCopy = {
     simulator: "Trình mô phỏng", simulatorHelp: "Diễn tập các kịch bản lịch trình ban đầu (SIMULATED).",
     integrations: "Tích hợp", integrationsHelp: "Xem khả năng nền tảng và cơ sở bằng chứng.",
     create: "Tạo", createHelp: "Thiết lập buổi ban đầu với lịch trình dự kiến.",
+    oldHome: "Trang chủ cũ", oldHomeHelp: "Trang chủ trước đây: vòng lặp lên kế hoạch trước, từ Tạo đến Buổi sau.",
   },
 };

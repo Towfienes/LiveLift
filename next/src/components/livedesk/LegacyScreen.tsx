@@ -11,6 +11,7 @@ export function LegacyScreen() {
   const { lang, setLang } = useLabPreferences();
   const c = deskCopy[lang];
   const links = [
+    { href: "/legacy/home", title: c.oldHome, detail: c.oldHomeHelp },
     { href: "/sessions", title: c.sessions, detail: c.sessionsHelp },
     { href: "/products", title: c.library, detail: c.libraryHelp },
     { href: "/insights", title: c.insights, detail: c.insightsHelp },
