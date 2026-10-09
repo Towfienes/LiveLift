@@ -1,54 +1,81 @@
-# SIMULATED Live Desk
+# Live Desk (SIMULATED)
 
-Connect a platform → import products → start live → operate the desk. Home shows platform status, the imported product count and the next step, followed by the existing “What is real, and what is not” panel. `/legacy` links to the original screens at their original URLs.
+Kết nối → Sản phẩm → Bắt đầu live → Live Desk → Tổng kết. The screens are Vietnamese by default (EN in the
+bottom bar), Calm Studio light by default (warm dark with `T`), and run on **SIMULATED Shopee Live** in the
+browser: nothing talks to Shopee. Design decisions: [`DESIGN-NOTES.md`](DESIGN-NOTES.md). Logic:
+[`ARCHITECTURE.md`](ARCHITECTURE.md). Screens of every key state, both themes, 2560×1440: [`screens/`](screens/).
 
-From `next/`, use the supported Node version in `package.json`:
+## Run it
 
-```sh
-npm ci
-npm run dev
-# Open http://localhost:3130/start
-```
-
-Production verification:
+From the repository root, with Node 22:
 
 ```sh
-npm run typecheck
-npm run lint
-npm test
-npm run build
-NODE_PATH=/path/to/external/browser-tools/node_modules \
-AXE_PATH=/path/to/axe-core-4.13.0/axe.min.js \
-node acceptance/livedesk-browser.mjs
+./start-livelift-demo        # builds if needed, checks itself, prints PASS and opens the Home
 ```
 
-The browser harness reuses the Lab’s disposable production runtime with local HTTPS, Playwright and axe-core **4.13.0**. It runs twice at 1920×1080, 1280×720 and 390×844, checks labels, focus, 44 px targets, zero axe violations, overflow and equal fingerprints. The second run requests reduced motion. Screenshots and `results.json` go to a temporary directory printed by the script; set `LIVEDESK_EVIDENCE_DIR` to select it. Browser tools are external; no application dependency is added. `--self-test` checks the harness assertions without launching a browser.
+Or for development, from `next/`: `npm ci && npm run dev`, then open <http://localhost:3130/>.
 
-The four-step demo, once WP5a logic is integrated:
+The live is kept in this browser (`localStorage`, key `livelift.livedesk.SIMULATED`). To start over, end the
+live and press “Chuẩn bị buổi mới”, or use “Đặt lại” on the desk to go back to second 0 of the same live.
 
-1. Open `/start` and click **Connect** for **SIMULATED Shopee Live**.
-2. Click **Use sample pack**, or paste CSV/TSV and import. Read each product’s queued, synced (SIMULATED) or failed state. Failure text is preserved verbatim. Missing price or stock says **Not entered**. Start stays disabled for the reason supplied by the logic.
-3. Click **Start live**. On the desk, click **Run**, then **Pause**; change speed or skip virtual time. Pin, unpin and pin again without confirmation or cooldown. Read comments, intent counters and the two charts. Markers show when you acted, not what caused a change.
-4. Inspect a Copilot suggestion’s signals, sample size, confidence and **Rules** or **AI** source. **Accept** or **Dismiss**, then **End live**. Accepted is a choice; only the logic may mark a suggestion performed after simulated platform evidence. Reset is a separate clock action.
+## Keys
 
-Everything on this desk is **SIMULATED**. Nothing talks to Shopee. Synthetic viewers, comments, carts and purchases are inventions, never real learning. The simulation assumptions supplied by the generator are listed on the desk: the fixture uses a seeded viewer curve and assumes a pinned product attracts more add-to-carts. These are assumptions, not findings about real customers. PII masking, intent detection, event generation, sync and suggestion lifecycle belong to WP5a; the screens display the supplied view model unchanged.
+| Key | Does |
+|---|---|
+| `Space` | Run or pause the simulation clock (Live Desk) |
+| `1` `2` `3` | Bắt đầu, Live Desk, Tổng kết (when they exist) |
+| `J` | Data journey: six numbered badges on the desk and the side panel; `↑` `↓` step; `Esc` closes |
+| `T` | Light or warm-dark theme (remembered) |
+| `P` | Presenter mode: larger type, no bottom bar (remembered) |
+| `?` | Key list |
 
-Only `update_show_item` copies Shopee’s published reference. Other platform calls are shape inferred. **Unpin is guessed, no Shopee page found.** The platform’s own failure wording is displayed without reinterpretation. Banners and suggestions are announced politely; the comment stream is not announced on every update. EN/VI uses the Lab’s persisted language preference; view-model text and the existing phone and honesty panel keep their supplied language.
+## Kịch bản trình bày 90 giây
 
-The Copilot reads aggregated recent signals and stock. Confidence reflects sample size, not a prediction or probability. Rules remain available without an AI key. AI status and suggestion source are displayed independently; signals suggest, they do not establish cause.
+Mở Home ở 1920×1080, `F11` toàn màn hình, `P` để vào chế độ trình chiếu. Mỗi dòng là một thao tác; câu “Nói” chỉ là gợi ý.
 
-## WP5b integration limits
+| Giây | Làm | Nói |
+|---|---|---|
+| 0–10 | Home | “LiveLift đọc bình luận và giỏ hàng trong buổi live, rồi gợi ý nên ghim gì, và vì sao. Nền tảng ở đây là SIMULATED Shopee Live; không có gì gửi tới Shopee.” |
+| 10–20 | `1` → **Kết nối SIMULATED Shopee Live** → **Dùng bộ sản phẩm mẫu** | “Một chạm để kết nối, rồi nạp sản phẩm. Túi vải tote chưa có giá: LiveLift ghi ‘Chưa nhập’, không coi là 0.” |
+| 20–25 | **Bắt đầu live** | “Bắt đầu live. Một màn hình, một câu trả lời lớn ở giữa.” |
+| 25–40 | `Space` (Chạy), chờ vài giây, rồi **+1 phút** | “Bình luận đổ về, số điện thoại bị che. Bốn ô bên phải đếm ý định trong 2 phút: hỏi giá, hỏi cỡ, chốt đơn.” |
+| 40–55 | Đọc câu trả lời; bấm **Ghim …** | “Trợ lý nói tín hiệu cho thấy gì, kèm cỡ mẫu và độ tin cậy, chỉ tính từ cỡ mẫu. Người vận hành quyết định, một chạm: sản phẩm thành tấm thẻ dán băng keo, biểu đồ đánh dấu lúc ghim.” |
+| 55–65 | **+5 phút** | “Flash sale: chưa đủ tín hiệu thì nó nói chưa đủ và vì sao. Vạch trên biểu đồ chỉ nói khi nào, không nói vì sao.” |
+| 65–75 | `J`, `↓` vài lần, `Esc` | “Sáu việc của Data Driven Business, đặt đúng chỗ trên sản phẩm: thu thập, làm sạch, phân tích, insight, đề xuất, đánh giá.” |
+| 75–90 | **Kết thúc live** → **Kết thúc và xem tổng kết** | “Tổng kết: gợi ý nào được nhận, bỏ qua, tự làm. Và điều chưa biết: ghim có làm tăng thêm giỏ không? Chưa biết, quan sát không phải nhân quả. Số đơn thật: chưa biết.” |
 
-On this branch `useStartFlow()` and `useLiveDesk(liveId)` still return fixtures. Connect starts already connected, imports do nothing, and `onStartLive()` returns `null`. `/desk/fixture` can render the fixture for visual inspection; desk actions do nothing. The harness reports **PARTIAL (fixture hooks)** and records the unavailable transitions explicitly. Equal fixture fingerprints prove only repeatable rendering. Run the full browser journey after integrating WP5a; do not treat a partial run as acceptance of the engine.
+Nếu giám khảo hỏi “cái gì là thật”: thoát `P`, mở **Về dữ liệu này** ở thanh dưới. Ở đó có các giả định của bộ sinh
+dữ liệu, luật của trợ lý, việc lệnh bỏ ghim là suy đoán, vân tay lượt chạy, và nút diễn tập sự cố nền tảng
+(“Hết hạn quyền truy cập”) để cho thấy banner và cách LiveLift dừng gọi nền tảng.
 
-The fixed contract provides neither an active live id on Home, a wire log, host-side intent actions, platform item ids nor promotion state. Accordingly Desk navigation appears on a desk route, the wire toggle says its log is unavailable, and the reused phone is an inert, read-only audience preview. No session id or flash sale is invented. A contract extension is needed for a Home “return to Desk” link and an interactive host phone/wire log.
+Kế hoạch B: ảnh trong `screens/` (sáng và tối) theo thứ tự `01-home-empty`, `02-start-products`,
+`03-desk-low-confidence`, `03-desk-suggestion`, `03-desk-pinned`, `03-desk-platform-condition`,
+`03-desk-end-confirm`, `04-recap`, `05-data-journey`, `05-data-journey-stage-4`.
 
-The new Home replaces the old planning Home. Existing Home tests outside `livedesk/ui` still assert the old onboarding, REAL-room priority cards and old work-loop links. WP5b cannot rewrite or weaken those tests under its ownership rules; their failures must be resolved by the operator with an explicit migration of the old Home expectations. The affected files are `ui.flow.test.tsx`, `onboarding/home.onboarding.test.tsx`, `phase3-ui/a11y.ui.test.tsx` and `phase3-ui/connection.ui.test.tsx`, under `next/src/__tests__/`. The legacy routes and their test ids remain untouched.
+## Verify
 
-## WP5b verification, 2026-10-09
+From `next/` with Node 22.23.3:
 
-Typecheck and lint exit 0; the production build succeeds. All **29 Live Desk UI tests pass**, including server-rendered chart hydration. The full suite reports **4 failed files, 75 passed; 16 failed tests, 1,265 passed, 57 skipped**. The failures are the old Home expectations above; no existing test was changed.
+```sh
+npm run typecheck && npm run lint && npm test && npm run build
+NODE_PATH=/path/to/playwright/node_modules AXE_PATH=/path/to/axe-core-4.13.0/axe.min.js \
+  node acceptance/livedesk-browser.mjs
+```
 
-The Live Desk browser run reports **PARTIAL (fixture hooks); 6 runs; 48 axe states; 0 failures**. Axe-core 4.13.0 reports zero violations and zero incomplete checks for these screens; all inspected states have no horizontal overflow. EN/VI persistence, visible keyboard focus, reduced motion and 44 px targets pass. All six fixture fingerprints are `e8d00fb0`; no live state transition is verified by that equality.
+The browser harness reuses the Lab's disposable production runtime (local HTTPS). It runs the whole flow twice
+at 1920×1080, 1440×900, 1280×720 and 390×844 (the second run with reduced motion): Vietnamese default, EN switch
+and persistence, connect, sample pack, start, run/pause, pin/unpin/pin without confirmation, a suggestion
+accepted, the data journey (six badges, panel never over the desk), dark theme, presenter mode, the end-live
+confirmation, the recap (orders unknown, the accepted suggestion listed) and the ended desk. Every state is
+audited with axe-core **4.13.0** (zero violations), element-level horizontal overflow, 44 px targets, SIMULATED
+labels and forbidden claims in both languages; the fingerprints of the two runs must be equal. Evidence goes to
+`LIVEDESK_EVIDENCE_DIR` (or a temporary directory). `--self-test` checks the assertions without a browser.
 
-The existing Lab harness also passes: **357 passed, 0 failed; 84 axe states; 0 aborted**, with `9d723008` in all six journeys. Its source is unchanged; only its temporary execution copy redirects imports and evidence output away from the tracked historical screenshots. The Lab’s `color-contrast` checks remain incomplete, as in the baseline. No physical-device or manual screen-reader audit was performed.
+## What is real, and what is not
+
+Everything on the desk is **SIMULATED**: viewers, comments, add-to-carts and purchases come from a seeded
+generator whose assumptions are listed on screen; they never become real learning. The Copilot's rules, PII
+masking, intent classification and every button are real code running on that simulated data. Only
+`update_show_item` copies Shopee's published reference; unpin (`unpin_show_item`) is a guessed call and every
+other call is shape inferred. Confidence comes from sample size alone. Signals suggest; they never establish a
+cause. Nothing is stored outside this browser.
