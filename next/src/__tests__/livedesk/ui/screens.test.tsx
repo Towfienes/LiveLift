@@ -139,6 +139,8 @@ describe("Routes, language and honesty", () => {
     const present = markers.filter(marker => html.includes(marker));
     expect(present).toContain('data-testid="home-flow"');
     expect(present).toContain('data-testid="truth-panel"');
+    // The Lab browser harness (fingerprint 9d723008) opens Home and waits for the step list by this id.
+    expect(html).toContain('data-testid="loop-guide"');
   });
 
   it("Legacy links to the old Home and the six old destinations at their original URLs", () => {

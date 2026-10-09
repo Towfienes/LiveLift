@@ -38,7 +38,7 @@ function HomeBody() {
       </div>
       <section className="home-flow" aria-labelledby="flow-h" data-testid="home-flow">
         <h2 id="flow-h" className="label">{c.flowLabel}</h2>
-        <ol className="flow">
+        <ol className="flow" data-testid="loop-guide">
           {c.flow.map((title, i) => (
             <li key={title} className={`flow-step is-${states[i]}`}>
               <span className={`step-n is-${states[i]}`} aria-hidden="true">{states[i] === "done" ? <IconCheck size={18} /> : i + 1}</span>
