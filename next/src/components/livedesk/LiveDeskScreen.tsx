@@ -443,7 +443,7 @@ function ClockControls({ view, actions }: { view: LiveDeskViewModel; actions: Li
   const live = view.mode === "live";
   return (
     <div className="clock" role="group" aria-label={c.clockLabel} data-testid="desk-clock">
-      <span className="clock-now num" aria-label={`${c.clockLabel} ${view.clock.virtualNowLabel}`}>{view.clock.virtualNowLabel}</span>
+      <span className="clock-now num"><span className="sr-only">{c.clockLabel} </span>{view.clock.virtualNowLabel}</span>
       <button type="button" className="dock-btn" disabled={!live || view.clock.running} onClick={() => actions.onRun()} data-testid="desk-run">
         <IconPlay size={18} /><span>{c.run}</span>
       </button>
