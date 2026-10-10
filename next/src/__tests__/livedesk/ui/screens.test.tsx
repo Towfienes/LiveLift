@@ -111,6 +111,15 @@ describe("Routes, language and honesty", () => {
     expect(screen.getByTestId("truth-panel")).toHaveTextContent("Không có gì được gửi tới Shopee");
   });
 
+  it("Home's spec-sheet decoration is hidden from assistive tech and says it is an example, SIMULATED, not a result", () => {
+    render(<HomePage />);
+    const spec = screen.getByTestId("hero-spec");
+    expect(spec).toHaveAttribute("aria-hidden", "true");
+    expect(spec).toHaveTextContent("VÍ DỤ · SIMULATED");
+    expect(spec).toHaveTextContent("không phải kết quả thật");
+    for (const label of ["Cỡ mẫu", "Độ tin cậy", "Nguồn", "Trạng thái"]) expect(spec).toHaveTextContent(label);
+  });
+
   it("Home in English keeps the honesty panel's title", () => {
     english();
     render(<HomePage />);

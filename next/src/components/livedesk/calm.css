@@ -3677,3 +3677,122 @@
 .ld .lm-tape {
   fill: var(--kraft);
 }
+
+/* WP9: Home hero. The one decoration is a spec sheet of a suggestion: labels are real, the values an example. */
+.ld .home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 520px;
+  gap: var(--s-48);
+  align-items: center;
+}
+.ld .home-hero .home-intro {
+  max-width: 760px;
+}
+.ld .spec {
+  position: relative;
+  display: grid;
+  gap: var(--s-12);
+  padding: var(--s-24) var(--s-32);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  overflow: hidden;
+}
+.ld .spec-cross {
+  position: absolute;
+  stroke: var(--ink-3);
+  opacity: 0.7;
+}
+.ld .spec-cross.tl { top: 8px; left: 8px; }
+.ld .spec-cross.tr { top: 8px; right: 8px; }
+.ld .spec-cross.bl { bottom: 8px; left: 8px; }
+.ld .spec-cross.br { bottom: 8px; right: 8px; }
+.ld .spec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-16);
+}
+.ld .spec-kicker {
+  font-size: var(--fs-12);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ld .spec-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-24);
+  align-items: center;
+}
+.ld .spec-card {
+  flex: none;
+  width: 132px;
+  height: auto;
+}
+.ld .spec-garment {
+  fill: var(--signal);
+}
+.ld .spec-rows {
+  display: grid;
+  margin: 0;
+}
+.ld .spec-rows > div {
+  display: grid;
+  gap: 1px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+.ld .spec-rows > div:first-child {
+  border-top: 1px solid var(--line-strong);
+}
+.ld .spec-rows dt {
+  font-size: var(--fs-12);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ld .spec-rows dd {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  margin: 0;
+  font-size: var(--fs-16);
+  color: var(--ink);
+}
+.ld .spec-meter {
+  display: inline-flex;
+  gap: 3px;
+}
+.ld .spec-meter i {
+  width: 16px;
+  height: 5px;
+  background: var(--line);
+}
+.ld .spec-meter i.on {
+  background: var(--warn);
+}
+.ld .spec-ruler {
+  display: grid;
+  gap: var(--s-8);
+}
+.ld .spec-tick {
+  stroke: var(--ink-3);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.ld .spec-mark {
+  fill: var(--signal);
+}
+.ld .spec-fine {
+  margin: 0;
+  font-size: var(--fs-12);
+  color: var(--ink-3);
+}
+@media (max-width: 1180px) {
+  .ld .home-hero {
+    grid-template-columns: 1fr;
+  }
+  .ld .spec {
+    display: none;
+  }
+}

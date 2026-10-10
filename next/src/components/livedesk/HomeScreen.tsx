@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCurrentLive, useLiveRecap, useStartFlow } from "@/lib/livedesk/hooks";
 import { IconCheck } from "./icons";
 import { duration } from "./i18n";
+import { HeroSpec } from "./HeroSpec";
 import { Shell, useShell } from "./Shell";
 import { SimTag } from "./ui";
 
@@ -32,9 +33,12 @@ function HomeBody() {
   const stateWord = (s: StepState): string => (s === "done" ? c.flowDone : s === "active" ? c.flowNow : c.flowLater);
   return (
     <div className="home">
-      <div className="home-intro">
-        <h1>{c.homeTitle}</h1>
-        <p className="lede">{c.homeLede}</p>
+      <div className="home-hero">
+        <div className="home-intro">
+          <h1>{c.homeTitle}</h1>
+          <p className="lede">{c.homeLede}</p>
+        </div>
+        <HeroSpec />
       </div>
       <section className="home-flow" aria-labelledby="flow-h" data-testid="home-flow">
         <h2 id="flow-h" className="label">{c.flowLabel}</h2>

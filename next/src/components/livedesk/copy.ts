@@ -60,6 +60,13 @@ const vi = {
   // home
   homeTitle: "LiveLift đọc bình luận và giỏ hàng trong buổi live, rồi gợi ý bạn nên ghim gì, và vì sao.",
   homeLede: "Bản này chạy trên SIMULATED Shopee Live trong trình duyệt của bạn: luật của trợ lý là thật, nền tảng và người xem là mô phỏng.",
+  heroSpec: {
+    kicker: "MẪU MỘT GỢI Ý",
+    simTag: "VÍ DỤ · SIMULATED",
+    rows: [["Cỡ mẫu", "29 tín hiệu trong 2 phút"], ["Độ tin cậy", "Trung bình"], ["Nguồn", "Luật"], ["Trạng thái", "Gợi ý, chưa ghim"]] as [string, string][],
+    ruler: "2 PHÚT GẦN NHẤT",
+    fine: "Ví dụ để minh họa, không phải kết quả thật.",
+  },
   flowLabel: "Bốn bước",
   flow: ["Kết nối", "Sản phẩm", "Bắt đầu live", "Live Desk"],
   flowDone: "Xong", flowNow: "Tiếp theo", flowLater: "Chưa tới",
@@ -314,6 +321,13 @@ const en: Copy = {
   ],
   homeTitle: "LiveLift reads comments and carts during your live, then suggests what to pin next, and why.",
   homeLede: "This version runs on SIMULATED Shopee Live in your browser: the assistant's rules are real, the platform and the viewers are simulated.",
+  heroSpec: {
+    kicker: "ANATOMY OF A SUGGESTION",
+    simTag: "EXAMPLE · SIMULATED",
+    rows: [["Sample size", "29 signals in 2 minutes"], ["Confidence", "Medium"], ["Source", "Rules"], ["State", "Suggested, not pinned"]] as [string, string][],
+    ruler: "LAST 2 MINUTES",
+    fine: "Illustration only, not a real result.",
+  },
   flowLabel: "Four steps",
   flow: ["Connect", "Products", "Start live", "Live Desk"],
   flowDone: "Done", flowNow: "Next", flowLater: "Later",
