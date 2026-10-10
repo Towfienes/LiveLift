@@ -8,7 +8,8 @@ import { DeskChart } from "./DeskChart";
 import { IconQuestion, IconShield } from "./icons";
 import { INTENT_ORDER, clock, duration, num } from "./i18n";
 import { Shell, useShell } from "./Shell";
-import { SimTag } from "./ui";
+import { SimTag, TapeTitle } from "./ui";
+import { RecapArt } from "./art";
 
 /**
  * The recap of a recorded live: a few numbers, the timeline with pinned products as bands, what the assistant
@@ -79,9 +80,10 @@ function RecapBody({ liveId }: { liveId: string }) {
     <div className="recap" data-testid="recap">
       <div className="recap-head">
         <div>
-          <h1>{c.recapTitle}</h1>
+          <h1><TapeTitle text={c.recapTitle} mark={c.recapTitleMark} /></h1>
           <p className="recap-meta">{c.recapMeta(duration(r.durationSec, lang))} <SimTag quiet>{c.stamp}</SimTag></p>
         </div>
+        <RecapArt />
         <Link href="/start" className="btn btn-primary btn-md" data-testid="recap-new">{c.newLive}</Link>
       </div>
 

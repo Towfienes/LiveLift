@@ -159,6 +159,25 @@ describe("Routes, language and honesty", () => {
     expect(links.map(link => link.getAttribute("href"))).toEqual(["/legacy/home", "/sessions", "/products", "/insights", "/simulator", "/integrations", "/live/new"]);
   });
 
+  it.each(["vi", "en"])("page titles put one phrase on the kraft tape and read the same without it; art is hidden and numberless (%s)", async lang => {
+    if (lang === "en") english();
+    const tapes = lang === "vi" ? ["nên ghim gì", "buổi live", "Bản cũ"] : ["what to pin next", "recap", "Legacy"];
+    const titles = lang === "vi" ? ["LiveLift đọc bình luận và giỏ hàng trong buổi live, rồi gợi ý bạn nên ghim gì, và vì sao.", "Tổng kết buổi live", "Bản cũ (Legacy)"]
+      : ["LiveLift reads comments and carts during your live, then suggests what to pin next, and why.", "Live recap", "Legacy"];
+    const pages = [<HomePage key="h" />, await RecapPage({ params: Promise.resolve({ liveId: "demo" }) }), <LegacyPage key="l" />];
+    pages.forEach((page, i) => {
+      const { container } = render(page);
+      const h1 = screen.getByRole("heading", { level: 1 });
+      expect(h1.textContent).toBe(titles[i]);
+      expect(h1.querySelectorAll(".tape-mark")).toHaveLength(1);
+      expect(h1.querySelector(".tape-mark")!.textContent).toBe(tapes[i]);
+      const art = container.querySelector(".art");
+      expect(art).toHaveAttribute("aria-hidden", "true");
+      expect(art!.textContent).not.toMatch(/\d/);
+      cleanup();
+    });
+  });
+
   it("the header links Start, Live Desk and Recap only, and offers only what exists", () => {
     currentLive = { id: "my live", mode: "live" };
     render(<StartPage />);

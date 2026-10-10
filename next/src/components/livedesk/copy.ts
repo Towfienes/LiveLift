@@ -59,7 +59,7 @@ const vi = {
     { title: "Đánh giá hiệu quả", text: "Nhận, bỏ qua, tự làm, và điều chưa biết.", where: "Nút Kết thúc live, mở Tổng kết" },
   ],
   // home
-  homeTitle: "LiveLift đọc bình luận và giỏ hàng trong buổi live, rồi gợi ý bạn nên ghim gì, và vì sao.",
+  homeTitle: "LiveLift đọc bình luận và giỏ hàng trong buổi live, rồi gợi ý bạn nên ghim gì, và vì sao.", homeTitleMark: "nên ghim gì",
   homeLede: "Bản này chạy trên SIMULATED Live trong trình duyệt của bạn: luật của trợ lý là thật, nền tảng và người xem là mô phỏng.",
   flowLabel: "Bốn bước",
   flow: ["Kết nối", "Sản phẩm", "Bắt đầu live", "Live Desk"],
@@ -217,7 +217,7 @@ const vi = {
     "Chế độ Thí nghiệm bị khoá: cần phiên từ 90 phút và một thiết kế thử nghiệm đã duyệt.",
   ],
   // recap
-  recapTitle: "Tổng kết buổi live",
+  recapTitle: "Tổng kết buổi live", recapTitleMark: "buổi live",
   recapMeta: (d: string) => `Buổi live mô phỏng, dài ${d}`,
   newLive: "Chuẩn bị buổi mới",
   recapNone: "Chưa có tổng kết", recapNoneHelp: "Tổng kết xuất hiện khi bạn kết thúc một buổi live.",
@@ -252,7 +252,7 @@ const vi = {
   byIntent: "Bình luận theo ý định, 2 phút cuối",
   recapPrivacy: (masked: number, count: number) => `Đã che ${masked} trong ${count} bình luận Live Desk còn giữ.`,
   // legacy
-  legacyTitle: "Bản cũ (Legacy)",
+  legacyTitle: "Bản cũ (Legacy)", legacyTitleMark: "Bản cũ",
   legacyIntro: "Các màn hình lập kế hoạch của bản V3 giữ nguyên đường dẫn và giao diện cũ.",
   legacyLinks: {
     oldHome: ["Trang chủ cũ", "Trang chủ trước đây: lên kế hoạch trước, từ Tạo đến Buổi sau."],
@@ -317,7 +317,7 @@ const en: Copy = {
     { title: "Suggest", text: "What to pin next; the operator decides.", where: "The large answer in the middle" },
     { title: "Evaluate", text: "Accepted, dismissed, done yourself, and what is still unknown.", where: "The End live button, which opens the recap" },
   ],
-  homeTitle: "LiveLift reads comments and carts during your live, then suggests what to pin next, and why.",
+  homeTitle: "LiveLift reads comments and carts during your live, then suggests what to pin next, and why.", homeTitleMark: "what to pin next",
   homeLede: "This version runs on SIMULATED Live in your browser: the assistant's rules are real, the platform and the viewers are simulated.",
   flowLabel: "Four steps",
   flow: ["Connect", "Products", "Start live", "Live Desk"],
@@ -471,7 +471,7 @@ const en: Copy = {
     "The live is kept in this browser only; a version with a database comes later.",
     "Experiment mode is locked: it needs sessions of 90 minutes or more and an approved test design.",
   ],
-  recapTitle: "Live recap",
+  recapTitle: "Live recap", recapTitleMark: "recap",
   recapMeta: (d) => `Simulated live, ${d} long`,
   newLive: "Prepare a new live",
   recapNone: "No recap yet", recapNoneHelp: "A recap appears when you end a live.",
@@ -505,7 +505,7 @@ const en: Copy = {
   noRows: "No suggestions, and you pinned nothing.",
   byIntent: "Comments by intent, last 2 minutes",
   recapPrivacy: (masked, count) => `${masked} of the ${count} comments the Live Desk still holds were masked.`,
-  legacyTitle: "Legacy",
+  legacyTitle: "Legacy", legacyTitleMark: "Legacy",
   legacyIntro: "The V3 planning screens keep their original URLs and their original look.",
   legacyLinks: {
     oldHome: ["Original Home", "The earlier Home: the plan-first loop, Create to Next LIVE."],

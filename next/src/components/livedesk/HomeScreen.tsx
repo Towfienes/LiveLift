@@ -6,7 +6,8 @@ import { useCurrentLive, useLiveRecap, useStartFlow } from "@/lib/livedesk/hooks
 import { IconCheck } from "./icons";
 import { duration } from "./i18n";
 import { Shell, useShell } from "./Shell";
-import { SimTag } from "./ui";
+import { SimTag, TapeTitle } from "./ui";
+import { HomeArt } from "./art";
 
 type StepState = "done" | "active" | "todo";
 
@@ -33,8 +34,9 @@ function HomeBody() {
   return (
     <div className="home">
       <div className="home-intro">
-        <h1>{c.homeTitle}</h1>
+        <h1><TapeTitle text={c.homeTitle} mark={c.homeTitleMark} /></h1>
         <p className="lede">{c.homeLede}</p>
+        <HomeArt />
       </div>
       <section className="home-flow" aria-labelledby="flow-h" data-testid="home-flow">
         {/* The next step comes first in reading order, so on a phone it sits right under the intro. */}
