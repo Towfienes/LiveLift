@@ -26,10 +26,10 @@ export function duration(sec: number, lang: DeskLang): string {
 export const num = (n: number, lang: DeskLang): string => n.toLocaleString(lang === "vi" ? "vi-VN" : "en-US");
 
 const START_BLOCKED: Record<string, string> = {
-  "A SIMULATED live is already running. Open the Live Desk.": "Một buổi live SIMULATED đang chạy. Mở Live Desk.",
-  "Connect SIMULATED Live first.": "Kết nối SIMULATED Live trước.",
+  "A SIMULATED live is already running. Open the Live Desk.": "Một buổi live đang chạy. Mở Live Desk.",
+  "Connect SIMULATED Live first.": "Kết nối nền tảng trước.",
   "Import at least one product first.": "Nhập ít nhất một sản phẩm trước.",
-  "No product has synced to SIMULATED Live yet.": "Chưa có sản phẩm nào lên SIMULATED Live.",
+  "No product has synced to SIMULATED Live yet.": "Chưa có sản phẩm nào lên nền tảng.",
 };
 
 export function tStartBlocked(reason: string | null, lang: DeskLang): string | null {

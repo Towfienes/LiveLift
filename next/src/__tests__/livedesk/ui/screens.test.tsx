@@ -104,8 +104,8 @@ describe("Routes, language and honesty", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("LiveLift đọc bình luận và giỏ hàng");
     const flow = screen.getByTestId("home-flow");
     for (const step of ["Kết nối", "Sản phẩm", "Bắt đầu live", "Live Desk"]) expect(flow).toHaveTextContent(step);
-    expect(flow).toHaveTextContent("Đã kết nối SIMULATED Live");
-    expect(flow).toHaveTextContent("3 sản phẩm, 2 đã có trên SIMULATED");
+    expect(flow).toHaveTextContent("Đã kết nối nền tảng");
+    expect(flow).toHaveTextContent("3 sản phẩm, 2 đã lên nền tảng");
     expect(within(flow).getByTestId("home-next")).toHaveAttribute("href", "/desk/demo");
     expect(screen.getByTestId("truth-panel")).toHaveTextContent("Cái gì là thật, cái gì không");
     expect(screen.getByTestId("truth-panel")).toHaveTextContent("Không có gì được gửi tới hay nhận từ một nền tảng live thật nào");
@@ -125,7 +125,7 @@ describe("Routes, language and honesty", () => {
     english();
     render(<HomePage />);
     expect(screen.getByTestId("truth-panel")).toHaveTextContent("What is real, and what is not");
-    expect(screen.getByTestId("home-flow")).toHaveTextContent("Connected to SIMULATED Live");
+    expect(screen.getByTestId("home-flow")).toHaveTextContent("Connected to the platform");
   });
 
   it.each(["connect", "import", "start"])("Home chooses the %s step from the supplied status", step => {
@@ -133,7 +133,7 @@ describe("Routes, language and honesty", () => {
     if (step === "connect") startView.connected = false;
     if (step === "import") startView.products = [];
     render(<HomePage />);
-    const expected = { connect: "Kết nối SIMULATED Live", import: "Nhập sản phẩm của bạn", start: "Bắt đầu buổi live" }[step];
+    const expected = { connect: "Kết nối nền tảng", import: "Nhập sản phẩm của bạn", start: "Bắt đầu buổi live" }[step];
     expect(screen.getByTestId("home-flow")).toHaveTextContent(expected!);
     expect(screen.getByTestId("home-next")).toHaveAttribute("href", "/start");
   });
@@ -289,20 +289,48 @@ describe("Start actions and blocked reasons", () => {
     expect(screen.getByTestId("start-live")).toBeDisabled();
     expect(screen.queryByTestId("start-import")).toBeNull();
     expect(screen.queryByTestId("start-sample")).toBeNull();
-    expect(screen.getByText("Kết nối SIMULATED Live trước.")).toBeInTheDocument();
-    expect(screen.getByText("Kết nối SIMULATED Live trước khi nhập.")).toBeInTheDocument();
+    expect(screen.getByText("Kết nối nền tảng trước.")).toBeInTheDocument();
+    expect(screen.getByText("Kết nối nền tảng trước khi nhập.")).toBeInTheDocument();
   });
 
   it("shows the logic's blocked reason in Vietnamese, and as given in English", () => {
     startView.startBlockedReason = "No product has synced to SIMULATED Live yet.";
     render(<StartPage />);
     expect(screen.getByTestId("start-live")).toBeDisabled();
-    expect(screen.getByText("Chưa có sản phẩm nào lên SIMULATED Live.")).toBeInTheDocument();
+    expect(screen.getByText("Chưa có sản phẩm nào lên nền tảng.")).toBeInTheDocument();
     cleanup();
     english();
     forgetDeskPrefsForTests();
     render(<StartPage />);
     expect(screen.getByText(startView.startBlockedReason)).toBeInTheDocument();
+  });
+
+  it("Start names SIMULATED once, in the mode stamp at the top; steps, table and art speak of the platform", () => {
+    render(<StartPage />);
+    const flow = screen.getByTestId("start-flow");
+    expect(flow.textContent!.match(/SIMULATED/g)).toHaveLength(1);
+    expect(flow.querySelector(".sim-note")).toHaveTextContent("SIMULATED Live");
+    expect(screen.getByTestId("start-products")).toHaveTextContent("Đã lên nền tảng");
+  });
+
+  it("the run-of-show rail mirrors the three steps and jumps to each one", () => {
+    render(<StartPage />);
+    const rail = screen.getByRole("navigation", { name: "Các bước chuẩn bị" });
+    const links = within(rail).getAllByRole("link");
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#start-step-1", "#start-step-2", "#start-step-3"]);
+    expect(links[0]).toHaveAccessibleName("Bước 1: Kết nối, Đã xong");
+    for (const n of [1, 2, 3]) expect(document.getElementById(`start-step-${n}`)).toBeInTheDocument();
+    const current = links.filter((a) => a.getAttribute("aria-current") === "step");
+    expect(current.length).toBeLessThanOrEqual(1);
+  });
+
+  it("the Live Desk preview is a captioned figure with no numbers in it", () => {
+    render(<StartPage />);
+    const fig = screen.getByTestId("start-preview");
+    expect(fig.tagName).toBe("FIGURE");
+    expect(within(fig).getByText(/Bên trái là sản phẩm, ghim bằng một chạm/)).toBeInTheDocument();
+    expect(fig.textContent).not.toMatch(/\d/);
+    expect(fig.textContent).not.toMatch(/SIMULATED/);
   });
 
   it("the import note is translated word for word", () => {

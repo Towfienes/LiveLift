@@ -1912,10 +1912,11 @@
   border: 1px solid transparent;
   transition: background var(--t-base) var(--ease), color var(--t-base) var(--ease);
 }
+/* on the platform: the ok green of a finished step; the mode (SIMULATED) is stated once, at the top of the page */
 .ld .status.is-synced {
   background: transparent;
-  border-color: var(--sim-line);
-  color: var(--sim);
+  border-color: var(--ok);
+  color: var(--ok);
 }
 .ld .spinner {
   width: 12px;
@@ -4021,8 +4022,8 @@
 .ld .start-art .art-ruler path { stroke: var(--ink-3); stroke-width: 1; fill: none; opacity: 0.7; }
 .ld .start-art .art-ruler .art-mark { fill: var(--ink-2); stroke: none; }
 /* die-cut stickers in the site's own materials: paper for the phone, kraft (the tape) for the shirt, ink lines, brick
-   only for the LIVE dot and the hearts. Tokens below switch with the theme. */
-.ld .start-art {
+   only for the LIVE dot and the hearts. Tokens below switch with the theme and serve every sticker on Start. */
+.ld .setup {
   --stk-cut: #d8d0c4;
   --stk-margin: #fffdf8;
   --stk-line: #5a5047;
@@ -4034,7 +4035,7 @@
   --stk-sheen: #ffffff;
   --stk-heart: #f0d9d0;
 }
-.ld[data-theme="dark"] .start-art {
+.ld[data-theme="dark"] .setup {
   --stk-cut: #5a4e44;
   --stk-margin: #3a312b;
   --stk-line: #e2d8ca;
@@ -4046,24 +4047,24 @@
   --stk-sheen: #f3ece1;
   --stk-heart: #4a2a22;
 }
-.ld .start-art .stop-paper-a { stop-color: var(--stk-paper-a); }
-.ld .start-art .stop-paper-b { stop-color: var(--stk-paper-b); }
-.ld .start-art .stop-kraft-a { stop-color: var(--stk-kraft-a); }
-.ld .start-art .stop-kraft-b { stop-color: var(--stk-kraft-b); }
-.ld .start-art .stop-sheen { stop-color: var(--stk-sheen); }
-.ld .start-art .stk-cut { fill: none; stroke: var(--stk-cut); stroke-width: 15; stroke-linejoin: round; }
-.ld .start-art .stk-margin { fill: var(--stk-margin); stroke: var(--stk-margin); stroke-width: 12; stroke-linejoin: round; }
-.ld .start-art .stk-ink { stroke: var(--stk-line); stroke-width: 2.4; stroke-linejoin: round; }
-.ld .start-art .stk-screen { fill: var(--stk-screen); stroke: var(--stk-line); stroke-width: 2; }
-.ld .start-art .stk-line { stroke: var(--stk-line); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.ld .start-art .stk-line.is-soft { stroke-width: 1.5; opacity: 0.45; }
-.ld .start-art .stk-line-fill { fill: var(--stk-line); }
-.ld .start-art .stk-live { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; }
-.ld .start-art .stk-live-dot { fill: var(--signal); }
-.ld .start-art .stk-live-text { font: 700 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--stk-line); text-anchor: middle; letter-spacing: 0.04em; }
-.ld .start-art .stk-heart { fill: var(--stk-heart); stroke: var(--signal-text); stroke-width: 1.8; stroke-linejoin: round; }
-.ld .start-art .stk-heart.is-small { stroke-width: 1.5; }
-.ld .start-art .stk-tag { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; stroke-linejoin: round; }
+.ld .setup .stop-paper-a { stop-color: var(--stk-paper-a); }
+.ld .setup .stop-paper-b { stop-color: var(--stk-paper-b); }
+.ld .setup .stop-kraft-a { stop-color: var(--stk-kraft-a); }
+.ld .setup .stop-kraft-b { stop-color: var(--stk-kraft-b); }
+.ld .setup .stop-sheen { stop-color: var(--stk-sheen); }
+.ld .setup .stk-cut { fill: none; stroke: var(--stk-cut); stroke-width: 15; stroke-linejoin: round; }
+.ld .setup .stk-margin { fill: var(--stk-margin); stroke: var(--stk-margin); stroke-width: 12; stroke-linejoin: round; }
+.ld .setup .stk-ink { stroke: var(--stk-line); stroke-width: 2.4; stroke-linejoin: round; }
+.ld .setup .stk-screen { fill: var(--stk-screen); stroke: var(--stk-line); stroke-width: 2; }
+.ld .setup .stk-line { stroke: var(--stk-line); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.ld .setup .stk-line.is-soft { stroke-width: 1.5; opacity: 0.45; }
+.ld .setup .stk-line-fill { fill: var(--stk-line); }
+.ld .setup .stk-live { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; }
+.ld .setup .stk-live-dot { fill: var(--signal); }
+.ld .setup .stk-live-text { font: 700 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--stk-line); text-anchor: middle; letter-spacing: 0.04em; }
+.ld .setup .stk-heart { fill: var(--stk-heart); stroke: var(--signal-text); stroke-width: 1.8; stroke-linejoin: round; }
+.ld .setup .stk-heart.is-small { stroke-width: 1.5; }
+.ld .setup .stk-tag { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; stroke-linejoin: round; }
 @media (max-width: 1023px) {
   .ld .start-art {
     display: none;
@@ -4078,4 +4079,239 @@
 .ld .row-kind {
   color: var(--ink);
   border-color: var(--ink);
+}
+/* Start, wide screens: the run-of-show rail and the Live Desk figure are drawn as pieces of a spec sheet (registration
+   marks, tick rulers, mono micro-labels, a dotted ground); the page itself stays plain paper. The ring light is the
+   third sticker. All of it reads theme tokens, never numbers, and nothing moves. */
+.ld .setup {
+  position: relative;
+}
+.ld .setup-main {
+  display: grid;
+  gap: var(--s-32);
+  min-width: 0;
+}
+.ld .step {
+  scroll-margin-top: var(--s-24);
+}
+.ld .ros,
+.ld .start-ring {
+  display: none;
+}
+.ld .ros {
+  position: absolute;
+  top: var(--s-48);
+  bottom: var(--s-48);
+  left: calc(50% - 652px - 24px - 152px);
+  width: 152px;
+}
+.ld .ros-inner {
+  position: sticky;
+  top: var(--s-48);
+  display: grid;
+  justify-items: start;
+  gap: var(--s-12);
+}
+.ld .ros-reg {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  margin-left: 7px;
+  border: 1px solid var(--ink-3);
+  border-radius: 50%;
+  opacity: 0.6;
+}
+.ld .ros-reg::before,
+.ld .ros-reg::after {
+  content: "";
+  position: absolute;
+  background: var(--ink-3);
+}
+.ld .ros-reg::before { left: 50%; top: -5px; bottom: -5px; width: 1px; }
+.ld .ros-reg::after { top: 50%; left: -5px; right: -5px; height: 1px; }
+.ld .ros-hint,
+.ld .preview-kicker,
+.ld .pv-label {
+  font: 500 10px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ld .ros-line {
+  position: relative;
+  display: grid;
+  gap: 104px;
+  padding: var(--s-12) 0;
+  list-style: none;
+}
+/* the rule and its ticks: a major tick every 40 px, a minor one every 8 px */
+.ld .ros-line::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 14px;
+  width: 1px;
+  background: var(--line-strong);
+  opacity: 0.35;
+}
+.ld .ros-line::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 15px;
+  width: 9px;
+  background:
+    repeating-linear-gradient(to bottom, var(--ink-3) 0 1px, transparent 1px 40px) 0 0 / 9px 100% no-repeat,
+    repeating-linear-gradient(to bottom, var(--ink-3) 0 1px, transparent 1px 8px) 0 0 / 5px 100% no-repeat;
+  opacity: 0.45;
+}
+.ld .ros-n {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.ld .ros-box {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  font-weight: var(--w-medium);
+  border: 1px solid var(--ink-3);
+  background: var(--bg);
+  color: var(--ink-3);
+}
+.ld .ros-n.is-active .ros-box { background: var(--ink); border-color: var(--ink); color: var(--ink-inverse); }
+.ld .ros-n.is-done .ros-box { background: var(--ok); border-color: var(--ok); color: var(--ink-inverse); }
+.ld .ros-name {
+  padding-left: var(--s-8);
+  font: 500 11px/1.2 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ld .ros-n.is-todo .ros-name { color: var(--ink-3); }
+.ld .ros-n.is-active .ros-name { color: var(--ink); }
+.ld .ros-n:hover .ros-name { text-decoration: underline; text-underline-offset: 3px; }
+.ld .ros-n:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+
+/* the Live Desk figure: a framed sheet with crop marks, a dotted ground and a ruler along its foot */
+.ld .preview {
+  display: grid;
+  gap: var(--s-12);
+  margin: 0;
+}
+.ld .preview-sheet {
+  position: relative;
+  display: grid;
+  gap: var(--s-12);
+  padding: var(--s-16) var(--s-16) var(--s-24);
+  border: 1px solid var(--line);
+  background: radial-gradient(circle, var(--line) 1px, transparent 1.3px) 0 0 / 12px 12px;
+}
+/* crop marks just outside two corners */
+.ld .preview-sheet::before,
+.ld .preview-sheet::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--ink-3);
+  border-style: solid;
+  opacity: 0.7;
+}
+.ld .preview-sheet::before { top: -7px; left: -7px; border-width: 1px 0 0 1px; }
+.ld .preview-sheet::after { bottom: -7px; right: -7px; border-width: 0 1px 1px 0; }
+.ld .preview-desk {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1.15fr;
+  gap: var(--s-12);
+}
+.ld .pv-col {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 132px;
+  padding: var(--s-12);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.ld .pv-label { margin-bottom: 4px; }
+.ld .pv-row { display: block; height: 6px; background: var(--surface-3); }
+.ld .pv-row.is-short { width: 58%; }
+.ld .pv-title { display: block; height: 11px; width: 82%; background: var(--ink-3); opacity: 0.75; }
+/* the pinned card, with its strip of kraft tape, as on the Live Desk */
+.ld .pv-card {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  margin: 6px 0 4px;
+  padding: 9px 8px;
+  border: 1px solid var(--ink-3);
+  background: var(--bg);
+  rotate: -1.5deg;
+}
+.ld .pv-card::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 32%;
+  width: 30px;
+  height: 9px;
+  background: var(--kraft);
+  rotate: 3deg;
+}
+.ld .pv-card i { display: block; height: 6px; background: var(--ink-3); opacity: 0.6; }
+.ld .pv-card i.is-short { width: 50%; opacity: 0.35; }
+/* a suggested pin: ink dashed, a proposal and not an action */
+.ld .pv-pin { display: block; width: 64px; height: 18px; margin-top: 4px; border: 1px dashed var(--ink); }
+.ld .pv-chips { display: flex; gap: 5px; }
+.ld .pv-chips i { display: block; width: 26px; height: 12px; border: 1px solid var(--ink-3); border-radius: 6px; opacity: 0.8; }
+.ld .preview-ruler {
+  position: absolute;
+  left: var(--s-16);
+  right: var(--s-16);
+  bottom: 8px;
+  height: 7px;
+  border-top: 1px solid var(--ink-3);
+  background:
+    repeating-linear-gradient(to right, var(--ink-3) 0 1px, transparent 1px 40px) 0 0 / 100% 7px no-repeat,
+    repeating-linear-gradient(to right, var(--ink-3) 0 1px, transparent 1px 8px) 0 0 / 100% 4px no-repeat;
+  opacity: 0.5;
+}
+.ld .preview figcaption {
+  max-width: 64ch;
+  font-size: var(--fs-14);
+  color: var(--ink-2);
+}
+
+/* the ring light sticker, beside the steps */
+.ld .start-ring {
+  position: absolute;
+  top: 140px;
+  left: calc(50% + 652px + 36px);
+  width: 136px;
+  rotate: 9deg;
+}
+.ld .start-ring svg { display: block; width: 100%; height: auto; overflow: visible; }
+.ld .setup .stk-line.is-thin { stroke-width: 1.5; }
+.ld .setup .stk-leds path { stroke: var(--stk-margin); stroke-width: 2.4; stroke-linecap: round; opacity: 0.85; }
+
+@container stage (max-width: 679px) {
+  .ld .preview { display: none; }
+}
+@container stage (min-width: 1680px) {
+  .ld .ros { display: block; }
+}
+@container stage (min-width: 1760px) {
+  .ld .start-ring { display: block; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ld .screen-wrap:has(.setup) { scroll-behavior: smooth; }
 }

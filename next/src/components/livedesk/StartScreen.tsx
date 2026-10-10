@@ -35,7 +35,7 @@ function ProductTable({ products, onRemove, locked }: { products: DeskProduct[];
             <th scope="col">{c.colProduct}</th>
             <th scope="col" className="r">{c.colPrice}</th>
             <th scope="col" className="r">{c.colStock}</th>
-            <th scope="col">{c.colStatus} <SimTag quiet>SIMULATED</SimTag></th>
+            <th scope="col">{c.colStatus}</th>
             <th scope="col"><span className="sr-only">{c.colAction}</span></th>
           </tr>
         </thead>
@@ -93,14 +93,14 @@ function ImportForm({ connected }: { connected: boolean }) {
  * shirt with a tag), drawn in the site's paper, kraft, ink and brick; every colour is a theme token. Words only, never numbers, so nothing reads as data. Hidden from assistive tech, static,
  * and dropped below 1024 px.
  */
-function Sticker({ d, fill, children }: { d: string; fill: string; children?: React.ReactNode }) {
+function Sticker({ d, fill, sheen = "art-sheen", children }: { d: string; fill: string; sheen?: string; children?: React.ReactNode }) {
   // die-cut: a soft cut line, a margin, then the body in the site's own paper or kraft, its ink outline and a sheen
   return (
     <g>
       <path d={d} className="stk-cut" />
       <path d={d} className="stk-margin" />
       <path d={d} fill={fill} className="stk-ink" />
-      <path d={d} fill="url(#art-sheen)" />
+      <path d={d} fill={`url(#${sheen})`} />
       {children}
     </g>
   );
@@ -138,7 +138,7 @@ function StartArt() {
         <g className="art-chips">{["L", "I", "V", "E"].map((ch, i) => (<g key={ch} transform={`translate(${352 + i * 21} 12)`}><circle r="8" /><text y="3.5">{ch}</text></g>))}</g>
         <rect x="380" y="34" width="54" height="36" fill="url(#art-dots)" />
         <g className="art-pill"><rect x="300" y="86" width="64" height="18" rx="9" /><text x="332" y="98.5">ON AIR</text></g>
-        <text x="226" y="312" className="art-label">SIMULATED · LIVE DESK</text>
+        <text x="226" y="312" className="art-label">LIVELIFT · LIVE DESK</text>
 
         {/* a phone on air */}
         <g transform="translate(58 112) rotate(-8 60 96)">
@@ -167,6 +167,99 @@ function StartArt() {
   );
 }
 
+/** The three steps as a sticky run-of-show rail in the left margin of a wide screen; each mark jumps to its step. */
+function RunOfShow({ steps }: { steps: { n: number; title: string; state: StepState }[] }) {
+  const { c } = useShell();
+  return (
+    <nav className="ros" aria-label={c.rosLabel} data-testid="start-ros">
+      <div className="ros-inner">
+        <span className="ros-reg" aria-hidden="true" />
+        <span className="ros-hint" aria-hidden="true">{c.rosHint}</span>
+        <ol className="ros-line">
+          {steps.map(({ n, title, state }) => (
+            <li key={n}>
+              <a href={`#start-step-${n}`} className={`ros-n is-${state}`} aria-current={state === "active" ? "step" : undefined}
+                aria-label={`${c.stepWord} ${n}: ${title}, ${state === "done" ? c.stepDone : state === "active" ? c.stepActive : c.stepTodo}`}>
+                <span className="ros-box" aria-hidden="true">{state === "done" ? <IconCheck size={14} /> : n}</span>
+                <span className="ros-name" aria-hidden="true">{title}</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+        <span className="ros-reg" aria-hidden="true" />
+      </div>
+    </nav>
+  );
+}
+
+/** What the next screen looks like, drawn as a spec-sheet figure: three blank columns, no numbers, so nothing reads as data. */
+function DeskPreview() {
+  const { c } = useShell();
+  const [products, suggestion, comments] = c.previewCols;
+  return (
+    <figure className="preview" data-testid="start-preview">
+      <div className="preview-sheet" aria-hidden="true">
+        <span className="preview-kicker">{c.previewKicker}</span>
+        <div className="preview-desk">
+          <div className="pv-col">
+            <span className="pv-label">{products}</span>
+            <span className="pv-card"><i /><i className="is-short" /></span>
+            <span className="pv-row" /><span className="pv-row" /><span className="pv-row is-short" />
+          </div>
+          <div className="pv-col">
+            <span className="pv-label">{suggestion}</span>
+            <span className="pv-title" /><span className="pv-row" /><span className="pv-row is-short" />
+            <span className="pv-pin" />
+          </div>
+          <div className="pv-col">
+            <span className="pv-label">{comments}</span>
+            <span className="pv-chips"><i /><i /><i /></span>
+            <span className="pv-row" /><span className="pv-row is-short" /><span className="pv-row" />
+          </div>
+        </div>
+        <span className="preview-ruler" />
+      </div>
+      <figcaption>{c.previewCaption}</figcaption>
+    </figure>
+  );
+}
+
+/** A ring light, the third sticker from the seller's desk, stuck in the right margin of a wide screen. Decorative. */
+function RingLight() {
+  const leds = Array.from({ length: 24 }, (_, i) => (i * 360) / 24);
+  return (
+    <div className="start-ring" aria-hidden="true">
+      <svg viewBox="0 0 160 220" focusable="false">
+        <defs>
+          <linearGradient id="ring-paper" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" className="stop-paper-a" />
+            <stop offset="1" className="stop-paper-b" />
+          </linearGradient>
+          <linearGradient id="ring-kraft" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" className="stop-kraft-a" />
+            <stop offset="1" className="stop-kraft-b" />
+          </linearGradient>
+          <linearGradient id="ring-sheen" x1="0" y1="0" x2="1" y2="0.6">
+            <stop offset="0.2" className="stop-sheen" stopOpacity="0" />
+            <stop offset="0.32" className="stop-sheen" stopOpacity="0.5" />
+            <stop offset="0.44" className="stop-sheen" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <Sticker fill="url(#ring-paper)" sheen="ring-sheen"
+          d="M80 12a68 68 0 1 1 0 136a68 68 0 1 1 0 -136zM74 140h12v56h-12zM50 194h60a7 7 0 0 1 0 14h-60a7 7 0 0 1 0 -14z">
+          <circle cx="80" cy="80" r="56" fill="none" stroke="url(#ring-kraft)" strokeWidth="20" />
+          <circle cx="80" cy="80" r="66" className="stk-line is-thin" fill="none" />
+          <circle cx="80" cy="80" r="46" className="stk-screen" />
+          <g className="stk-leds">{leds.map((a) => <path key={a} d="M80 28v-4" transform={`rotate(${a} 80 80)`} />)}</g>
+          <rect x="66" y="56" width="28" height="48" rx="5" className="stk-tag" />
+          <circle cx="80" cy="62" r="2.4" className="stk-live-dot" />
+          <path d="M74 98h12" className="stk-line is-thin" />
+        </Sticker>
+      </svg>
+    </div>
+  );
+}
+
 function StartBody() {
   const { c, lang } = useShell();
   const { view, actions } = useStartFlow();
@@ -186,8 +279,15 @@ function StartBody() {
     setStartFailed(id === null);
     if (id !== null) router.push(`/desk/${encodeURIComponent(id)}`);
   };
+  const stepList = [
+    { n: 1, title: c.connectTitle, state: step1 },
+    { n: 2, title: c.productsTitle, state: step2 },
+    { n: 3, title: c.startLiveTitle, state: step3 },
+  ];
   return (
     <div className="setup" data-testid="start-flow">
+      <RunOfShow steps={stepList} />
+      <RingLight />
       <div className="setup-intro">
         <h1 className="start-title">{c.startTitleLead} <span className="tape-mark">{c.startTitleMark}</span></h1>
         <p className="lede">{c.startLede}</p>
@@ -197,58 +297,61 @@ function StartBody() {
         </div>
         <StartArt />
       </div>
-      <ol className="steps">
-        <li className={`step is-${step1}`} data-testid="start-connect-panel">
-          <StepHead n={1} title={c.connectTitle} state={step1} summary={view.connected ? c.connected : null} />
-          <div className="step-body">
-            {!view.connected && <p>{c.connectBody}</p>}
-            {!view.connected && (
-              <Button variant="primary" size="lg" icon={<IconLink />} onClick={() => actions.onConnect()} data-testid="start-connect">{c.connectBtn}</Button>
-            )}
-          </div>
-        </li>
-        <li className={`step is-${step2}`} data-testid="start-import-panel">
-          <StepHead n={2} title={c.productsTitle} state={step2}
-            summary={view.products.length ? c.productsSummary(view.products.length, synced, missing.length) : !view.connected ? c.connectFirst : null} />
-          {view.connected && (
+      <div className="setup-main">
+        <ol className="steps">
+          <li id="start-step-1" className={`step is-${step1}`} data-testid="start-connect-panel">
+            <StepHead n={1} title={c.connectTitle} state={step1} summary={view.connected ? c.connected : null} />
             <div className="step-body">
-              {view.products.length === 0 ? (
-                <>
-                  <div className="empty-inline">
-                    <p className="empty-title">{c.emptyProducts}</p>
-                    <p>{c.emptyProductsHelp}</p>
-                  </div>
-                  <ImportForm connected={view.connected} />
-                </>
-              ) : (
-                <>
-                  <ProductTable products={view.products} onRemove={actions.onRemoveProduct} locked={running} />
-                  {missing.map((p) => (
-                    <p key={p.id} className="note-warn">{c.missingNote(p.name, c.missingWhat(p.priceLabel === null, p.stock === null))}</p>
-                  ))}
-                  <details className="more">
-                    <summary>{c.addMore}</summary>
-                    <ImportForm connected={view.connected} />
-                  </details>
-                </>
+              {!view.connected && <p>{c.connectBody}</p>}
+              {!view.connected && (
+                <Button variant="primary" size="lg" icon={<IconLink />} onClick={() => actions.onConnect()} data-testid="start-connect">{c.connectBtn}</Button>
               )}
-              <p role="status" className="step-note">{note}</p>
             </div>
-          )}
-        </li>
-        <li className={`step is-${step3}`} data-testid="start-live-panel">
-          <StepHead n={3} title={c.startLiveTitle} state={step3} />
-          <div className="step-body">
-            {view.startBlockedReason === null && <p>{c.startBody}</p>}
-            <div className="row">
-              <Button variant="primary" size="lg" onClick={start} disabled={view.startBlockedReason !== null} aria-describedby="start-reason" data-testid="start-live">{c.startBtn}</Button>
-              {running && live && <Link className="btn btn-secondary btn-lg" href={`/desk/${encodeURIComponent(live.id)}`}>{c.openDesk}</Link>}
+          </li>
+          <li id="start-step-2" className={`step is-${step2}`} data-testid="start-import-panel">
+            <StepHead n={2} title={c.productsTitle} state={step2}
+              summary={view.products.length ? c.productsSummary(view.products.length, synced, missing.length) : !view.connected ? c.connectFirst : null} />
+            {view.connected && (
+              <div className="step-body">
+                {view.products.length === 0 ? (
+                  <>
+                    <div className="empty-inline">
+                      <p className="empty-title">{c.emptyProducts}</p>
+                      <p>{c.emptyProductsHelp}</p>
+                    </div>
+                    <ImportForm connected={view.connected} />
+                  </>
+                ) : (
+                  <>
+                    <ProductTable products={view.products} onRemove={actions.onRemoveProduct} locked={running} />
+                    {missing.map((p) => (
+                      <p key={p.id} className="note-warn">{c.missingNote(p.name, c.missingWhat(p.priceLabel === null, p.stock === null))}</p>
+                    ))}
+                    <details className="more">
+                      <summary>{c.addMore}</summary>
+                      <ImportForm connected={view.connected} />
+                    </details>
+                  </>
+                )}
+                <p role="status" className="step-note">{note}</p>
+              </div>
+            )}
+          </li>
+          <li id="start-step-3" className={`step is-${step3}`} data-testid="start-live-panel">
+            <StepHead n={3} title={c.startLiveTitle} state={step3} />
+            <div className="step-body">
+              {view.startBlockedReason === null && <p>{c.startBody}</p>}
+              <div className="row">
+                <Button variant="primary" size="lg" onClick={start} disabled={view.startBlockedReason !== null} aria-describedby="start-reason" data-testid="start-live">{c.startBtn}</Button>
+                {running && live && <Link className="btn btn-secondary btn-lg" href={`/desk/${encodeURIComponent(live.id)}`}>{c.openDesk}</Link>}
+              </div>
+              <p id="start-reason" className="step-note">{blocked}</p>
+              <p role="status" className="step-note is-warn">{startFailed ? c.startFailed : null}</p>
             </div>
-            <p id="start-reason" className="step-note">{blocked}</p>
-            <p role="status" className="step-note is-warn">{startFailed ? c.startFailed : null}</p>
-          </div>
-        </li>
-      </ol>
+          </li>
+        </ol>
+        <DeskPreview />
+      </div>
     </div>
   );
 }
