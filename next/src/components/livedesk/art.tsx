@@ -36,6 +36,8 @@ export function SpecRuler({ label, mark = 300 }: { label?: string; mark?: number
   );
 }
 
+/** Drawings shown small pass a `strokeScale` above 1, so their hairlines stay at least about 1.5 px on a 1x screen. */
+
 /** One drawing placed on a sheet's stage: left, top and width in percent of the stage, and a tilt in degrees. */
 function Spot({ left, top, width, tilt = 0, children }: { left: number; top: number; width: number; tilt?: number; children: React.ReactNode }) {
   return <span className="sheet-spot" style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, rotate: `${tilt}deg` }}>{children}</span>;
@@ -162,9 +164,9 @@ export function RecapArt() {
   const { c } = useShell();
   return (
     <Sheet className="recap-art" kicker={c.art.recap.kicker}>
-      <Spot left={8} top={0} width={20}><CardStack /></Spot>
-      <Spot left={36} top={26} width={22}><InkArrow /></Spot>
-      <Spot left={66} top={2} width={26}><CommentChips /></Spot>
+      <Spot left={8} top={0} width={20}><CardStack strokeScale={1.6} /></Spot>
+      <Spot left={36} top={26} width={22}><InkArrow strokeScale={1.4} /></Spot>
+      <Spot left={66} top={2} width={26}><CommentChips strokeScale={1.6} /></Spot>
     </Sheet>
   );
 }
@@ -174,9 +176,9 @@ export function LegacyArt() {
   const { c } = useShell();
   return (
     <Sheet className="legacy-art" kicker={c.art.legacy.kicker} ruler={c.art.legacy.ruler} giant="PLAN">
-      <Spot left={6} top={20} width={42} tilt={-3}><CardStack /></Spot>
-      <Spot left={40} top={12} width={7}><PaperClip /></Spot>
-      <Spot left={56} top={48} width={34} tilt={6}><PriceTag /></Spot>
+      <Spot left={6} top={20} width={42} tilt={-3}><CardStack strokeScale={1.15} /></Spot>
+      <Spot left={40} top={12} width={7}><PaperClip strokeScale={1.2} /></Spot>
+      <Spot left={56} top={48} width={34} tilt={6}><PriceTag strokeScale={1.15} /></Spot>
     </Sheet>
   );
 }
@@ -184,16 +186,16 @@ export function LegacyArt() {
 /** Home's four steps, each with its drawing: connect (the host's phone), products, go live (the ring light), the desk. */
 export function StepArt({ step }: { step: number }) {
   const Drawing = [HostPhone, CardTote, RingLight, CommentChips][step] ?? CardStack;
-  return <span className="flow-art" aria-hidden="true"><Drawing /></span>;
+  return <span className="flow-art" aria-hidden="true"><Drawing strokeScale={1.5} /></span>;
 }
 
 /** The recap's "what we do not know" box wears the brand's sticky note, in the reader's language. */
 export function UnknownSticker() {
   const { c } = useShell();
-  return <span className="unknown-sticker" aria-hidden="true"><UnknownNote label={c.unknownBig} /></span>;
+  return <span className="unknown-sticker" aria-hidden="true"><UnknownNote label={c.unknownBig} strokeScale={1.3} /></span>;
 }
 
 /** Empty and not-found states: a stack of cards, nothing pinned yet. */
 export function EmptyArt() {
-  return <span className="empty-art" aria-hidden="true"><CardStack /></span>;
+  return <span className="empty-art" aria-hidden="true"><CardStack strokeScale={1.3} /></span>;
 }

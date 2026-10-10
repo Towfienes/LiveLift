@@ -93,6 +93,11 @@ def render(el: ET.Element, stem: str, depth: int) -> list[str]:
             value = f"{stem}-{value}"
         if value.startswith("url(#"):
             value = f"url(#{stem}-{value[5:]}"
+        if key == "stroke-width":
+            # strokes scale with the drawing; `strokeScale` thickens them where a drawing is shown small, so a 1 px hairline
+            # does not dissolve into grey on a 1x screen
+            attrs.append(f"strokeWidth={{{value} * strokeScale}}")
+            continue
         attrs.append(f'{ATTRS.get(key, key)}="{value}"')
     if classes:
         attrs.append(f'className="{" ".join(classes)}"')
@@ -107,7 +112,11 @@ def component(stem: str, name: str) -> str:
     root = ET.parse(ASSETS / f"{stem}.svg").getroot()
     body = [line for child in root for line in render(child, stem, 3)]
     has_label = any(is_text_outline(el) for el in root.iter())
-    props = "{ className, label }: { className?: string; label: string }" if has_label else "{ className }: { className?: string }"
+    has_stroke = any("stroke-width" in el.attrib for el in root.iter())
+    # every drawing takes `strokeScale` so callers can treat them alike; one with no strokes simply ignores it
+    scale = "strokeScale = 1" if has_stroke else "strokeScale: _strokeScale"
+    props = (f"{{ className, label, {scale} }}: {{ className?: string; label: string; strokeScale?: number }}" if has_label
+             else f"{{ className, {scale} }}: {{ className?: string; strokeScale?: number }}")
     return "\n".join([
         f"/** docs/brand/assets/{stem}.svg */",
         f"export function {name}({props}) {{",

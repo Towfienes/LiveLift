@@ -4380,7 +4380,7 @@
     top: var(--s-24);
     right: var(--s-24);
     display: block;
-    height: 72px;
+    height: 80px;
   }
   .ld .flow-art .brand {
     width: auto;
@@ -4411,4 +4411,12 @@
   display: block;
   width: 96px;
   margin-bottom: var(--s-8);
+}
+
+/* crisp on a 1x screen: straight 1 px ticks and cross-hairs snap to whole pixels instead of smearing across two */
+.ld .spec-tick,
+.ld .spec-cross path,
+.ld .art .art-reg path,
+.ld .art .art-ruler path:not(.art-mark) {
+  shape-rendering: crispEdges;
 }

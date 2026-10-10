@@ -3,17 +3,17 @@
 import React from "react";
 
 /** docs/brand/assets/chong-the.svg */
-export function CardStack({ className }: { className?: string }) {
+export function CardStack({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 132 152" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
       <g transform="rotate(-9 70 86)">
-        <rect x="30" y="36" width="80" height="100" strokeWidth="1.8" className="bf-paper bs-ink" />
+        <rect x="30" y="36" width="80" height="100" strokeWidth={1.8 * strokeScale} className="bf-paper bs-ink" />
       </g>
       <g transform="rotate(-2 62 74)">
-        <rect x="22" y="24" width="80" height="100" strokeWidth="1.8" className="bf-paper bs-ink" />
+        <rect x="22" y="24" width="80" height="100" strokeWidth={1.8 * strokeScale} className="bf-paper bs-ink" />
       </g>
       <g transform="rotate(5 54 62)">
-        <rect x="14" y="12" width="80" height="100" strokeWidth="3" className="bf-paper bs-ink" />
+        <rect x="14" y="12" width="80" height="100" strokeWidth={3 * strokeScale} className="bf-paper bs-ink" />
       </g>
       <g transform="rotate(5 54 62)">
         <rect x="24" y="22" width="60" height="42" className="bf-photo" />
@@ -21,8 +21,8 @@ export function CardStack({ className }: { className?: string }) {
           <path d="M20 14 Q30 -2 40 14 Q30 24 20 14 Z" className="bf-brick" />
           <path d="M22 14 Q30 3 38 14 Q30 20 22 14 Z" opacity=".35" className="bf-paper" />
           <path d="M20 14 L8 22 L12 34 L18 31 L18 52 L42 52 L42 31 L48 34 L52 22 L40 14 Q30 26 20 14 Z" className="bf-brick" />
-          <path d="M26 22 V30 M34 22 V30" strokeWidth="1.8" opacity=".7" className="bs-paper" />
-          <path d="M22 41 H38 V50 H22 Z" fill="none" strokeWidth="1.8" opacity=".5" className="bs-paper" />
+          <path d="M26 22 V30 M34 22 V30" strokeWidth={1.8 * strokeScale} opacity=".7" className="bs-paper" />
+          <path d="M22 41 H38 V50 H22 Z" fill="none" strokeWidth={1.8 * strokeScale} opacity=".5" className="bs-paper" />
         </g>
         <circle cx="31" cy="29" r="3.4" className="bf-brick" />
         <rect x="24" y="76" width="60" height="4.4" className="bf-ink" />
@@ -34,25 +34,25 @@ export function CardStack({ className }: { className?: string }) {
 }
 
 /** docs/brand/assets/den-livestream.svg */
-export function RingLight({ className }: { className?: string }) {
+export function RingLight({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 160 232" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <circle cx="80" cy="76" r="62" fill="none" strokeWidth="7" className="bs-ink" />
-      <circle cx="80" cy="76" r="50" fill="none" strokeWidth="1.4" className="bs-line" />
+      <circle cx="80" cy="76" r="62" fill="none" strokeWidth={7 * strokeScale} className="bs-ink" />
+      <circle cx="80" cy="76" r="50" fill="none" strokeWidth={1.4 * strokeScale} className="bs-line" />
       <rect x="62" y="48" width="36" height="62" rx="5" className="bf-ink" />
       <rect x="66" y="53" width="28" height="52" rx="2" className="bf-photo" />
       <rect x="69" y="56" width="12" height="6" className="bf-brick" />
-      <line x1="80" x2="80" y1="138" y2="176" strokeWidth="5" className="bs-ink" />
-      <line x1="80" x2="44" y1="176" y2="224" strokeWidth="5" className="bs-ink" />
-      <line x1="80" x2="116" y1="176" y2="224" strokeWidth="5" className="bs-ink" />
-      <line x1="80" x2="80" y1="176" y2="228" strokeWidth="5" className="bs-ink" />
+      <line x1="80" x2="80" y1="138" y2="176" strokeWidth={5 * strokeScale} className="bs-ink" />
+      <line x1="80" x2="44" y1="176" y2="224" strokeWidth={5 * strokeScale} className="bs-ink" />
+      <line x1="80" x2="116" y1="176" y2="224" strokeWidth={5 * strokeScale} className="bs-ink" />
+      <line x1="80" x2="80" y1="176" y2="228" strokeWidth={5 * strokeScale} className="bs-ink" />
       <circle cx="138" cy="22" r="9" className="bf-brick" />
     </svg>
   );
 }
 
 /** docs/brand/assets/dien-thoai-livestream.svg */
-export function HostPhone({ className }: { className?: string }) {
+export function HostPhone({ className, strokeScale: _strokeScale }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 140 240" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
       <rect x="4" y="4" width="132" height="232" rx="16" className="bf-ink" />
@@ -83,58 +83,58 @@ export function HostPhone({ className }: { className?: string }) {
 }
 
 /** docs/brand/assets/binh-luan-chip.svg */
-export function CommentChips({ className }: { className?: string }) {
+export function CommentChips({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 190 168" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
       <circle cx="16" cy="22" r="9" opacity=".18" className="bf-ink" />
-      <rect x="34" y="11" width="30" height="9" strokeWidth=".8" strokeOpacity=".45" className="bf-brick-soft bs-ink" />
+      <rect x="34" y="11" width="30" height="9" strokeWidth={.8 * strokeScale} strokeOpacity=".45" className="bf-brick-soft bs-ink" />
       <rect x="34" y="25" width="124" height="6" className="bf-ink" />
-      <line x1="0" x2="190" y1="43" y2="43" strokeWidth="1" className="bs-line" />
+      <line x1="0" x2="190" y1="43" y2="43" strokeWidth={1 * strokeScale} className="bs-line" />
       <circle cx="16" cy="62" r="9" opacity=".18" className="bf-ink" />
-      <rect x="34" y="51" width="36" height="9" fill="#E8E0C8" strokeWidth=".8" strokeOpacity=".45" className="bs-ink" />
+      <rect x="34" y="51" width="36" height="9" fill="#E8E0C8" strokeWidth={.8 * strokeScale} strokeOpacity=".45" className="bs-ink" />
       <rect x="34" y="65" width="100" height="6" className="bf-ink" />
-      <line x1="0" x2="190" y1="83" y2="83" strokeWidth="1" className="bs-line" />
+      <line x1="0" x2="190" y1="83" y2="83" strokeWidth={1 * strokeScale} className="bs-line" />
       <circle cx="16" cy="102" r="9" opacity=".18" className="bf-ink" />
-      <rect x="34" y="91" width="26" height="9" strokeWidth=".8" strokeOpacity=".45" className="bf-photo bs-ink" />
+      <rect x="34" y="91" width="26" height="9" strokeWidth={.8 * strokeScale} strokeOpacity=".45" className="bf-photo bs-ink" />
       <rect x="34" y="105" width="136" height="6" className="bf-ink" />
-      <line x1="0" x2="190" y1="123" y2="123" strokeWidth="1" className="bs-line" />
+      <line x1="0" x2="190" y1="123" y2="123" strokeWidth={1 * strokeScale} className="bs-line" />
       <circle cx="16" cy="142" r="9" opacity=".18" className="bf-ink" />
-      <rect x="34" y="131" width="30" height="9" strokeWidth=".8" strokeOpacity=".45" className="bf-brick-soft bs-ink" />
+      <rect x="34" y="131" width="30" height="9" strokeWidth={.8 * strokeScale} strokeOpacity=".45" className="bf-brick-soft bs-ink" />
       <rect x="34" y="145" width="110" height="6" className="bf-ink" />
-      <line x1="0" x2="190" y1="163" y2="163" strokeWidth="1" className="bs-line" />
+      <line x1="0" x2="190" y1="163" y2="163" strokeWidth={1 * strokeScale} className="bs-line" />
     </svg>
   );
 }
 
 /** docs/brand/assets/gia-treo-do.svg */
-export function Rack({ className }: { className?: string }) {
+export function Rack({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 228 176" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <line x1="14" x2="214" y1="30" y2="30" strokeWidth="4" className="bs-ink" />
-      <line x1="14" x2="14" y1="30" y2="170" strokeWidth="4" className="bs-ink" />
-      <line x1="214" x2="214" y1="30" y2="170" strokeWidth="4" className="bs-ink" />
-      <line x1="2" x2="40" y1="170" y2="170" strokeWidth="4" className="bs-ink" />
-      <line x1="188" x2="226" y1="170" y2="170" strokeWidth="4" className="bs-ink" />
-      <path d="M50 30 L50 38 M36 48 L50 38 L64 48 Z" fill="none" strokeWidth="2" className="bs-ink" />
+      <line x1="14" x2="214" y1="30" y2="30" strokeWidth={4 * strokeScale} className="bs-ink" />
+      <line x1="14" x2="14" y1="30" y2="170" strokeWidth={4 * strokeScale} className="bs-ink" />
+      <line x1="214" x2="214" y1="30" y2="170" strokeWidth={4 * strokeScale} className="bs-ink" />
+      <line x1="2" x2="40" y1="170" y2="170" strokeWidth={4 * strokeScale} className="bs-ink" />
+      <line x1="188" x2="226" y1="170" y2="170" strokeWidth={4 * strokeScale} className="bs-ink" />
+      <path d="M50 30 L50 38 M36 48 L50 38 L64 48 Z" fill="none" strokeWidth={2 * strokeScale} className="bs-ink" />
       <g transform="translate(18.5 46.5) scale(1.05)">
         <path d="M21 10 Q30 17 39 10 L53 18 L47 29 L42 26 L42 52 L18 52 L18 26 L13 29 L7 18 Z" fill="#8A9A7B" />
       </g>
-      <path d="M92 30 L92 38 M78 48 L92 38 L106 48 Z" fill="none" strokeWidth="2" className="bs-ink" />
+      <path d="M92 30 L92 38 M78 48 L92 38 L106 48 Z" fill="none" strokeWidth={2 * strokeScale} className="bs-ink" />
       <g transform="translate(60.5 46.5) scale(1.05)">
         <path d="M20 14 Q30 -2 40 14 Q30 24 20 14 Z" className="bf-brick" />
         <path d="M22 14 Q30 3 38 14 Q30 20 22 14 Z" opacity=".35" className="bf-paper" />
         <path d="M20 14 L8 22 L12 34 L18 31 L18 52 L42 52 L42 31 L48 34 L52 22 L40 14 Q30 26 20 14 Z" className="bf-brick" />
-        <path d="M26 22 V30 M34 22 V30" strokeWidth="1.8" opacity=".7" className="bs-paper" />
-        <path d="M22 41 H38 V50 H22 Z" fill="none" strokeWidth="1.8" opacity=".5" className="bs-paper" />
+        <path d="M26 22 V30 M34 22 V30" strokeWidth={1.8 * strokeScale} opacity=".7" className="bs-paper" />
+        <path d="M22 41 H38 V50 H22 Z" fill="none" strokeWidth={1.8 * strokeScale} opacity=".5" className="bs-paper" />
       </g>
-      <path d="M134 30 L134 38 M120 48 L134 38 L148 48 Z" fill="none" strokeWidth="2" className="bs-ink" />
+      <path d="M134 30 L134 38 M120 48 L134 38 L148 48 Z" fill="none" strokeWidth={2 * strokeScale} className="bs-ink" />
       <g transform="translate(102.5 46.5) scale(1.05)">
         <path d="M18 7 H42 L45 53 H33 L30 24 L27 53 H15 Z" className="bf-ink" />
-        <path d="M18 12 H42" strokeWidth="2" opacity=".5" className="bs-paper" />
+        <path d="M18 12 H42" strokeWidth={2 * strokeScale} opacity=".5" className="bs-paper" />
       </g>
-      <path d="M176 30 L176 38 M162 48 L176 38 L190 48 Z" fill="none" strokeWidth="2" className="bs-ink" />
+      <path d="M176 30 L176 38 M162 48 L176 38 L190 48 Z" fill="none" strokeWidth={2 * strokeScale} className="bs-ink" />
       <g transform="translate(144.5 46.5) scale(1.05)">
-        <path d="M22 26 C22 6 38 6 38 26" fill="none" strokeWidth="3.2" className="bs-kraft" />
+        <path d="M22 26 C22 6 38 6 38 26" fill="none" strokeWidth={3.2 * strokeScale} className="bs-kraft" />
         <rect x="12" y="25" width="36" height="29" className="bf-kraft" />
         <rect x="19" y="33" width="22" height="3" opacity=".55" className="bf-paper" />
       </g>
@@ -143,10 +143,10 @@ export function Rack({ className }: { className?: string }) {
 }
 
 /** docs/brand/assets/gio-hang-them.svg */
-export function CartPlusOne({ className }: { className?: string }) {
+export function CartPlusOne({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 124 104" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <path d="M6 12 H24 L40 74 H100 L112 34 H30" fill="none" strokeWidth="5" strokeLinejoin="round" className="bs-ink" />
+      <path d="M6 12 H24 L40 74 H100 L112 34 H30" fill="none" strokeWidth={5 * strokeScale} strokeLinejoin="round" className="bs-ink" />
       <circle cx="48" cy="92" r="8" className="bf-ink" />
       <circle cx="92" cy="92" r="8" className="bf-ink" />
       <rect x="76" y="2" width="42" height="26" className="bf-brick" />
@@ -156,28 +156,28 @@ export function CartPlusOne({ className }: { className?: string }) {
 }
 
 /** docs/brand/assets/the-gia.svg */
-export function PriceTag({ className }: { className?: string }) {
+export function PriceTag({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 118 104" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <path d="M10 52 L52 10 H108 V94 H52 Z" strokeWidth="3" strokeLinejoin="miter" className="bf-paper bs-ink" />
-      <circle cx="52" cy="52" r="6" strokeWidth="2.4" className="bf-cream bs-ink" />
+      <path d="M10 52 L52 10 H108 V94 H52 Z" strokeWidth={3 * strokeScale} strokeLinejoin="miter" className="bf-paper bs-ink" />
+      <circle cx="52" cy="52" r="6" strokeWidth={2.4 * strokeScale} className="bf-cream bs-ink" />
       <rect x="66" y="30" width="30" height="5" className="bf-ink" />
       <rect x="66" y="44" width="30" height="5" className="bf-ink" />
-      <rect x="66" y="64" width="22" height="9" fill="none" stroke="#8A5A00" strokeWidth="1.6" strokeDasharray="3 2" />
-      <path d="M52 46 C46 22 30 10 14 8" fill="none" strokeWidth="2" className="bs-ink" />
+      <rect x="66" y="64" width="22" height="9" fill="none" stroke="#8A5A00" strokeWidth={1.6 * strokeScale} strokeDasharray="3 2" />
+      <path d="M52 46 C46 22 30 10 14 8" fill="none" strokeWidth={2 * strokeScale} className="bs-ink" />
     </svg>
   );
 }
 
 /** docs/brand/assets/ghi-chu-chua-biet.svg */
-export function UnknownNote({ className, label }: { className?: string; label: string }) {
+export function UnknownNote({ className, label, strokeScale = 1 }: { className?: string; label: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 168 134" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
       <g transform="rotate(-3 84 70)">
-        <rect x="8" y="14" width="152" height="112" strokeWidth="1.4" className="bf-note bs-ink" />
-        <rect x="16" y="22" width="136" height="96" fill="none" strokeWidth="1.2" strokeDasharray="5 4" className="bs-ink" />
+        <rect x="8" y="14" width="152" height="112" strokeWidth={1.4 * strokeScale} className="bf-note bs-ink" />
+        <rect x="16" y="22" width="136" height="96" fill="none" strokeWidth={1.2 * strokeScale} strokeDasharray="5 4" className="bs-ink" />
         <text x="84" y="80" textAnchor="middle" className="brand-note-text">{label}</text>
-        <path d="M60 94 H108" strokeWidth="2.4" className="bs-brick" />
+        <path d="M60 94 H108" strokeWidth={2.4 * strokeScale} className="bs-brick" />
       </g>
       <polygon points="54.0,2.0 110.0,2.0 107.8,5.0 110.0,8.0 107.8,11.0 110.0,14.0 107.8,17.0 110.0,20.0 54.0,20.0 56.2,17.0 54.0,14.0 56.2,11.0 54.0,8.0 56.2,5.0" opacity="0.92" transform="rotate(3 82.0 11.0)" className="bf-kraft" />
     </svg>
@@ -185,37 +185,37 @@ export function UnknownNote({ className, label }: { className?: string; label: s
 }
 
 /** docs/brand/assets/ghim-tron.svg */
-export function PushPin({ className }: { className?: string }) {
+export function PushPin({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 40 52" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <path d="M20 50 L20 28" strokeWidth="2.4" className="bs-ink" />
-      <circle cx="20" cy="16" r="13" strokeWidth="2.4" className="bf-brick bs-ink" />
-      <path d="M14 12 A8 8 0 0 1 22 8" fill="none" strokeWidth="2.4" opacity=".7" className="bs-paper" />
+      <path d="M20 50 L20 28" strokeWidth={2.4 * strokeScale} className="bs-ink" />
+      <circle cx="20" cy="16" r="13" strokeWidth={2.4 * strokeScale} className="bf-brick bs-ink" />
+      <path d="M14 12 A8 8 0 0 1 22 8" fill="none" strokeWidth={2.4 * strokeScale} opacity=".7" className="bs-paper" />
     </svg>
   );
 }
 
 /** docs/brand/assets/kep-giay.svg */
-export function PaperClip({ className }: { className?: string }) {
+export function PaperClip({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 30 76" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <path d="M20 22 V54 A9 9 0 0 1 2 54 V16 A7 7 0 0 1 16 16 V52" fill="none" strokeWidth="2.6" strokeLinecap="round" transform="translate(4 0)" className="bs-ink" />
+      <path d="M20 22 V54 A9 9 0 0 1 2 54 V16 A7 7 0 0 1 16 16 V52" fill="none" strokeWidth={2.6 * strokeScale} strokeLinecap="round" transform="translate(4 0)" className="bs-ink" />
     </svg>
   );
 }
 
 /** docs/brand/assets/mui-ten-nghieng.svg */
-export function InkArrow({ className }: { className?: string }) {
+export function InkArrow({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 120 60" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <path d="M4 46 C34 54 68 40 98 14" fill="none" strokeWidth="2.6" strokeLinecap="round" className="bs-ink" />
-      <path d="M80 12 L102 10 L98 32" fill="none" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="bs-ink" />
+      <path d="M4 46 C34 54 68 40 98 14" fill="none" strokeWidth={2.6 * strokeScale} strokeLinecap="round" className="bs-ink" />
+      <path d="M80 12 L102 10 L98 32" fill="none" strokeWidth={2.6 * strokeScale} strokeLinecap="round" strokeLinejoin="round" className="bs-ink" />
     </svg>
   );
 }
 
 /** docs/brand/assets/bang-dinh-kraft.svg */
-export function KraftTape({ className }: { className?: string }) {
+export function KraftTape({ className, strokeScale: _strokeScale }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 160 64" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
       <polygon points="8.0,6.0 152.0,6.0 149.8,10.3 152.0,14.7 149.8,19.0 152.0,23.3 149.8,27.7 152.0,32.0 8.0,32.0 10.2,27.7 8.0,23.3 10.2,19.0 8.0,14.7 10.2,10.3" opacity="0.92" transform="rotate(-2 80.0 19.0)" className="bf-kraft" />
@@ -225,19 +225,19 @@ export function KraftTape({ className }: { className?: string }) {
 }
 
 /** docs/brand/assets/the-san-pham-ao-hoodie.svg */
-export function CardHoodie({ className }: { className?: string }) {
+export function CardHoodie({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 112 118" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <rect x="7" y="24" width="64" height="82" fill="none" strokeWidth="1.6" transform="rotate(3 39 65)" className="bs-ink" />
+      <rect x="7" y="24" width="64" height="82" fill="none" strokeWidth={1.6 * strokeScale} transform="rotate(3 39 65)" className="bs-ink" />
       <g transform="rotate(-5 54 58)">
-        <rect x="20" y="12" width="68" height="88" strokeWidth="3" className="bf-paper bs-ink" />
+        <rect x="20" y="12" width="68" height="88" strokeWidth={3 * strokeScale} className="bf-paper bs-ink" />
         <rect x="28" y="22" width="52" height="40" className="bf-photo" />
         <g transform="translate(35.4 23.4) scale(0.62)">
           <path d="M20 14 Q30 -2 40 14 Q30 24 20 14 Z" className="bf-brick" />
           <path d="M22 14 Q30 3 38 14 Q30 20 22 14 Z" opacity=".35" className="bf-paper" />
           <path d="M20 14 L8 22 L12 34 L18 31 L18 52 L42 52 L42 31 L48 34 L52 22 L40 14 Q30 26 20 14 Z" className="bf-brick" />
-          <path d="M26 22 V30 M34 22 V30" strokeWidth="1.8" opacity=".7" className="bs-paper" />
-          <path d="M22 41 H38 V50 H22 Z" fill="none" strokeWidth="1.8" opacity=".5" className="bs-paper" />
+          <path d="M26 22 V30 M34 22 V30" strokeWidth={1.8 * strokeScale} opacity=".7" className="bs-paper" />
+          <path d="M22 41 H38 V50 H22 Z" fill="none" strokeWidth={1.8 * strokeScale} opacity=".5" className="bs-paper" />
         </g>
         <circle cx="35" cy="29" r="3.6" className="bf-brick" />
         <rect x="28" y="72" width="52" height="4.4" className="bf-ink" />
@@ -249,16 +249,16 @@ export function CardHoodie({ className }: { className?: string }) {
 }
 
 /** docs/brand/assets/the-san-pham-quan-cargo.svg */
-export function CardCargo({ className }: { className?: string }) {
+export function CardCargo({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 112 118" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <rect x="7" y="24" width="64" height="82" fill="none" strokeWidth="1.6" transform="rotate(3 39 65)" className="bs-ink" />
+      <rect x="7" y="24" width="64" height="82" fill="none" strokeWidth={1.6 * strokeScale} transform="rotate(3 39 65)" className="bs-ink" />
       <g transform="rotate(-5 54 58)">
-        <rect x="20" y="12" width="68" height="88" strokeWidth="3" className="bf-paper bs-ink" />
+        <rect x="20" y="12" width="68" height="88" strokeWidth={3 * strokeScale} className="bf-paper bs-ink" />
         <rect x="28" y="22" width="52" height="40" className="bf-photo" />
         <g transform="translate(35.4 23.4) scale(0.62)">
           <path d="M18 7 H42 L45 53 H33 L30 24 L27 53 H15 Z" className="bf-ink" />
-          <path d="M18 12 H42" strokeWidth="2" opacity=".5" className="bs-paper" />
+          <path d="M18 12 H42" strokeWidth={2 * strokeScale} opacity=".5" className="bs-paper" />
         </g>
         <circle cx="35" cy="29" r="3.6" className="bf-brick" />
         <rect x="28" y="72" width="52" height="4.4" className="bf-ink" />
@@ -270,15 +270,15 @@ export function CardCargo({ className }: { className?: string }) {
 }
 
 /** docs/brand/assets/the-san-pham-tui-tote.svg */
-export function CardTote({ className }: { className?: string }) {
+export function CardTote({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 112 118" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <rect x="7" y="24" width="64" height="82" fill="none" strokeWidth="1.6" transform="rotate(3 39 65)" className="bs-ink" />
+      <rect x="7" y="24" width="64" height="82" fill="none" strokeWidth={1.6 * strokeScale} transform="rotate(3 39 65)" className="bs-ink" />
       <g transform="rotate(-5 54 58)">
-        <rect x="20" y="12" width="68" height="88" strokeWidth="3" className="bf-paper bs-ink" />
+        <rect x="20" y="12" width="68" height="88" strokeWidth={3 * strokeScale} className="bf-paper bs-ink" />
         <rect x="28" y="22" width="52" height="40" className="bf-photo" />
         <g transform="translate(35.4 23.4) scale(0.62)">
-          <path d="M22 26 C22 6 38 6 38 26" fill="none" strokeWidth="3.2" className="bs-kraft" />
+          <path d="M22 26 C22 6 38 6 38 26" fill="none" strokeWidth={3.2 * strokeScale} className="bs-kraft" />
           <rect x="12" y="25" width="36" height="29" className="bf-kraft" />
           <rect x="19" y="33" width="22" height="3" opacity=".55" className="bf-paper" />
         </g>
@@ -292,12 +292,12 @@ export function CardTote({ className }: { className?: string }) {
 }
 
 /** docs/brand/assets/the-san-pham-ao-linen.svg */
-export function CardLinen({ className }: { className?: string }) {
+export function CardLinen({ className, strokeScale = 1 }: { className?: string; strokeScale?: number }) {
   return (
     <svg viewBox="0 0 112 118" className={`brand${className ? ` ${className}` : ""}`} aria-hidden="true" focusable="false">
-      <rect x="7" y="24" width="64" height="82" fill="none" strokeWidth="1.6" transform="rotate(3 39 65)" className="bs-ink" />
+      <rect x="7" y="24" width="64" height="82" fill="none" strokeWidth={1.6 * strokeScale} transform="rotate(3 39 65)" className="bs-ink" />
       <g transform="rotate(-5 54 58)">
-        <rect x="20" y="12" width="68" height="88" strokeWidth="3" className="bf-paper bs-ink" />
+        <rect x="20" y="12" width="68" height="88" strokeWidth={3 * strokeScale} className="bf-paper bs-ink" />
         <rect x="28" y="22" width="52" height="40" className="bf-photo" />
         <g transform="translate(35.4 23.4) scale(0.62)">
           <path d="M21 10 Q30 17 39 10 L53 18 L47 29 L42 26 L42 52 L18 52 L18 26 L13 29 L7 18 Z" fill="#8A9A7B" />
