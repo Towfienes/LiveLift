@@ -4404,6 +4404,10 @@
     width: 120px;
     rotate: 4deg;
   }
+  /* the heading keeps clear of the note, in either language */
+  .ld .unknowns h2 {
+    padding-right: 136px;
+  }
 }
 
 /* empty and not-found states */
