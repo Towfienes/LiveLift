@@ -95,11 +95,10 @@ function RecapBody({ liveId }: { liveId: string }) {
           <dt>{c.kpiCarts}</dt>
           <dd className="num">{r.cartsOnShow === null ? c.unknownBig : num(r.cartsOnShow, lang)}</dd>
         </div>
-        <div><dt>{c.kpiPins}</dt><dd className="num">{num(r.operatorPins, lang)}</dd></div>
         <div>
-          <dt>{c.kpiTaken}</dt>
-          <dd className="num">{num(taken, lang)}</dd>
-          <dd className="kpi-note">{c.kpiTakenOf(suggestions.length)}</dd>
+          <dt>{c.kpiComments}</dt>
+          <dd className="num">{num(r.commentsHeld.count, lang)}</dd>
+          <dd className="kpi-note">{c.kpiCommentsNote(r.commentsHeld.fromSec === null ? null : clock(r.commentsHeld.fromSec), r.commentsHeld.masked)}</dd>
         </div>
         <div className="kpi-unknown" data-testid="recap-orders">
           <dt>{c.kpiOrders}</dt>
@@ -131,6 +130,8 @@ function RecapBody({ liveId }: { liveId: string }) {
       <div className="recap-grid">
         <section className="panel decisions" aria-labelledby="decisions-h">
           <div className="panel-head"><h2 id="decisions-h">{c.decisions}</h2><SimTag quiet>SIMULATED</SimTag></div>
+          {/* What the operator did, in one line, where the decisions are: not as KPIs beside measured numbers. */}
+          <p className="decisions-sum" data-testid="recap-decisions-summary">{c.decisionsSummary(num(r.operatorPins, lang), taken, suggestions.length)}</p>
           <Rows r={r} />
         </section>
         <section className="panel intents-recap" aria-labelledby="intents-h" data-testid="recap-intents">

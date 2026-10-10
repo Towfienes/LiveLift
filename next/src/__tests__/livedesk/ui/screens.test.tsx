@@ -636,7 +636,10 @@ describe("Recap", () => {
     expect(kpis).toHaveTextContent("19");
     expect(screen.getByTestId("recap-orders")).toHaveTextContent("Chưa biết");
     expect(screen.getByTestId("recap-orders")).not.toHaveTextContent(/\b0\b/);
-    expect(kpis).toHaveTextContent("Gợi ý bạn nhận1trên 3 gợi ý");
+    // Pins and accepted suggestions are what the operator did: they sit above the decisions, not among the KPIs.
+    expect(kpis).not.toHaveTextContent("Gợi ý bạn nhận");
+    expect(kpis).toHaveTextContent("Bình luận Live Desk còn giữ120");
+    expect(screen.getByTestId("recap-decisions-summary")).toHaveTextContent("1 lần bạn ghim · nhận 1 trên 3 gợi ý");
   });
 
   it("an unknown add-to-cart total is shown as unknown", async () => {

@@ -34,12 +34,12 @@ function proposed(view: LiveDeskViewModel, kind: CopilotSuggestion["kind"]): Cop
 
 const productName = (view: LiveDeskViewModel, id: string): string => view.products.find((p) => p.id === id)?.name ?? id;
 
-/** True once the desk is one column (phones, narrow tablets). Starts false, so the server and tests see the desk layout. */
+/** True once the desk is one column (phones). Starts false, so the server and tests see the desk layout. */
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
-    const query = window.matchMedia("(max-width: 860px)");
+    const query = window.matchMedia("(max-width: 679px)");
     const update = (): void => setNarrow(query.matches);
     update();
     query.addEventListener("change", update);
@@ -188,7 +188,7 @@ function SuggestionAnswer({ s, view, actions }: { s: CopilotSuggestion; view: Li
   return (
     <div className="answer-body" key={`pin-${s.id}`} data-testid={`desk-suggestion-${s.id}`} data-state={s.state}>
       <h2 className={`answer-title${low ? " is-tentative" : ""}`} data-journey="5"><JBadge n={5} />{headline(s, name, lang)}</h2>
-      <div className="why" data-journey="4">
+      <div className={`why${low ? " is-low" : ""}`} data-journey="4">
         <ConfidenceLine s={s} />
         <p className="answer-lede">{s.source === "ai" ? c.ledeAi : low ? c.ledeLow(s.sampleSize) : c.ledeNormal}</p>
         <Reasons signals={signals} kind={s.kind} />

@@ -204,7 +204,7 @@
 
   --chart-line: #2a2522;
   --chart-area: rgba(42, 37, 34, 0.05);
-  --chart-bar: #9e3b2b;
+  --chart-bar: #6e6359; /* graphite: brick stays for LIVE and the one primary action */
   --chart-grid: #d8d0c4;
   --hatch: #cfc5b6;
   --band-a: rgba(42, 37, 34, 0.045);
@@ -256,7 +256,7 @@
   --chip-order-ink: #ebc27a;
   --chart-line: #f3ece1;
   --chart-area: rgba(243, 236, 225, 0.06);
-  --chart-bar: #c45a42;
+  --chart-bar: #b9a891;
   --chart-grid: #3d342d;
   --hatch: #5a4e44;
   --band-a: rgba(243, 236, 225, 0.05);
@@ -3835,4 +3835,207 @@
   .ld .ptable-scroll {
     max-height: min(480px, 60vh);
   }
+}
+
+/* =====================================================================================================================
+   A+ (Calm Studio refined): brick only for LIVE and the one primary action; numbers sized by how much they are worth.
+   Every simulated surface still says SIMULATED (project rule); the tags stay quiet.
+   ===================================================================================================================== */
+/* a proposal is ink dashed, never brick: red would read as an error */
+.ld .pin-state.is-suggested {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+/* a thin sample is not shouted: the title and its confidence lead, the counts sit in a modest row */
+.ld .why.is-low .reasons dd {
+  font-size: var(--fs-28);
+  font-weight: var(--w-regular);
+}
+/* comment intent counters are context for the answer, not a rival to it */
+.ld .intent-count {
+  font-size: var(--fs-20);
+  font-weight: var(--w-regular);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 640px) {
+  .ld .why.is-low .reasons dd {
+    font-size: var(--fs-20);
+  }
+}
+
+/* Tablet (stage 680-939 px): two columns instead of the phone's one long column. The answer and chart lead on the
+   left; products (with a shorter SIMULATED phone) and comments stack on the right. Phones keep one column. */
+@container stage (min-width: 680px) and (max-width: 939px) {
+  .ld .desk-grid {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-areas: "center left" "center right";
+    align-items: start;
+  }
+  .ld .col-center {
+    grid-area: center;
+    order: 0;
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+  }
+  .ld .col-left {
+    grid-area: left;
+    border-right: 0;
+  }
+  .ld .col-right {
+    grid-area: right;
+    grid-column: auto;
+    border-top: 1px solid var(--line);
+  }
+  .ld .col {
+    padding: var(--s-16) var(--s-24);
+  }
+  .ld .phone-wrap {
+    height: 300px;
+    flex: none;
+  }
+  .ld .comments {
+    max-height: 520px;
+  }
+}
+/* Tablet header: the journey button shows its icon only (as on a phone), so End live stays on the first row. */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .ld .journey-toggle span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+/* Tablet header, continued: as on a phone, the step trail takes its own row under the brand, so End live stays on the
+   first row beside LIVE and SIMULATED instead of dropping alone onto a second line. */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .ld .trail {
+    order: 10;
+    width: 100%;
+  }
+  .ld .trail ol {
+    flex-wrap: wrap;
+    column-gap: var(--s-16);
+    row-gap: 0;
+  }
+  .ld .hdr > .jtarget {
+    margin-left: auto;
+  }
+  /* the SIMULATED phone on the desk still shows the viewer count */
+  .ld .live-time ~ .live-sep,
+  .ld .live-viewers {
+    display: none;
+  }
+}
+
+/* Recap (A+): the page scrolls like a page, so the whole recap can be read and shared; four KPIs, measured first and
+   the unknown orders last; what the operator did sits in one line above the decisions. */
+.ld.screen-recap {
+  height: auto;
+  min-height: 100vh;
+}
+.ld.screen-recap .stage,
+.ld.screen-recap .screen-wrap {
+  overflow: visible;
+  height: auto;
+}
+.ld .kpis {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.ld .decisions-sum {
+  margin: calc(-1 * var(--s-4)) 0 var(--s-12);
+  color: var(--ink-2);
+  font-size: var(--fs-14);
+}
+@media (max-width: 1023px) {
+  .ld .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- brand and Start (A+): one-weight wordmark with a lifted i, one-weight title with a tape mark ---------- */
+.ld .wordmark {
+  font-weight: var(--w-semibold, 600);
+  letter-spacing: -0.025em;
+}
+.ld .wordmark-i {
+  position: relative;
+  display: inline-block;
+}
+/* the dot of the i in "Lift" becomes a small upward wedge */
+.ld .wordmark-i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.02em;
+  translate: -50% 0;
+  border-left: 0.11em solid transparent;
+  border-right: 0.11em solid transparent;
+  border-bottom: 0.19em solid currentColor;
+}
+.ld .setup h1.start-title {
+  font-weight: var(--w-medium);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.ld .tape-mark {
+  position: relative;
+  display: inline-block;
+  z-index: 0;
+}
+/* a strip of kraft tape behind the second half: the same tape as the pinned card on the Live Desk */
+.ld .tape-mark::before {
+  content: "";
+  position: absolute;
+  left: -0.12em;
+  right: -0.12em;
+  top: 0.5em;
+  height: 0.42em;
+  background: var(--kraft);
+  rotate: -1.2deg;
+  z-index: -1;
+}
+.ld .step-head h2 {
+  font-size: 24px;
+  font-weight: var(--w-medium);
+}
+.ld .start-art {
+  margin-top: var(--s-24);
+  max-width: 440px;
+}
+.ld .start-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.ld .start-art .art-dot { fill: var(--line); }
+.ld .start-art .art-reg { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: 0.55; }
+.ld .start-art .art-label { font: 500 9px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; letter-spacing: 0.12em; fill: var(--ink-2); }
+.ld .start-art .art-label.is-soft { fill: var(--ink-3); opacity: 0.8; }
+.ld .start-art .art-chips circle { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: 0.7; }
+.ld .start-art .art-chips text { font: 600 9px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--ink-2); text-anchor: middle; }
+.ld .start-art .art-card { fill: var(--paper); stroke: var(--line); stroke-width: 1; }
+.ld .start-art .art-line { fill: var(--surface-3); }
+.ld .start-art .art-line.is-soft { fill: var(--surface-2); }
+.ld .start-art .art-tape { fill: var(--kraft); }
+.ld .start-art .art-sticker path { stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.ld .start-art .art-ruler path { stroke: var(--ink-3); stroke-width: 1; fill: none; opacity: 0.7; }
+.ld .start-art .art-ruler .art-mark { fill: var(--signal); stroke: none; opacity: 0.85; }
+@media (max-width: 1023px) {
+  .ld .start-art {
+    display: none;
+  }
+}
+/* the title's second half takes its own line, so the tape marks one deliberate phrase */
+.ld .start-title .tape-mark {
+  display: block;
+  width: fit-content;
+}
+/* Recap: a suggestion tag is a proposal, drawn like the desk's: ink dashed, never brick */
+.ld .row-kind {
+  color: var(--ink);
+  border-color: var(--ink);
 }
