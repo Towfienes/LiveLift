@@ -17,6 +17,7 @@ import type { DeskLang } from "./prefs";
 import { Sheet, useTrap } from "./Sheet";
 import { JBadge, Shell, useShell } from "./Shell";
 import { Button, Meter, Num, SimTag, useFlip } from "./ui";
+import { EmptyArt } from "./art";
 
 /**
  * The Live Desk: one dominant answer, the product list with one-tap pin, one chart, the comment stream with intent
@@ -558,6 +559,7 @@ function NotFound() {
   return (
     <div className="desk-empty" data-testid="desk-not-found">
       <div className="empty">
+        <EmptyArt />
         <h1>{c.notFound}</h1>
         <p>{c.notFoundHelp}</p>
         <Link href="/start" className="btn btn-primary btn-md">{c.start}</Link>

@@ -138,6 +138,23 @@ function JourneyPanel({ c, stage, setStage, onClose, onDesk }: { c: DeskCopy; st
   );
 }
 
+/** The LiveLift mark: a product card lifted off a stack and taped up, with a LIVE dot. Same geometry as docs/brand/logo. */
+function LogoMark() {
+  return (
+    <svg className="logo-mark" viewBox="0 0 64 64" width="34" height="34" aria-hidden="true" focusable="false">
+      <rect className="lm-back" x="8.5" y="22" width="34" height="38" fill="none" strokeWidth="1.6" transform="rotate(3 26 41)" />
+      <g transform="rotate(-6 37 31)">
+        <rect className="lm-card" x="20" y="10" width="34" height="42" strokeWidth="3" />
+        <rect className="lm-photo" x="26" y="17" width="22" height="16" />
+        <circle className="lm-live" cx="31" cy="22" r="3.1" />
+        <rect className="lm-bar" x="26" y="38" width="22" height="3.6" />
+        <rect className="lm-bar" x="26" y="45" width="12" height="3.6" />
+      </g>
+      <rect className="lm-tape" x="26" y="3.5" width="22" height="10.5" transform="rotate(4 37 9)" />
+    </svg>
+  );
+}
+
 function Nav({ screen, c }: { screen: DeskScreen; c: DeskCopy }) {
   const live = useCurrentLive();
   const deskHref = live ? `/desk/${encodeURIComponent(live.id)}` : null;
@@ -240,7 +257,7 @@ export function Shell({ screen, children, headerStatus, headerEnd, dockStart, do
         data-presenter={presenter ? "1" : "0"} lang={lang} data-testid="livedesk-frame" data-screen={screen}>
         <header className="hdr">
           <div className="hdr-brand">
-            <Link href="/" className="wordmark" aria-label={`LiveLift, ${c.home}`}>{/* L3: one weight; the dot of the i in "Lift" is a small upward wedge (the link's label carries the name) */}Live<span className="wordmark-lift">L<span className="wordmark-i">ı</span>ft</span></Link>
+            <Link href="/" className="wordmark" aria-label={`LiveLift, ${c.home}`}><LogoMark />{/* L3: one weight; the dot of the i in "Lift" is a small upward wedge (the link's label carries the name) */}<span>Live<span className="wordmark-lift">L<span className="wordmark-i">ı</span>ft</span></span></Link>
           </div>
           <Nav screen={screen} c={c} />
           <div className="hdr-spacer" />

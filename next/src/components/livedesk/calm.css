@@ -4005,65 +4005,6 @@
   margin-top: var(--s-24);
   max-width: 440px;
 }
-.ld .art svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-.ld .art .art-dot { fill: var(--line); }
-.ld .art .art-giant { font: 700 112px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; letter-spacing: -0.04em; fill: var(--surface-3); opacity: 0.55; }
-.ld .art .art-reg { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: 0.55; }
-.ld .art .art-label { font: 500 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; letter-spacing: 0.12em; fill: var(--ink-3); }
-.ld .art .art-label.is-big { font-size: 12px; letter-spacing: 0.04em; fill: var(--ink-2); }
-.ld .art .art-chips circle, .ld .art .art-pill rect { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: 0.75; }
-.ld .art .art-chips text, .ld .art .art-pill text { font: 600 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--ink-2); text-anchor: middle; letter-spacing: 0.06em; }
-.ld .art .art-ruler path { stroke: var(--ink-3); stroke-width: 1; fill: none; opacity: 0.7; }
-.ld .art .art-ruler .art-mark { fill: var(--ink-2); stroke: none; }
-/* die-cut stickers in the site's own materials: paper for the phone, kraft (the tape) for the shirt, ink lines, brick
-   only for the LIVE dot and the hearts. Tokens below switch with the theme and serve every drawing in art.tsx. */
-.ld .art {
-  --stk-cut: #d8d0c4;
-  --stk-margin: #fffdf8;
-  --stk-line: #5a5047;
-  --stk-paper-a: #fbf7ef;
-  --stk-paper-b: #ece3d4;
-  --stk-kraft-a: #e6d6b6;
-  --stk-kraft-b: #cdb68a;
-  --stk-screen: #f6f3ee;
-  --stk-sheen: #ffffff;
-  --stk-heart: #f0d9d0;
-}
-.ld[data-theme="dark"] .art {
-  --stk-cut: #5a4e44;
-  --stk-margin: #3a312b;
-  --stk-line: #e2d8ca;
-  --stk-paper-a: #3b332d;
-  --stk-paper-b: #2c2520;
-  --stk-kraft-a: #8f7a58;
-  --stk-kraft-b: #6c5a3f;
-  --stk-screen: #241e1a;
-  --stk-sheen: #f3ece1;
-  --stk-heart: #4a2a22;
-}
-.ld .art .stop-paper-a { stop-color: var(--stk-paper-a); }
-.ld .art .stop-paper-b { stop-color: var(--stk-paper-b); }
-.ld .art .stop-kraft-a { stop-color: var(--stk-kraft-a); }
-.ld .art .stop-kraft-b { stop-color: var(--stk-kraft-b); }
-.ld .art .stop-sheen { stop-color: var(--stk-sheen); }
-.ld .art .stk-cut { fill: none; stroke: var(--stk-cut); stroke-width: 15; stroke-linejoin: round; }
-.ld .art .stk-margin { fill: var(--stk-margin); stroke: var(--stk-margin); stroke-width: 12; stroke-linejoin: round; }
-.ld .art .stk-ink { stroke: var(--stk-line); stroke-width: 2.4; stroke-linejoin: round; }
-.ld .art .stk-screen { fill: var(--stk-screen); stroke: var(--stk-line); stroke-width: 2; }
-.ld .art .stk-line { stroke: var(--stk-line); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.ld .art .stk-line.is-soft { stroke-width: 1.5; opacity: 0.45; }
-.ld .art .stk-line-fill { fill: var(--stk-line); }
-.ld .art .stk-live { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; }
-.ld .art .stk-live-dot { fill: var(--signal); }
-.ld .art .stk-live-text { font: 700 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--stk-line); text-anchor: middle; letter-spacing: 0.04em; }
-.ld .art .stk-heart { fill: var(--stk-heart); stroke: var(--signal-text); stroke-width: 1.8; stroke-linejoin: round; }
-.ld .art .stk-heart.is-small { stroke-width: 1.5; }
-.ld .art .stk-tag { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; stroke-linejoin: round; }
 @media (max-width: 1023px) {
   .ld .start-art {
     display: none;
@@ -4105,56 +4046,303 @@
   letter-spacing: -0.03em;
   text-wrap: balance;
 }
-.ld .home-art,
 .ld .recap-art,
 .ld .legacy-art {
   display: none;
 }
-.ld .art .stk-line.is-thin { stroke-width: 1.5; }
-.ld .art .stk-leds path { stroke: var(--stk-margin); stroke-width: 2.4; stroke-linecap: round; opacity: 0.85; }
-.ld .art .stk-stripe { stroke: var(--stk-line); stroke-width: 9; fill: none; }
-.ld .art .stk-live-text.is-big { font-size: 15px; letter-spacing: 0.12em; }
-/* Home: the title and lede on the left, the drawing on the right */
-@container stage (min-width: 1280px) {
-  .ld .home-intro {
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
-    column-gap: var(--s-64);
-    align-items: center;
-  }
-  .ld .home-intro > :not(.home-art) {
-    grid-column: 1;
-  }
-  .ld .home-art {
-    display: block;
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-}
-/* Recap: a small clapperboard between the title and the next action */
+/* Recap: a small sheet between the title and the next action */
 @container stage (min-width: 1280px) {
   .ld .recap-art {
-    display: block;
-    width: 300px;
+    display: grid;
+    width: 320px;
     margin-left: auto;
-    margin-bottom: -6px;
   }
 }
-/* Legacy: the list on the left, the folder beside it */
+/* Legacy: the list on the left, the sheet beside it */
 @container stage (min-width: 1440px) {
   .ld .legacy {
     max-width: 1360px;
-    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-columns: minmax(0, 1fr) 400px;
     column-gap: 96px;
   }
   .ld .legacy > :not(.legacy-art) {
     grid-column: 1;
   }
   .ld .legacy-art {
-    display: block;
+    display: grid;
     grid-column: 2;
     grid-row: 1 / span 3;
     align-self: start;
     position: sticky;
     top: var(--s-48);
   }
+}
+/* WP8: the logo mark beside the wordmark. Colours follow the theme tokens. */
+.ld .wordmark {
+  gap: 8px;
+}
+.ld .logo-mark {
+  flex: none;
+}
+.ld .lm-back,
+.ld .lm-card {
+  stroke: var(--ink);
+}
+.ld .lm-card {
+  fill: var(--paper);
+}
+.ld .lm-photo {
+  fill: var(--surface-2);
+}
+.ld .lm-live {
+  fill: var(--signal);
+}
+.ld .lm-bar {
+  fill: var(--ink);
+}
+.ld .lm-tape {
+  fill: var(--kraft);
+}
+
+/* WP9: Home hero. The one decoration is a spec sheet of a suggestion: labels are real, the values an example. */
+.ld .home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 520px;
+  gap: var(--s-48);
+  align-items: center;
+}
+.ld .home-hero .home-intro {
+  max-width: 760px;
+}
+.ld .spec {
+  position: relative;
+  display: grid;
+  gap: var(--s-12);
+  padding: var(--s-24) var(--s-32);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  overflow: hidden;
+}
+.ld .spec-cross {
+  position: absolute;
+  stroke: var(--ink-3);
+  opacity: 0.7;
+}
+.ld .spec-cross.tl { top: 8px; left: 8px; }
+.ld .spec-cross.tr { top: 8px; right: 8px; }
+.ld .spec-cross.bl { bottom: 8px; left: 8px; }
+.ld .spec-cross.br { bottom: 8px; right: 8px; }
+.ld .spec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-16);
+}
+.ld .spec-kicker {
+  font-size: var(--fs-12);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ld .spec-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-24);
+  align-items: center;
+}
+.ld .spec-card {
+  flex: none;
+  width: 132px;
+  height: auto;
+}
+.ld .spec-garment {
+  fill: var(--signal);
+}
+.ld .spec-rows {
+  display: grid;
+  margin: 0;
+}
+.ld .spec-rows > div {
+  display: grid;
+  gap: 1px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+.ld .spec-rows > div:first-child {
+  border-top: 1px solid var(--line-strong);
+}
+.ld .spec-rows dt {
+  font-size: var(--fs-12);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ld .spec-rows dd {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  margin: 0;
+  font-size: var(--fs-16);
+  color: var(--ink);
+}
+.ld .spec-meter {
+  display: inline-flex;
+  gap: 3px;
+}
+.ld .spec-meter i {
+  width: 16px;
+  height: 5px;
+  background: var(--line);
+}
+.ld .spec-meter i.on {
+  background: var(--warn);
+}
+.ld .spec-ruler {
+  display: grid;
+  gap: var(--s-8);
+}
+.ld .spec-tick {
+  stroke: var(--ink-3);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.ld .spec-mark {
+  fill: var(--signal);
+}
+.ld .spec-fine {
+  margin: 0;
+  font-size: var(--fs-12);
+  color: var(--ink-3);
+}
+@media (max-width: 1180px) {
+  .ld .home-hero {
+    grid-template-columns: 1fr;
+  }
+  .ld .spec {
+    display: none;
+  }
+}
+
+/* ---------- brand drawings (brand.tsx, from docs/brand/assets) ----------
+   Every palette colour in a drawing is a class (bf-* fill, bs-* stroke) mapped here to a theme token, so the drawings
+   follow light and dark. They sit on spec sheets (art.tsx): corner marks, a kicker, a ruler, a faint giant word. */
+.ld {
+  --brand-kraft: #c9b48a;
+  --brand-note: #efe5cb;
+}
+.ld[data-theme="dark"] {
+  --brand-kraft: #8f7a58;
+  --brand-note: #3b332d;
+}
+.ld .brand { display: block; width: 100%; height: auto; overflow: visible; }
+.ld .bf-ink { fill: var(--ink); }
+.ld .bs-ink { stroke: var(--ink); }
+.ld .bf-paper { fill: var(--paper); }
+.ld .bs-paper { stroke: var(--paper); }
+.ld .bf-brick { fill: var(--signal); }
+.ld .bs-brick { stroke: var(--signal); }
+.ld .bf-kraft { fill: var(--brand-kraft); }
+.ld .bs-kraft { stroke: var(--brand-kraft); }
+.ld .bf-photo { fill: var(--surface-3); }
+.ld .bs-photo { stroke: var(--surface-3); }
+.ld .bf-line { fill: var(--line); }
+.ld .bs-line { stroke: var(--line); }
+.ld .bf-cream { fill: var(--bg); }
+.ld .bs-cream { stroke: var(--bg); }
+.ld .bf-violet { fill: var(--sim); }
+.ld .bs-violet { stroke: var(--sim); }
+.ld .bf-brick-soft { fill: var(--signal-soft); }
+.ld .bs-brick-soft { stroke: var(--signal-soft); }
+.ld .bf-note { fill: var(--brand-note); }
+.ld .bs-note { stroke: var(--brand-note); }
+.ld .brand-note-text { font: 500 22px/1 var(--font); fill: var(--ink); }
+
+/* a spec sheet with drawings on it */
+.ld .sheet-art {
+  position: relative;
+  gap: var(--s-12);
+  padding: var(--s-24) var(--s-32) var(--s-16);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.ld .sheet-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+}
+.ld .sheet-spot {
+  position: absolute;
+  display: block;
+}
+/* the faint giant word is SVG text: a mark on the paper, not a line to read */
+.ld .sheet-giant {
+  position: absolute;
+  left: -4px;
+  top: -8px;
+  width: 72%;
+  overflow: visible;
+}
+.ld .sheet-giant text {
+  font: 700 104px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace;
+  letter-spacing: -0.04em;
+  fill: var(--surface-3);
+  opacity: 0.6;
+}
+@media (min-width: 1024px) {
+  .ld .start-art {
+    display: grid;
+  }
+}
+.ld .start-art .sheet-stage { aspect-ratio: 440 / 250; }
+.ld .recap-art {
+  padding: var(--s-12) var(--s-32) var(--s-8);
+  gap: var(--s-4);
+}
+.ld .recap-art .sheet-stage { aspect-ratio: 4 / 1; }
+.ld .legacy-art .sheet-stage { aspect-ratio: 4 / 3; }
+
+/* Home: each of the four steps carries its drawing on a wide screen */
+.ld .flow-art {
+  display: none;
+}
+@container stage (min-width: 1280px) {
+  .ld .flow-step {
+    position: relative;
+    padding-right: 120px;
+  }
+  .ld .flow-art {
+    position: absolute;
+    top: var(--s-24);
+    right: var(--s-24);
+    display: block;
+    height: 72px;
+  }
+  .ld .flow-art .brand {
+    width: auto;
+    height: 100%;
+  }
+}
+
+/* Recap: the brand's sticky note on the "what we do not know" box */
+.ld .unknowns {
+  position: relative;
+}
+.ld .unknown-sticker {
+  display: none;
+}
+@container stage (min-width: 1024px) {
+  .ld .unknown-sticker {
+    position: absolute;
+    top: -28px;
+    right: var(--s-24);
+    display: block;
+    width: 120px;
+    rotate: 4deg;
+  }
+}
+
+/* empty and not-found states */
+.ld .empty-art {
+  display: block;
+  width: 96px;
+  margin-bottom: var(--s-8);
 }

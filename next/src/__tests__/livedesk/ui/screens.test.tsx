@@ -121,6 +121,15 @@ describe("Routes, language and honesty", () => {
     expect(screen.getByTestId("loop-guide")).toHaveTextContent("Giá thiếu là thiếu, không phải 0");
   });
 
+  it("Home's spec-sheet decoration is hidden from assistive tech and says it is an example, SIMULATED, not a result", () => {
+    render(<HomePage />);
+    const spec = screen.getByTestId("hero-spec");
+    expect(spec).toHaveAttribute("aria-hidden", "true");
+    expect(spec).toHaveTextContent("VÍ DỤ · SIMULATED");
+    expect(spec).toHaveTextContent("không phải kết quả thật");
+    for (const label of ["Cỡ mẫu", "Độ tin cậy", "Nguồn", "Trạng thái"]) expect(spec).toHaveTextContent(label);
+  });
+
   it("Home in English keeps the honesty panel's title", () => {
     english();
     render(<HomePage />);
@@ -159,7 +168,7 @@ describe("Routes, language and honesty", () => {
     expect(links.map(link => link.getAttribute("href"))).toEqual(["/legacy/home", "/sessions", "/products", "/insights", "/simulator", "/integrations", "/live/new"]);
   });
 
-  it.each(["vi", "en"])("page titles put one phrase on the kraft tape and read the same without it; art is hidden and numberless (%s)", async lang => {
+  it.each(["vi", "en"])("page titles put one phrase on the kraft tape and read the same without it; art is hidden, sheets numberless (%s)", async lang => {
     if (lang === "en") english();
     const tapes = lang === "vi" ? ["nên ghim gì", "buổi live", "Bản cũ"] : ["what to pin next", "recap", "Legacy"];
     const titles = lang === "vi" ? ["LiveLift đọc bình luận và giỏ hàng trong buổi live, rồi gợi ý bạn nên ghim gì, và vì sao.", "Tổng kết buổi live", "Bản cũ (Legacy)"]
@@ -171,9 +180,11 @@ describe("Routes, language and honesty", () => {
       expect(h1.textContent).toBe(titles[i]);
       expect(h1.querySelectorAll(".tape-mark")).toHaveLength(1);
       expect(h1.querySelector(".tape-mark")!.textContent).toBe(tapes[i]);
-      const art = container.querySelector(".art");
-      expect(art).toHaveAttribute("aria-hidden", "true");
-      expect(art!.textContent).not.toMatch(/\d/);
+      // decoration is hidden from assistive tech; the spec sheets carry words, never numbers (Home's example says so itself)
+      const art = [...container.querySelectorAll(".sheet-art, .flow-art, .unknown-sticker, [data-testid='hero-spec']")];
+      expect(art.length).toBeGreaterThan(0);
+      for (const el of art) expect(el).toHaveAttribute("aria-hidden", "true");
+      for (const el of container.querySelectorAll(".sheet-art")) expect(el.textContent).not.toMatch(/\d/);
       cleanup();
     });
   });

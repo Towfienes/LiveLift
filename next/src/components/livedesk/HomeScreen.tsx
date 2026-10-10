@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useCurrentLive, useLiveRecap, useStartFlow } from "@/lib/livedesk/hooks";
 import { IconCheck } from "./icons";
 import { duration } from "./i18n";
+import { HeroSpec } from "./HeroSpec";
+import { StepArt } from "./art";
 import { Shell, useShell } from "./Shell";
 import { SimTag, TapeTitle } from "./ui";
-import { HomeArt } from "./art";
 
 type StepState = "done" | "active" | "todo";
 
@@ -33,10 +34,12 @@ function HomeBody() {
   const stateWord = (s: StepState): string => (s === "done" ? c.flowDone : s === "active" ? c.flowNow : c.flowLater);
   return (
     <div className="home">
-      <div className="home-intro">
-        <h1><TapeTitle text={c.homeTitle} mark={c.homeTitleMark} /></h1>
-        <p className="lede">{c.homeLede}</p>
-        <HomeArt />
+      <div className="home-hero">
+        <div className="home-intro">
+          <h1><TapeTitle text={c.homeTitle} mark={c.homeTitleMark} /></h1>
+          <p className="lede">{c.homeLede}</p>
+        </div>
+        <HeroSpec />
       </div>
       <section className="home-flow" aria-labelledby="flow-h" data-testid="home-flow">
         {/* The next step comes first in reading order, so on a phone it sits right under the intro. */}
@@ -57,6 +60,7 @@ function HomeBody() {
           {c.flow.map((title, i) => (
             <li key={title} className={`flow-step is-${states[i]}`}>
               <span className={`step-n is-${states[i]}`} aria-hidden="true">{states[i] === "done" ? <IconCheck size={18} /> : i + 1}</span>
+              <StepArt step={i} />
               <div>
                 <h3>{title}<span className="sr-only">: {stateWord(states[i])}</span></h3>
                 <p>{c.flowText[i]}</p>

@@ -9,7 +9,7 @@ import { IconQuestion, IconShield } from "./icons";
 import { INTENT_ORDER, clock, duration, num } from "./i18n";
 import { Shell, useShell } from "./Shell";
 import { SimTag, TapeTitle } from "./ui";
-import { RecapArt } from "./art";
+import { EmptyArt, RecapArt, UnknownSticker } from "./art";
 
 /**
  * The recap of a recorded live: a few numbers, the timeline with pinned products as bands, what the assistant
@@ -62,6 +62,7 @@ function RecapBody({ liveId }: { liveId: string }) {
     return (
       <div className="desk-empty" data-testid="recap-empty">
         <div className="empty">
+          <EmptyArt />
           <h1>{!mounted ? c.recapTitle : running ? c.recapRunning : c.recapNone}</h1>
           {mounted && <p>{running ? c.recapRunningHelp : c.recapNoneHelp}</p>}
           {mounted && (running
@@ -118,6 +119,7 @@ function RecapBody({ liveId }: { liveId: string }) {
           <DeskChart data={{ elapsedSec: r.durationSec, viewers: r.viewerPoints, carts: r.cartsPerMinute, marks: r.marks, bands: r.bands }} variant="recap" c={c} lang={lang} />
         </section>
         <section className="unknowns" aria-labelledby="unknown-h" data-testid="recap-unknowns">
+          <UnknownSticker />
           <h2 id="unknown-h"><IconQuestion />{c.unknowns}</h2>
           <ul>
             {firstBand && <li><b>{c.unknownCause(firstBand.productName)}</b> {c.unknownCauseText}</li>}
