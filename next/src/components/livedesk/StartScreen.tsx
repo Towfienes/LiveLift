@@ -88,34 +88,82 @@ function ImportForm({ connected }: { connected: boolean }) {
 }
 
 /**
- * A quiet technical-print panel for the empty space under the intro: registration marks, a dotted grid, a tick ruler,
- * two blank taped cards and one ink-outlined iridescent sticker. Words only, never numbers, so nothing reads as data.
- * Hidden from assistive tech, static, and dropped below 1024 px.
+ * A quiet technical-print panel for the empty space under the intro, in the manner of a spec sheet: faint giant words,
+ * registration marks, a dotted grid, a ruler, and two die-cut holographic stickers from a live seller's desk (a phone on
+ * air, a shirt on a hanger). Words only, never numbers, so nothing reads as data. Hidden from assistive tech, static,
+ * and dropped below 1024 px.
  */
+function Sticker({ d, children }: { d: string; children?: React.ReactNode }) {
+  // die-cut: a soft grey cut line, a white margin, then the foil body with its ink outline and a sheen
+  return (
+    <g>
+      <path d={d} className="stk-cut" />
+      <path d={d} className="stk-margin" />
+      <path d={d} fill="url(#art-foil)" className="stk-ink" />
+      <path d={d} fill="url(#art-sheen)" />
+      {children}
+    </g>
+  );
+}
+
 function StartArt() {
   return (
     <div className="start-art" aria-hidden="true">
-      <svg viewBox="0 0 420 300" focusable="false">
+      <svg viewBox="0 0 440 320" focusable="false">
         <defs>
-          <linearGradient id="start-iri" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#f6d4e6" />
-            <stop offset="0.35" stopColor="#cfe3f6" />
-            <stop offset="0.65" stopColor="#d8f1df" />
-            <stop offset="1" stopColor="#f8e6b2" />
+          <linearGradient id="art-foil" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#f7cfe3" />
+            <stop offset="0.28" stopColor="#d3dcfa" />
+            <stop offset="0.52" stopColor="#c9efe4" />
+            <stop offset="0.76" stopColor="#f6ebbd" />
+            <stop offset="1" stopColor="#efc9ee" />
           </linearGradient>
-          <pattern id="start-dots" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.1" className="art-dot" /></pattern>
+          <linearGradient id="art-sheen" x1="0" y1="0" x2="1" y2="0.6">
+            <stop offset="0.18" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.3" stopColor="#ffffff" stopOpacity="0.75" />
+            <stop offset="0.42" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.62" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.7" stopColor="#ffffff" stopOpacity="0.5" />
+            <stop offset="0.8" stopColor="#ffffff" stopOpacity="0" />
+          </linearGradient>
+          <pattern id="art-dots" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.1" className="art-dot" /></pattern>
         </defs>
-        <g className="art-reg"><circle cx="18" cy="18" r="7" /><path d="M18 6v24M6 18h24" /></g>
-        <g className="art-reg"><circle cx="400" cy="200" r="7" /><path d="M400 188v24M388 200h24" /></g>
-        <rect x="300" y="14" width="96" height="56" fill="url(#start-dots)" />
-        <text x="44" y="22" className="art-label">RUN OF SHOW</text>
-        <text x="44" y="34" className="art-label is-soft">SIMULATED PREP</text>
-        <g className="art-chips">{["L", "I", "V", "E"].map((ch, i) => (<g key={ch} transform={`translate(${178 + i * 22} 16)`}><circle r="8" /><text y="3.5">{ch}</text></g>))}</g>
-        <g transform="rotate(-5 120 170)"><rect x="40" y="110" width="150" height="104" className="art-card" /><rect x="58" y="132" width="70" height="7" className="art-line" /><rect x="58" y="148" width="104" height="5" className="art-line is-soft" /><rect x="58" y="160" width="84" height="5" className="art-line is-soft" /><rect x="92" y="100" width="56" height="16" className="art-tape" transform="rotate(3 120 108)" /></g>
-        <g transform="rotate(4 250 190)"><rect x="180" y="134" width="150" height="104" className="art-card" /><rect x="198" y="156" width="62" height="7" className="art-line" /><rect x="198" y="172" width="104" height="5" className="art-line is-soft" /><rect x="198" y="184" width="70" height="5" className="art-line is-soft" /><rect x="230" y="124" width="56" height="16" className="art-tape" transform="rotate(-4 258 132)" /></g>
-        <g transform="rotate(-10 336 112)" className="art-sticker"><path d="M306 92h60l-6 66h-48z" fill="url(#start-iri)" /><path d="M321 92v-8a15 15 0 0 1 30 0v8" fill="none" /><path d="M318 112c10 6 26 6 36 0" fill="none" /></g>
-        <g className="art-ruler"><path d="M40 268H400" />{Array.from({ length: 37 }, (_, i) => (<path key={i} d={`M${40 + i * 10} 268v${i % 5 === 0 ? -9 : -5}`} />))}<path d="M262 252l6 8 6-8z" className="art-mark" /></g>
-        <text x="40" y="288" className="art-label is-soft">PRODUCTS · TAPE · PIN</text>
+
+        <text x="0" y="96" className="art-giant">LIVE</text>
+        <text x="236" y="262" className="art-giant">PIN</text>
+
+        <g className="art-reg"><circle cx="12" cy="14" r="6" /><path d="M12 4v20M2 14h20" /></g>
+        <g className="art-reg"><circle cx="424" cy="300" r="6" /><path d="M424 290v20M414 300h20" /></g>
+        <text x="30" y="12" className="art-label">INSTRUCTIONS</text>
+        <text x="30" y="26" className="art-label is-big">PREPARE THE SHOW</text>
+        <text x="30" y="38" className="art-label is-big">PIN WHAT SELLS</text>
+        <g className="art-chips">{["L", "I", "V", "E"].map((ch, i) => (<g key={ch} transform={`translate(${352 + i * 21} 12)`}><circle r="8" /><text y="3.5">{ch}</text></g>))}</g>
+        <rect x="380" y="34" width="54" height="36" fill="url(#art-dots)" />
+        <g className="art-pill"><rect x="300" y="86" width="64" height="18" rx="9" /><text x="332" y="98.5">ON AIR</text></g>
+        <text x="226" y="312" className="art-label">SIMULATED · LIVE DESK</text>
+
+        {/* a phone on air */}
+        <g transform="translate(58 112) rotate(-8 60 96)">
+          <Sticker d="M22 0h76a22 22 0 0 1 22 22v148a22 22 0 0 1 -22 22h-76a22 22 0 0 1 -22 -22v-148a22 22 0 0 1 22 -22z">
+            <rect x="12" y="20" width="96" height="150" rx="12" className="stk-screen" />
+            <rect x="46" y="8" width="28" height="6" rx="3" className="stk-line-fill" />
+            <g transform="translate(22 32)"><rect width="38" height="16" rx="8" className="stk-live" /><circle cx="9" cy="8" r="3" className="stk-live-dot" /><text x="24" y="11.5" className="stk-live-text">LIVE</text></g>
+            <path d="M74 126c0-6 8-9 11-3 3-6 11-3 11 3 0 7-11 13-11 13s-11-6-11-13z" className="stk-heart" />
+            <path d="M84 104c0-4 5-6 7-2 2-4 7-2 7 2 0 4-7 8-7 8s-7-4-7-8z" className="stk-heart is-small" />
+            <path d="M24 148h44M24 158h30" className="stk-line" />
+          </Sticker>
+        </g>
+
+        {/* a shirt with a blank swing tag */}
+        <g transform="translate(236 118) rotate(8 80 80)">
+          <Sticker d="M56 18q24 18 48 0l46 22-14 36-22-9v76h-68v-76l-22 9-14-36z">
+            <path d="M56 18q24 18 48 0" className="stk-line" fill="none" />
+            <path d="M58 70v70M102 70v70" className="stk-line is-soft" />
+            <g transform="translate(108 92) rotate(14)"><path d="M0 6l6-6h18v28h-24z" className="stk-tag" /><circle cx="6" cy="7" r="2" className="stk-line-fill" /></g>
+          </Sticker>
+        </g>
+
+        <g className="art-ruler"><path d="M226 294H430" />{Array.from({ length: 21 }, (_, i) => (<path key={i} d={`M${226 + i * 10} 294v${i % 5 === 0 ? -8 : -4}`} />))}<path d="M332 278l6 8 6-8z" className="art-mark" /></g>
       </svg>
     </div>
   );

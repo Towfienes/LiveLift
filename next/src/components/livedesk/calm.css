@@ -4012,18 +4012,28 @@
   overflow: visible;
 }
 .ld .start-art .art-dot { fill: var(--line); }
+.ld .start-art .art-giant { font: 700 112px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; letter-spacing: -0.04em; fill: var(--surface-3); opacity: 0.55; }
 .ld .start-art .art-reg { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: 0.55; }
-.ld .start-art .art-label { font: 500 9px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; letter-spacing: 0.12em; fill: var(--ink-2); }
-.ld .start-art .art-label.is-soft { fill: var(--ink-3); opacity: 0.8; }
-.ld .start-art .art-chips circle { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: 0.7; }
-.ld .start-art .art-chips text { font: 600 9px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--ink-2); text-anchor: middle; }
-.ld .start-art .art-card { fill: var(--paper); stroke: var(--line); stroke-width: 1; }
-.ld .start-art .art-line { fill: var(--surface-3); }
-.ld .start-art .art-line.is-soft { fill: var(--surface-2); }
-.ld .start-art .art-tape { fill: var(--kraft); }
-.ld .start-art .art-sticker path { stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.ld .start-art .art-label { font: 500 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; letter-spacing: 0.12em; fill: var(--ink-3); }
+.ld .start-art .art-label.is-big { font-size: 12px; letter-spacing: 0.04em; fill: var(--ink-2); }
+.ld .start-art .art-chips circle, .ld .start-art .art-pill rect { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: 0.75; }
+.ld .start-art .art-chips text, .ld .start-art .art-pill text { font: 600 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--ink-2); text-anchor: middle; letter-spacing: 0.06em; }
 .ld .start-art .art-ruler path { stroke: var(--ink-3); stroke-width: 1; fill: none; opacity: 0.7; }
-.ld .start-art .art-ruler .art-mark { fill: var(--signal); stroke: none; opacity: 0.85; }
+.ld .start-art .art-ruler .art-mark { fill: var(--ink-2); stroke: none; }
+/* die-cut stickers: physical objects, so their colours stay the same in both themes */
+.ld .start-art .stk-cut { fill: none; stroke: #b7aea3; stroke-width: 15; stroke-linejoin: round; }
+.ld .start-art .stk-margin { fill: #ffffff; stroke: #ffffff; stroke-width: 12; stroke-linejoin: round; }
+.ld .start-art .stk-ink { stroke: #8d8378; stroke-width: 2.6; stroke-linejoin: round; }
+.ld .start-art .stk-screen { fill: rgba(255, 255, 255, 0.45); stroke: #8d8378; stroke-width: 2; }
+.ld .start-art .stk-line { stroke: #8d8378; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.ld .start-art .stk-line.is-soft { stroke-width: 1.6; opacity: 0.6; }
+.ld .start-art .stk-line-fill { fill: #8d8378; }
+.ld .start-art .stk-live { fill: #ffffff; stroke: #8d8378; stroke-width: 1.8; }
+.ld .start-art .stk-live-dot { fill: #9e3b2b; }
+.ld .start-art .stk-live-text { font: 700 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: #5a5047; text-anchor: middle; letter-spacing: 0.04em; }
+.ld .start-art .stk-heart { fill: rgba(255, 255, 255, 0.7); stroke: #8d8378; stroke-width: 2; stroke-linejoin: round; }
+.ld .start-art .stk-heart.is-small { stroke-width: 1.6; }
+.ld .start-art .stk-tag { fill: #ffffff; stroke: #8d8378; stroke-width: 1.8; stroke-linejoin: round; }
 @media (max-width: 1023px) {
   .ld .start-art {
     display: none;
