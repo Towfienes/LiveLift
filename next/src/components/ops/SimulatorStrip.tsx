@@ -22,6 +22,7 @@ export function SimulatorStrip({
   onSkipStep,
   disabled,
   message,
+  autoRun,
 }: {
   virtualNowMs: number;
   tz: string;
@@ -35,6 +36,8 @@ export function SimulatorStrip({
   onSkipStep: () => void;
   disabled?: boolean;
   message?: string | null;
+  /** Run / Pause with a speed, in virtual seconds per real second. Absent where the desk keeps its own timing. */
+  autoRun?: { running: boolean; speed: number; speeds: readonly number[]; onToggle: () => void; onSpeed: (speed: number) => void };
 }): React.ReactElement {
   const btn =
     "min-h-[44px] min-w-[44px] px-2.5 rounded-[8px] text-[16px] font-medium bg-[#2A2540] text-[#E4DAFF] hover:bg-[#363052] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap shrink-0";
@@ -50,7 +53,7 @@ export function SimulatorStrip({
       <span
         className="tabular-nums text-[#E4DAFF] whitespace-nowrap"
         data-testid="virtual-clock"
-        title="The virtual clock only moves when you move it, so the same actions always give the same result."
+        title="The virtual clock only moves through recorded commands: when you move it or run it. The same actions always give the same result."
       >
         virtual clock {formatClock(virtualNowMs, tz, true)}
       </span>
@@ -75,6 +78,35 @@ export function SimulatorStrip({
           To anchor
         </button>
       </span>
+      {autoRun && (
+        <span className="inline-flex flex-wrap max-w-full items-center gap-1" role="group" aria-label="Run the virtual clock">
+          <button
+            type="button"
+            className={`${btn} !bg-[#C8B2FF] !text-[#1A1726] hover:!bg-[#D8C8FF]`}
+            disabled={disabled}
+            aria-pressed={autoRun.running}
+            onClick={autoRun.onToggle}
+            data-testid="sim-run"
+            title={autoRun.running ? "Pause the virtual clock" : "Run the virtual clock; it stops one minute before the next hard anchor"}
+          >
+            <i className={autoRun.running ? "ri-pause-line" : "ri-play-line"} aria-hidden="true" /> {autoRun.running ? "Pause" : "Run"}
+          </button>
+          {autoRun.speeds.map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={`${btn} ${v === autoRun.speed ? "!bg-[#4A3D78] !text-[#FFFFFF]" : ""}`}
+              disabled={disabled}
+              aria-pressed={v === autoRun.speed}
+              onClick={() => autoRun.onSpeed(v)}
+              data-testid={`sim-speed-${v}`}
+              title={`${v} virtual seconds for each real second`}
+            >
+              {v}×
+            </button>
+          ))}
+        </span>
+      )}
       {scripted && step && (
         <span className="inline-flex items-center gap-2 min-w-0 flex-1 basis-full xl:basis-auto justify-end">
           <span className="text-[#C8B2FF] whitespace-nowrap tabular-nums">

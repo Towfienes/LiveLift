@@ -5,7 +5,7 @@ import type { ProductSnapshot, Session, SessionEvent } from "@/contracts";
 import { baselinePlan, currentPlan, emptySegmentRun, formatClock } from "@/lib/domain";
 import { Signal, type Tone } from "./StatusChips";
 
-type TabId = "history" | "coverage" | "changes" | "copilot";
+type TabId = "history" | "coverage" | "changes" | "copilot" | "platform";
 
 const EVENT_ICON: Partial<Record<SessionEvent["type"], string>> = {
   session_started: "ri-play-circle-line",
@@ -40,6 +40,7 @@ export function SupportTabs({
   copilot,
   copilotAvailable = false,
   onCopilotOpen,
+  platform,
 }: {
   session: Session;
   products: ProductSnapshot[];
@@ -50,6 +51,11 @@ export function SupportTabs({
   copilotAvailable?: boolean;
   /** The Copilot tab was opened (the caller starts nothing before this). */
   onCopilotOpen?: () => void;
+  /**
+   * The platform sync panel. It stays mounted while another tab is showing, because its automatic sync must keep running.
+   * Without it there is no Platform tab.
+   */
+  platform?: React.ReactNode;
 }): React.ReactElement {
   const [tab, setTab] = useState<TabId>("history");
   const plan = currentPlan(session);
@@ -61,6 +67,7 @@ export function SupportTabs({
     { id: "coverage", label: "Coverage", icon: "ri-checkbox-multiple-line" },
     { id: "changes", label: "Plan changes", icon: "ri-file-edit-line" },
     ...(copilot ? [{ id: "copilot" as const, label: "AI Copilot", icon: "ri-sparkling-2-line" }] : []),
+    ...(platform ? [{ id: "platform" as const, label: "Platform", icon: "ri-refresh-line" }] : []),
   ];
 
   return (
@@ -162,6 +169,12 @@ export function SupportTabs({
         )}
 
         {tab === "copilot" && copilot}
+
+        {platform && (
+          <div hidden={tab !== "platform"} data-testid="platform-tab-content">
+            {platform}
+          </div>
+        )}
 
         {tab === "changes" && (
           <div data-testid="changes-list">

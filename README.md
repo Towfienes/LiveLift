@@ -143,6 +143,10 @@ These are tested invariants, not style guidance: a zero render, a missing render
 
 LiveLift does not start, read or control a TikTok LIVE. It does not read raw LIVE comments, and it does not pin or unpin products through any TikTok API. The operator acts in TikTok and reports it here. Details: [docs/tiktok/](docs/tiktok/README.md) and [LIVE Intelligence implementation](docs/tiktok/LIVE-INTELLIGENCE-IMPLEMENTATION.md).
 
+### Platform sync in rehearsals (Shopee Live, simulated)
+
+A rehearsal can run a two-way sync with a **simulated** Shopee Live: LiveLift opens the live, loads the products, pins and schedules anchored promotions, and records what the host does in the app as *Provider observed (SIMULATED)*. Only `update_show_item` copies Shopee's published page; every other call is labelled *shape inferred*, and two unverified behaviours are switchable assumptions. No Shopee account is connected. Details and open questions: [docs/platform/SHOPEE-LIVE-SIMULATION.md](docs/platform/SHOPEE-LIVE-SIMULATION.md).
+
 ## Architecture
 
 ```mermaid

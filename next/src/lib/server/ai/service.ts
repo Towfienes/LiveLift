@@ -16,8 +16,9 @@ import { buildOperateContext, buildReviewContext } from "@/lib/ai/context";
 import { buildPrompt } from "@/lib/ai/prompt";
 import { groundingCorpus, validateModelOutput } from "@/lib/ai/output";
 import { REDACTED } from "@/lib/ai/redact";
-import { loadAiConfig, type AiEnv } from "./config";
-import { AiProviderError, createOpenAiCompatibleProvider, type AiProvider } from "./provider";
+import type { AiEnv } from "./config";
+import { AiProviderError, type AiProvider } from "./provider";
+import { createConfiguredProvider } from "./providers";
 
 /**
  * Runs one Copilot request: evidence in, validated advice out. It never touches the authority: it receives a
@@ -55,9 +56,10 @@ type Failure = Exclude<OperateResult, { status: "available" }>;
 
 function provide(deps: AiDeps): { provider: AiProvider } | { failure: Failure } {
   if (deps.provider) return { provider: deps.provider };
-  const config = loadAiConfig(deps.env);
-  if (!config.ok) return { failure: { status: "not_configured", configIssues: config.issues } };
-  return { provider: createOpenAiCompatibleProvider(config.config, deps.fetchImpl) };
+  // The wire format (OpenAI-compatible unless LIVELIFT_AI_PROVIDER says otherwise) is chosen in providers.ts.
+  const configured = createConfiguredProvider(deps.env, deps.fetchImpl);
+  if (!configured.ok) return { failure: { status: "not_configured", configIssues: configured.issues } };
+  return { provider: configured.provider };
 }
 
 /** One model call. Every provider failure becomes a truthful non-available state; nothing of its text is kept. */
