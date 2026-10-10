@@ -89,17 +89,17 @@ function ImportForm({ connected }: { connected: boolean }) {
 
 /**
  * A quiet technical-print panel for the empty space under the intro, in the manner of a spec sheet: faint giant words,
- * registration marks, a dotted grid, a ruler, and two die-cut holographic stickers from a live seller's desk (a phone on
- * air, a shirt on a hanger). Words only, never numbers, so nothing reads as data. Hidden from assistive tech, static,
+ * registration marks, a dotted grid, a ruler, and two die-cut stickers from a live seller's desk (a phone on air, a
+ * shirt with a tag), drawn in the site's paper, kraft, ink and brick; every colour is a theme token. Words only, never numbers, so nothing reads as data. Hidden from assistive tech, static,
  * and dropped below 1024 px.
  */
-function Sticker({ d, children }: { d: string; children?: React.ReactNode }) {
-  // die-cut: a soft grey cut line, a white margin, then the foil body with its ink outline and a sheen
+function Sticker({ d, fill, children }: { d: string; fill: string; children?: React.ReactNode }) {
+  // die-cut: a soft cut line, a margin, then the body in the site's own paper or kraft, its ink outline and a sheen
   return (
     <g>
       <path d={d} className="stk-cut" />
       <path d={d} className="stk-margin" />
-      <path d={d} fill="url(#art-foil)" className="stk-ink" />
+      <path d={d} fill={fill} className="stk-ink" />
       <path d={d} fill="url(#art-sheen)" />
       {children}
     </g>
@@ -111,20 +111,18 @@ function StartArt() {
     <div className="start-art" aria-hidden="true">
       <svg viewBox="0 0 440 320" focusable="false">
         <defs>
-          <linearGradient id="art-foil" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#f7cfe3" />
-            <stop offset="0.28" stopColor="#d3dcfa" />
-            <stop offset="0.52" stopColor="#c9efe4" />
-            <stop offset="0.76" stopColor="#f6ebbd" />
-            <stop offset="1" stopColor="#efc9ee" />
+          <linearGradient id="art-paper" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" className="stop-paper-a" />
+            <stop offset="1" className="stop-paper-b" />
+          </linearGradient>
+          <linearGradient id="art-kraft" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" className="stop-kraft-a" />
+            <stop offset="1" className="stop-kraft-b" />
           </linearGradient>
           <linearGradient id="art-sheen" x1="0" y1="0" x2="1" y2="0.6">
-            <stop offset="0.18" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="0.3" stopColor="#ffffff" stopOpacity="0.75" />
-            <stop offset="0.42" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="0.62" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="0.7" stopColor="#ffffff" stopOpacity="0.5" />
-            <stop offset="0.8" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.2" className="stop-sheen" stopOpacity="0" />
+            <stop offset="0.32" className="stop-sheen" stopOpacity="0.5" />
+            <stop offset="0.44" className="stop-sheen" stopOpacity="0" />
           </linearGradient>
           <pattern id="art-dots" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.1" className="art-dot" /></pattern>
         </defs>
@@ -144,7 +142,7 @@ function StartArt() {
 
         {/* a phone on air */}
         <g transform="translate(58 112) rotate(-8 60 96)">
-          <Sticker d="M22 0h76a22 22 0 0 1 22 22v148a22 22 0 0 1 -22 22h-76a22 22 0 0 1 -22 -22v-148a22 22 0 0 1 22 -22z">
+          <Sticker fill="url(#art-paper)" d="M22 0h76a22 22 0 0 1 22 22v148a22 22 0 0 1 -22 22h-76a22 22 0 0 1 -22 -22v-148a22 22 0 0 1 22 -22z">
             <rect x="12" y="20" width="96" height="150" rx="12" className="stk-screen" />
             <rect x="46" y="8" width="28" height="6" rx="3" className="stk-line-fill" />
             <g transform="translate(22 32)"><rect width="38" height="16" rx="8" className="stk-live" /><circle cx="9" cy="8" r="3" className="stk-live-dot" /><text x="24" y="11.5" className="stk-live-text">LIVE</text></g>
@@ -156,7 +154,7 @@ function StartArt() {
 
         {/* a shirt with a blank swing tag */}
         <g transform="translate(236 118) rotate(8 80 80)">
-          <Sticker d="M56 18q24 18 48 0l46 22-14 36-22-9v76h-68v-76l-22 9-14-36z">
+          <Sticker fill="url(#art-kraft)" d="M56 18q24 18 48 0l46 22-14 36-22-9v76h-68v-76l-22 9-14-36z">
             <path d="M56 18q24 18 48 0" className="stk-line" fill="none" />
             <path d="M58 70v70M102 70v70" className="stk-line is-soft" />
             <g transform="translate(108 92) rotate(14)"><path d="M0 6l6-6h18v28h-24z" className="stk-tag" /><circle cx="6" cy="7" r="2" className="stk-line-fill" /></g>

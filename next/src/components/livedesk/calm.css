@@ -4020,20 +4020,50 @@
 .ld .start-art .art-chips text, .ld .start-art .art-pill text { font: 600 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--ink-2); text-anchor: middle; letter-spacing: 0.06em; }
 .ld .start-art .art-ruler path { stroke: var(--ink-3); stroke-width: 1; fill: none; opacity: 0.7; }
 .ld .start-art .art-ruler .art-mark { fill: var(--ink-2); stroke: none; }
-/* die-cut stickers: physical objects, so their colours stay the same in both themes */
-.ld .start-art .stk-cut { fill: none; stroke: #b7aea3; stroke-width: 15; stroke-linejoin: round; }
-.ld .start-art .stk-margin { fill: #ffffff; stroke: #ffffff; stroke-width: 12; stroke-linejoin: round; }
-.ld .start-art .stk-ink { stroke: #8d8378; stroke-width: 2.6; stroke-linejoin: round; }
-.ld .start-art .stk-screen { fill: rgba(255, 255, 255, 0.45); stroke: #8d8378; stroke-width: 2; }
-.ld .start-art .stk-line { stroke: #8d8378; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.ld .start-art .stk-line.is-soft { stroke-width: 1.6; opacity: 0.6; }
-.ld .start-art .stk-line-fill { fill: #8d8378; }
-.ld .start-art .stk-live { fill: #ffffff; stroke: #8d8378; stroke-width: 1.8; }
-.ld .start-art .stk-live-dot { fill: #9e3b2b; }
-.ld .start-art .stk-live-text { font: 700 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: #5a5047; text-anchor: middle; letter-spacing: 0.04em; }
-.ld .start-art .stk-heart { fill: rgba(255, 255, 255, 0.7); stroke: #8d8378; stroke-width: 2; stroke-linejoin: round; }
-.ld .start-art .stk-heart.is-small { stroke-width: 1.6; }
-.ld .start-art .stk-tag { fill: #ffffff; stroke: #8d8378; stroke-width: 1.8; stroke-linejoin: round; }
+/* die-cut stickers in the site's own materials: paper for the phone, kraft (the tape) for the shirt, ink lines, brick
+   only for the LIVE dot and the hearts. Tokens below switch with the theme. */
+.ld .start-art {
+  --stk-cut: #d8d0c4;
+  --stk-margin: #fffdf8;
+  --stk-line: #5a5047;
+  --stk-paper-a: #fbf7ef;
+  --stk-paper-b: #ece3d4;
+  --stk-kraft-a: #e6d6b6;
+  --stk-kraft-b: #cdb68a;
+  --stk-screen: #f6f3ee;
+  --stk-sheen: #ffffff;
+  --stk-heart: #f0d9d0;
+}
+.ld[data-theme="dark"] .start-art {
+  --stk-cut: #5a4e44;
+  --stk-margin: #3a312b;
+  --stk-line: #e2d8ca;
+  --stk-paper-a: #3b332d;
+  --stk-paper-b: #2c2520;
+  --stk-kraft-a: #8f7a58;
+  --stk-kraft-b: #6c5a3f;
+  --stk-screen: #241e1a;
+  --stk-sheen: #f3ece1;
+  --stk-heart: #4a2a22;
+}
+.ld .start-art .stop-paper-a { stop-color: var(--stk-paper-a); }
+.ld .start-art .stop-paper-b { stop-color: var(--stk-paper-b); }
+.ld .start-art .stop-kraft-a { stop-color: var(--stk-kraft-a); }
+.ld .start-art .stop-kraft-b { stop-color: var(--stk-kraft-b); }
+.ld .start-art .stop-sheen { stop-color: var(--stk-sheen); }
+.ld .start-art .stk-cut { fill: none; stroke: var(--stk-cut); stroke-width: 15; stroke-linejoin: round; }
+.ld .start-art .stk-margin { fill: var(--stk-margin); stroke: var(--stk-margin); stroke-width: 12; stroke-linejoin: round; }
+.ld .start-art .stk-ink { stroke: var(--stk-line); stroke-width: 2.4; stroke-linejoin: round; }
+.ld .start-art .stk-screen { fill: var(--stk-screen); stroke: var(--stk-line); stroke-width: 2; }
+.ld .start-art .stk-line { stroke: var(--stk-line); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.ld .start-art .stk-line.is-soft { stroke-width: 1.5; opacity: 0.45; }
+.ld .start-art .stk-line-fill { fill: var(--stk-line); }
+.ld .start-art .stk-live { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; }
+.ld .start-art .stk-live-dot { fill: var(--signal); }
+.ld .start-art .stk-live-text { font: 700 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--stk-line); text-anchor: middle; letter-spacing: 0.04em; }
+.ld .start-art .stk-heart { fill: var(--stk-heart); stroke: var(--signal-text); stroke-width: 1.8; stroke-linejoin: round; }
+.ld .start-art .stk-heart.is-small { stroke-width: 1.5; }
+.ld .start-art .stk-tag { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; stroke-linejoin: round; }
 @media (max-width: 1023px) {
   .ld .start-art {
     display: none;
