@@ -3651,13 +3651,26 @@
   --w-light: 400;
 }
 
-/* WP8: the logo mark beside the wordmark. Colours follow the theme tokens. */
+/* The logo mark beside the wordmark. Colours follow the theme tokens. */
 .ld .wordmark {
   gap: 8px;
 }
 .ld .logo-mark {
   flex: none;
 }
+.ld .logo-ink {
+  fill: var(--ink);
+}
+.ld .logo-acc {
+  fill: var(--signal-text);
+}
+.ld .logo-arc {
+  fill: none;
+  stroke: var(--signal-text);
+  stroke-width: 36;
+  stroke-linecap: round;
+}
+/* The product-card drawing (Home spec sheet) keeps its own parts. */
 .ld .lm-back,
 .ld .lm-card {
   stroke: var(--ink);
