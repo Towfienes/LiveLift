@@ -71,68 +71,88 @@ function contentOf(body: unknown): string {
   throw new AiProviderError("malformed");
 }
 
+/** One JSON POST to a model endpoint. `read` turns the decoded reply into the model's text, or throws AiProviderError. */
+export interface JsonExchange {
+  url: string;
+  headers: Record<string, string>;
+  body: unknown;
+  read: (body: unknown) => string;
+}
+
+/**
+ * The shared HTTP exchange for every provider: one POST, a hard timeout over headers and body, a bounded reply, and
+ * every failure mapped to the closed vocabulary. Provider text is never kept.
+ */
+export async function exchangeJson(timeoutMs: number, request: JsonExchange, fetchImpl?: typeof fetch): Promise<string> {
+  const doFetch = fetchImpl ?? globalThis.fetch;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new AiProviderError("timeout"));
+      controller.abort();
+    }, timeoutMs);
+  });
+  const exchange = (async (): Promise<string> => {
+    let res: Response;
+    try {
+      res = await doFetch(request.url, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json", ...request.headers },
+        body: JSON.stringify(request.body),
+        // A redirect could carry the credential to another host.
+        redirect: "error",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+    } catch (error) {
+      throw error instanceof AiProviderError ? error : new AiProviderError(controller.signal.aborted ? "timeout" : "network");
+    }
+    if (res.status === 429) throw new AiProviderError("rate_limited", retryAfter(res.headers.get("retry-after")));
+    if (res.status === 401 || res.status === 403) throw new AiProviderError("credentials_rejected");
+    if (res.status === 408 || res.status === 504) throw new AiProviderError("timeout");
+    if (!res.ok) throw new AiProviderError("provider_error");
+    let text: string;
+    try {
+      text = await readBounded(res);
+    } catch (error) {
+      throw error instanceof AiProviderError ? error : new AiProviderError(controller.signal.aborted ? "timeout" : "network");
+    }
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new AiProviderError("malformed");
+    }
+    return request.read(body);
+  })();
+  try {
+    // Bound both headers and body even if a fetch implementation ignores abort.
+    return await Promise.race([exchange, timeout]);
+  } finally {
+    clearTimeout(timer);
+    exchange.catch(() => {});
+  }
+}
+
 export function createOpenAiCompatibleProvider(config: AiConfig, fetchImpl?: typeof fetch): AiProvider {
   return {
     model: config.model,
-    async complete(request) {
-      const doFetch = fetchImpl ?? globalThis.fetch;
-      const controller = new AbortController();
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const timeout = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          reject(new AiProviderError("timeout"));
-          controller.abort();
-        }, config.timeoutMs);
-      });
-      const exchange = (async (): Promise<string> => {
-        let res: Response;
-        try {
-          res = await doFetch(`${config.baseUrl}/chat/completions`, {
-            method: "POST",
-            headers: { "content-type": "application/json", accept: "application/json", authorization: `Bearer ${config.apiKey}` },
-            body: JSON.stringify({
-              model: config.model,
-              messages: [
-                { role: "system", content: request.system },
-                { role: "user", content: request.user },
-              ],
-              temperature: 0.2,
-              max_tokens: config.maxOutputTokens,
-              ...(config.jsonMode ? { response_format: { type: "json_object" } } : {}),
-            }),
-            // A redirect could carry the credential to another host.
-            redirect: "error",
-            cache: "no-store",
-            signal: controller.signal,
-          });
-        } catch (error) {
-          throw error instanceof AiProviderError ? error : new AiProviderError(controller.signal.aborted ? "timeout" : "network");
-        }
-        if (res.status === 429) throw new AiProviderError("rate_limited", retryAfter(res.headers.get("retry-after")));
-        if (res.status === 401 || res.status === 403) throw new AiProviderError("credentials_rejected");
-        if (res.status === 408 || res.status === 504) throw new AiProviderError("timeout");
-        if (!res.ok) throw new AiProviderError("provider_error");
-        let text: string;
-        try {
-          text = await readBounded(res);
-        } catch (error) {
-          throw error instanceof AiProviderError ? error : new AiProviderError(controller.signal.aborted ? "timeout" : "network");
-        }
-        let body: unknown;
-        try {
-          body = JSON.parse(text);
-        } catch {
-          throw new AiProviderError("malformed");
-        }
-        return contentOf(body);
-      })();
-      try {
-        // Bound both headers and body even if a fetch implementation ignores abort.
-        return await Promise.race([exchange, timeout]);
-      } finally {
-        clearTimeout(timer);
-        exchange.catch(() => {});
-      }
-    },
+    complete: (request) =>
+      exchangeJson(config.timeoutMs, {
+        url: `${config.baseUrl}/chat/completions`,
+        headers: { authorization: `Bearer ${config.apiKey}` },
+        body: {
+          model: config.model,
+          messages: [
+            { role: "system", content: request.system },
+            { role: "user", content: request.user },
+          ],
+          temperature: 0.2,
+          max_tokens: config.maxOutputTokens,
+          ...(config.jsonMode ? { response_format: { type: "json_object" } } : {}),
+        },
+        read: contentOf,
+      }, fetchImpl),
   };
 }

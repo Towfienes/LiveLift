@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => nav.search,
 }));
 
-import HomePage from "@/app/page";
+import HomePage from "@/app/legacy/home/page";
 import SessionsPage from "@/app/sessions/page";
 import OperatePage from "@/app/live/[sessionId]/operate/page";
 import { LiveAnnouncer } from "@/components/ui";

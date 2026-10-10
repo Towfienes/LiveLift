@@ -12,10 +12,12 @@ import { NextPanel } from "@/components/ops/NextPanel";
 import { CueBar, type ReportTarget } from "@/components/ops/CueBar";
 import { RunOfShowLive, scrollCurrentRowIntoView } from "@/components/ops/RunOfShowLive";
 import { SupportTabs } from "@/components/ops/SupportTabs";
+import { PlatformSyncPanel } from "@/components/platform/PlatformSyncPanel";
 import { QuickReports } from "@/components/ops/QuickReports";
 import { OperateCopilot } from "@/components/ai/OperateCopilot";
 import { useOperateCopilot } from "@/components/ai/useAiCopilot";
 import { SimulatorStrip } from "@/components/ops/SimulatorStrip";
+import { useSimulatorControls } from "@/components/platform/lab/useSimulatorControls";
 import { Drift } from "@/components/ops/StatusChips";
 import {
   AckDialog,
@@ -29,13 +31,11 @@ import {
   SkipDialog,
 } from "@/components/ops/OperateDialogs";
 import {
-  SCENARIO_BY_ID,
   activeSegment,
   analyzeRecovery,
   applyCommand,
   coverageDeclarationExpected,
   currentPlan,
-  effectiveNowMs,
   forecastSession,
   formatAnchorLate,
   formatClock,
@@ -43,7 +43,6 @@ import {
   isAnchorDueNow,
   nextPendingSegment,
   type RecoveryOption,
-  type ScenarioId,
 } from "@/lib/domain";
 import { sessionStore, type DispatchInput, type DispatchResult } from "@/lib/store/sessionStore";
 import { remoteRoomStore, type CommandOutcome } from "@/lib/store/remoteRoomStore";
@@ -172,7 +171,6 @@ function Desk({
 
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [unsaved, setUnsaved] = useState<Unsaved | null>(null);
-  const [simMessage, setSimMessage] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogId>(null);
   const [ack, setAck] = useState<AckState | null>(null);
   const [reanchorId, setReanchorId] = useState<string | null>(null);
@@ -423,21 +421,30 @@ function Desk({
 
   // ---- Simulator --------------------------------------------------------------------------
 
-  const scenario = session.scenarioId ? SCENARIO_BY_ID[session.scenarioId as ScenarioId] : undefined;
-  const stepDef = scenario?.script[session.scriptCursor];
-  const virtualNow = effectiveNowMs(session, nowMs);
-  const nextAnchorMs = forecast.anchorGuard?.committedMs ?? null;
-
-  const simApplyStep = (): void => {
-    const r = sessionStore.applyNextScriptStep(session.id);
-    if (!r) return;
-    if (r.receipt?.code === "not_persisted") setSimMessage(r.receipt.message);
-    else if (r.receipt?.outcome === "rejected") setSimMessage(`${r.receipt.message ?? "Step rejected"} Skip it if you already did this by hand.`);
-    else {
-      setSimMessage(null);
-      if (r.receipt) setNotice({ tone: "ok", text: r.step?.label ?? "Step applied." });
-    }
-  };
+  const simulator = useSimulatorControls({
+    session,
+    nowMs,
+    nextAnchorMs: forecast.anchorGuard?.committedMs ?? null,
+    run: (body) => void run(body),
+    autoRun: true,
+    script: {
+      apply: (say) => {
+        const r = sessionStore.applyNextScriptStep(session.id);
+        if (!r) return;
+        if (r.receipt?.code === "not_persisted") say(r.receipt.message);
+        else if (r.receipt?.outcome === "rejected") say(`${r.receipt.message ?? "Step rejected"} Skip it if you already did this by hand.`);
+        else {
+          say(null);
+          if (r.receipt) setNotice({ tone: "ok", text: r.step?.label ?? "Step applied." });
+        }
+      },
+      skip: (say) => {
+        const r = sessionStore.skipNextScriptStep(session.id);
+        say(r.ok ? null : r.reason);
+      },
+    },
+  });
+  const virtualNow = simulator.virtualNowMs;
 
   // ---- Render ------------------------------------------------------------------------------
 
@@ -452,29 +459,7 @@ function Desk({
       viewer={isRemote && commands.role === "viewer" ? { name: remote.access?.name ?? "viewer" } : null}
       onEndLiveClick={() => setDialog("end")}
       endLiveDisabled={locked}
-      contextExtra={
-        simulated ? (
-          <SimulatorStrip
-            virtualNowMs={virtualNow}
-            tz={tz}
-            nextAnchorMs={nextAnchorMs}
-            scripted={Boolean(scenario)}
-            step={
-              scenario && stepDef
-                ? { index: session.scriptCursor, total: scenario.script.length, label: stepDef.label }
-                : null
-            }
-            onAdvance={(sec) => void run({ type: "advance_clock", byMs: sec * 1000 })}
-            onToAnchor={() => nextAnchorMs !== null && void run({ type: "set_clock", toMs: nextAnchorMs - 60_000 })}
-            onApplyStep={simApplyStep}
-            onSkipStep={() => {
-              const r = sessionStore.skipNextScriptStep(session.id);
-              setSimMessage(r.ok ? null : r.reason);
-            }}
-            message={simMessage}
-          />
-        ) : undefined
-      }
+      contextExtra={simulated ? <SimulatorStrip {...simulator.strip} /> : undefined}
     >
       <CommandStateContext.Provider value={{ busy, error: cmdError }}>
         <div className="min-h-full lg:h-full flex flex-col gap-2 p-3 [@media(min-height:860px)]:gap-3 [@media(min-height:860px)]:lg:p-4 max-w-[1720px] w-full mx-auto">
@@ -687,6 +672,17 @@ function Desk({
             tz={tz}
             copilotAvailable={copilot.phase === "available"}
             onCopilotOpen={() => setCopilotOpened(true)}
+            platform={
+              simulated ? (
+                <PlatformSyncPanel
+                  session={session}
+                  nowMs={nowMs}
+                  onRecord={(command) => {
+                    void run(command as DispatchInput);
+                  }}
+                />
+              ) : undefined
+            }
             copilot={
               <OperateCopilot
                 copilot={copilot}

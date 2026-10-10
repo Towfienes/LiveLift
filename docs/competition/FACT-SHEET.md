@@ -17,6 +17,8 @@ Sửa số ở đây trước, rồi đồng bộ ra các tài liệu khác — 
 | **Số phiên mục tiêu** | 31 (§8.4) | 30 (§8.2, §14) | **Chưa chốt** (25/09/2026) | Chọn MỘT số, dùng thống nhất. Hiện đã chạy **0** phiên thí nghiệm thật |
 | **Người xem đồng thời mục tiêu** | ≥ 80 (§8.4) | "vài trăm" giả định CV 0,5 (§8.2) | **Chưa chốt** (25/09/2026) | **ƯỚC TÍNH, CHƯA ĐO: 300.000đ quảng cáo ≈ 5–15 người xem đồng thời** — tính trên giấy ngày 24/08 từ CPM Facebook 25–60 nghìn và tỷ lệ vào phòng 1–2% (`docs/research/2026-08-24-phan-bien-tai-lieu.md` mục R1). Chưa chạy phiên quảng cáo nào (`docs/TONG-KET-DU-AN.md`: "Chạy 2–3 phiên thử + quảng cáo đo chi phí thật" vẫn là việc chưa làm). Nếu ước tính đúng, mục tiêu 80 hụt khoảng 10 lần: phải hạ mục tiêu hoặc đổi chiến lược (đối tác) và sửa MỌI bảng lực thống kê theo |
 
+> **Cập nhật 09/10/2026:** vòng 2 là **22/10/2026** (15 phút trình bày + 5 phút vấn đáp), không phải 15/10. Xem `AISC26-THE-LE.md`; các dòng ngày bên dưới về vòng 2 đã cũ.
+
 **Mốc đã biết (25/09/2026):** AISC'26 vòng 1 nộp 14/09/2026; vòng 2 ngày **15/10/2026 tại UIT**,
 bắt buộc có poster (trang BTC). Cuộc thi Sáng tạo trẻ Quốc gia về AI 2026, Bảng C, đường trường cử:
 hạn nộp **30/09/2026** (`sang-tao-tre-2026/BRIEF-THE-LE.md` §2).

@@ -16,7 +16,7 @@ vi.mock("next/server", () => ({ connection }));
 vi.mock("next/font/google", () => ({ Rubik: () => ({ variable: "--font-rubik" }) }));
 
 import RootLayout from "@/app/layout";
-import HomePage from "@/app/page";
+import HomePage from "@/app/legacy/home/page";
 import LoginPage from "@/app/login/page";
 import NewPage from "@/app/live/new/page";
 import OperatePage from "@/app/live/[sessionId]/operate/page";
