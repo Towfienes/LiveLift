@@ -168,8 +168,8 @@ changed; propose departures as a mockup first, because a repaint that skipped th
 - **Palette.** Paper `#f6f3ee`, ink `#2a2522`, brick `#9e3b2b` (LIVE and the one primary action only), kraft
   tape, the violet simulated token. No new palette (a navy repaint was rejected), no rainbow or holographic
   colour. Every colour comes from a token, and every token has a dark value.
-- **Logo.** The brand mark (a product card lifted off a stack, taped up, with a LIVE dot; `docs/brand/logo`) beside the
-  L3 wordmark: “LiveLift” in one weight (600), “Lift” in brick, its i-dot replaced by a small upward wedge.
+- **Logo.** The team's mark redrawn flat (an L with a fold, a bar, a lift arrow, two live arcs; `docs/brand/logo`) beside
+  the L3 wordmark: “LiveLift” in one weight (600), “Lift” in brick, its i-dot replaced by a small upward wedge.
 - **Titles (T2).** One weight (500), tight tracking (-0.03em), balanced wrapping; never a light line beside a bold
   one. Exactly one phrase per page title sits on the kraft tape: `TapeTitle` in `ui.tsx` with a `*TitleMark` copy
   key (Home “nên ghim gì”, Recap “buổi live”, Legacy “Bản cũ”; Start sets “buổi live.” on its own line). Section
@@ -178,7 +178,7 @@ changed; propose departures as a mockup first, because a repaint that skipped th
   corners, a kicker, a tick ruler with its caption, a faint giant word, and the brand drawings placed on it. The
   drawings come from `docs/brand/assets` through `docs/brand/assets/source/build_tsx.py`, which writes `brand.tsx`
   with every palette colour as a class mapped to a theme token, so they follow the dark theme; edit the SVG or the
-  script, never `brand.tsx`. Start: rack, taped product card, ring light. Home: the suggestion spec sheet
+  script, never `brand.tsx`. Start keeps its own die-cut stickers (phone on air, shirt with a tag), which the owner preferred to the brand sheet there. Home: the suggestion spec sheet
   (`HeroSpec`) and one drawing per step. Recap: card stack, arrow, comment chips; the “Chưa biết” sticky note on the
   unknowns box. Legacy: card stack, clip, price tag. Empty and not-found states: the card stack. Rules: words only,
   never digits, except the Home example that labels itself as one; `aria-hidden`; static; hidden at narrow widths.

@@ -61,7 +61,7 @@ const vi = {
   // home
   homeTitle: "LiveLift đọc bình luận và giỏ hàng trong buổi live, rồi gợi ý bạn nên ghim gì, và vì sao.", homeTitleMark: "nên ghim gì",
   homeLede: "Bản này chạy trên SIMULATED Live trong trình duyệt của bạn: luật của trợ lý là thật, nền tảng và người xem là mô phỏng.",
-  art: { start: { kicker: "TỜ CHUẨN BỊ", ruler: "TRƯỚC KHI LÊN SÓNG" }, recap: { kicker: "HẾT BUỔI" }, legacy: { kicker: "LƯU TRỮ", ruler: "CÁC MÀN TRƯỚC ĐÂY" } } as Record<"start" | "recap" | "legacy", { kicker: string; ruler?: string }>,
+  art: { recap: { kicker: "HẾT BUỔI" }, legacy: { kicker: "LƯU TRỮ", ruler: "CÁC MÀN TRƯỚC ĐÂY" } } as Record<"recap" | "legacy", { kicker: string; ruler?: string }>,
   heroSpec: {
     kicker: "MẪU MỘT GỢI Ý",
     simTag: "VÍ DỤ · SIMULATED",
@@ -327,7 +327,7 @@ const en: Copy = {
   ],
   homeTitle: "LiveLift reads comments and carts during your live, then suggests what to pin next, and why.", homeTitleMark: "what to pin next",
   homeLede: "This version runs on SIMULATED Live in your browser: the assistant's rules are real, the platform and the viewers are simulated.",
-  art: { start: { kicker: "PREP SHEET", ruler: "BEFORE GOING LIVE" }, recap: { kicker: "END OF SHOW" }, legacy: { kicker: "ARCHIVE", ruler: "EARLIER SCREENS" } },
+  art: { recap: { kicker: "END OF SHOW" }, legacy: { kicker: "ARCHIVE", ruler: "EARLIER SCREENS" } },
   heroSpec: {
     kicker: "ANATOMY OF A SUGGESTION",
     simTag: "EXAMPLE · SIMULATED",

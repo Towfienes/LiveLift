@@ -4005,6 +4005,65 @@
   margin-top: var(--s-24);
   max-width: 440px;
 }
+.ld .art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.ld .art .art-dot { fill: var(--line); }
+.ld .art .art-giant { font: 700 112px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; letter-spacing: -0.04em; fill: var(--surface-3); opacity: 0.55; }
+.ld .art .art-reg { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: 0.55; }
+.ld .art .art-label { font: 500 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; letter-spacing: 0.12em; fill: var(--ink-3); }
+.ld .art .art-label.is-big { font-size: 12px; letter-spacing: 0.04em; fill: var(--ink-2); }
+.ld .art .art-chips circle, .ld .art .art-pill rect { fill: none; stroke: var(--ink-3); stroke-width: 1; opacity: 0.75; }
+.ld .art .art-chips text, .ld .art .art-pill text { font: 600 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--ink-2); text-anchor: middle; letter-spacing: 0.06em; }
+.ld .art .art-ruler path { stroke: var(--ink-3); stroke-width: 1; fill: none; opacity: 0.7; }
+.ld .art .art-ruler .art-mark { fill: var(--ink-2); stroke: none; }
+/* die-cut stickers in the site's own materials: paper for the phone, kraft (the tape) for the shirt, ink lines, brick
+   only for the LIVE dot and the hearts. Tokens below switch with the theme and serve every drawing in art.tsx. */
+.ld .art {
+  --stk-cut: #d8d0c4;
+  --stk-margin: #fffdf8;
+  --stk-line: #5a5047;
+  --stk-paper-a: #fbf7ef;
+  --stk-paper-b: #ece3d4;
+  --stk-kraft-a: #e6d6b6;
+  --stk-kraft-b: #cdb68a;
+  --stk-screen: #f6f3ee;
+  --stk-sheen: #ffffff;
+  --stk-heart: #f0d9d0;
+}
+.ld[data-theme="dark"] .art {
+  --stk-cut: #5a4e44;
+  --stk-margin: #3a312b;
+  --stk-line: #e2d8ca;
+  --stk-paper-a: #3b332d;
+  --stk-paper-b: #2c2520;
+  --stk-kraft-a: #8f7a58;
+  --stk-kraft-b: #6c5a3f;
+  --stk-screen: #241e1a;
+  --stk-sheen: #f3ece1;
+  --stk-heart: #4a2a22;
+}
+.ld .art .stop-paper-a { stop-color: var(--stk-paper-a); }
+.ld .art .stop-paper-b { stop-color: var(--stk-paper-b); }
+.ld .art .stop-kraft-a { stop-color: var(--stk-kraft-a); }
+.ld .art .stop-kraft-b { stop-color: var(--stk-kraft-b); }
+.ld .art .stop-sheen { stop-color: var(--stk-sheen); }
+.ld .art .stk-cut { fill: none; stroke: var(--stk-cut); stroke-width: 15; stroke-linejoin: round; }
+.ld .art .stk-margin { fill: var(--stk-margin); stroke: var(--stk-margin); stroke-width: 12; stroke-linejoin: round; }
+.ld .art .stk-ink { stroke: var(--stk-line); stroke-width: 2.4; stroke-linejoin: round; }
+.ld .art .stk-screen { fill: var(--stk-screen); stroke: var(--stk-line); stroke-width: 2; }
+.ld .art .stk-line { stroke: var(--stk-line); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.ld .art .stk-line.is-soft { stroke-width: 1.5; opacity: 0.45; }
+.ld .art .stk-line-fill { fill: var(--stk-line); }
+.ld .art .stk-live { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; }
+.ld .art .stk-live-dot { fill: var(--signal); }
+.ld .art .stk-live-text { font: 700 8.5px/1 ui-monospace, "SFMono-Regular", "DejaVu Sans Mono", Menlo, monospace; fill: var(--stk-line); text-anchor: middle; letter-spacing: 0.04em; }
+.ld .art .stk-heart { fill: var(--stk-heart); stroke: var(--signal-text); stroke-width: 1.8; stroke-linejoin: round; }
+.ld .art .stk-heart.is-small { stroke-width: 1.5; }
+.ld .art .stk-tag { fill: var(--stk-margin); stroke: var(--stk-line); stroke-width: 1.6; stroke-linejoin: round; }
 @media (max-width: 1023px) {
   .ld .start-art {
     display: none;
@@ -4077,13 +4136,26 @@
     top: var(--s-48);
   }
 }
-/* WP8: the logo mark beside the wordmark. Colours follow the theme tokens. */
+/* The logo mark beside the wordmark. Colours follow the theme tokens. */
 .ld .wordmark {
   gap: 8px;
 }
 .ld .logo-mark {
   flex: none;
 }
+.ld .logo-ink {
+  fill: var(--ink);
+}
+.ld .logo-acc {
+  fill: var(--signal-text);
+}
+.ld .logo-arc {
+  fill: none;
+  stroke: var(--signal-text);
+  stroke-width: 36;
+  stroke-linecap: round;
+}
+/* The product-card drawing (Home spec sheet) keeps its own parts. */
 .ld .lm-back,
 .ld .lm-card {
   stroke: var(--ink);
@@ -4287,12 +4359,6 @@
   fill: var(--surface-3);
   opacity: 0.6;
 }
-@media (min-width: 1024px) {
-  .ld .start-art {
-    display: grid;
-  }
-}
-.ld .start-art .sheet-stage { aspect-ratio: 440 / 250; }
 .ld .recap-art {
   padding: var(--s-12) var(--s-32) var(--s-8);
   gap: var(--s-4);
